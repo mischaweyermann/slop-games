@@ -47,13 +47,31 @@ Die Figur übernimmt nur die *Richtungen* deiner Arme und Beine, die Längen kom
 
 **Tasten auf dem TV/Laptop:** `D` Maus-Testmodus · `C` Charakter · `F` Vollbild · `M` Ton an/aus · `Leertaste`/`OK` Start
 
+## 🏎️ Kurvenflitzer (Rennspiel) – `rennen/`
+
+Ich-Perspektive hinter dem Lenkrad eines Go-Karts. Du hältst ein **unsichtbares Lenkrad** vor der Brust und drehst es: Die Kamera misst den Winkel zwischen deinen beiden Händen, das ist der Lenkeinschlag. Gas gibt das Kart von selbst.
+
+- 3 Runden auf einem 1,1 km Rundkurs gegen 3 Gegner (Blitz, Sunny, Lila)
+- Münzen sammeln: 5 Münzen = 3 Sekunden **Turbo**
+- Wiese bremst, Reifenstapel schubsen zurück, Zusammenstösse kosten Tempo
+- Lässt du das Lenkrad los (Hände nicht sichtbar), geht das Gas weg
+- **Start:** beide Hände ruhig vor die Brust halten, bis der Ring voll ist → Startampel
+- **Neues Rennen:** im Ziel beide Hände über den Kopf
+
+**Kamera-Optionen** (auf der Startseite des Spiels):
+1. **Handy** per QR-Code – dieselbe Handy-Seite wie beim Ballon-Platzer (`controller.html?g=rennen`)
+2. **Kamera dieses Geräts** – z. B. Laptop-Webcam, alles läuft direkt auf dem Laptop
+3. **Tastatur** zum Testen: ← → lenken, Leertaste startet
+
+Hände und Ärmel im Cockpit sowie die Farbe des Karts kommen vom Charakter aus dem Ballon-Platzer.
+
 ## Lokal testen
 
 ```bash
 npx serve .            # oder: python3 -m http.server 8080
 ```
 
-Am Laptop `http://localhost:8080` öffnen und **«Ohne Handy testen (Maus)»** klicken. Für den Handy-Test braucht es HTTPS, also am einfachsten direkt über GitHub Pages.
+Am Laptop `http://localhost:8080` (Ballon-Platzer) oder `http://localhost:8080/rennen/` (Kurvenflitzer) öffnen und **«Ohne Handy testen (Maus)»** klicken. Für den Handy-Test braucht es HTTPS, also am einfachsten direkt über GitHub Pages.
 
 ## Technik
 

@@ -15,6 +15,21 @@ const IDX = [0, 11, 12, 13, 14, 15, 16, 19, 20, 23, 24, 25, 26, 27, 28];
 const BONES = [[11, 12], [11, 13], [13, 15], [12, 14], [14, 16], [11, 23], [12, 24], [23, 24], [23, 25], [25, 27], [24, 26], [26, 28], [15, 19], [16, 20]];
 
 const params = new URLSearchParams(location.search);
+// Welches Spiel läuft auf dem TV? (?g=rennen) – bestimmt nur die Texte
+const GAME = params.get('g') === 'rennen' ? 'rennen' : 'ballon';
+const TXT = GAME === 'rennen' ? {
+  far: 'Setz dich so hin, dass Oberkörper und beide Hände im Bild sind.',
+  play: ['Rennen läuft! 🏎️', 'Dreh das unsichtbare Lenkrad und schau auf den Fernseher.'],
+  results: ['Im Ziel!', 'Beide Hände über den Kopf für ein neues Rennen.'],
+  ready: ['Bereit!', 'Halte beide Hände vor der Brust, wie an einem Lenkrad.'],
+  result: (m) => [m.score === 1 ? '🏆 Sieg!' : `Platz ${m.score}!`, 'Beide Hände über den Kopf für ein neues Rennen.'],
+} : {
+  far: 'Geh 2–3 Schritte zurück, bis du von Kopf bis Fuss im Bild bist.',
+  play: ['Spiel läuft! 🎈', 'Schau auf den Fernseher und platze die Ballone.'],
+  results: ['Runde vorbei!', 'Arme hoch für noch eine Runde.'],
+  ready: ['Bereit!', 'Heb beide Arme über den Kopf, um zu starten.'],
+  result: (m) => [m.record ? `Neuer Rekord: ${m.score} Punkte!` : `${m.score} Punkte!`, 'Arme hoch für noch eine Runde.'],
+};
 const ui = {
   codeInput: $('codeInput'), startBtn: $('startBtn'), setupError: $('setupError'),
   setup: $('setup'), running: $('running'), video: $('video'), overlay: $('overlay'),
@@ -69,7 +84,7 @@ ui.startBtn.addEventListener('click', async () => {
     return;
   }
   ui.setup.hidden = true; ui.running.hidden = false;
-  history.replaceState(null, '', '?c=' + code + (params.get('peer') ? '&peer=' + params.get('peer') : ''));
+  history.replaceState(null, '', '?c=' + code + (GAME === 'rennen' ? '&g=rennen' : '') + (params.get('peer') ? '&peer=' + params.get('peer') : ''));
   running = true;
   keepAwake();
   connect();
@@ -262,17 +277,17 @@ function onTv(msg) {
   else if (msg.t === 'bad') buzz([90, 50, 90]);
   else if (msg.t === 'state') { tvState = msg.s; updateMessage(); }
   else if (msg.t === 'result') {
-    message(msg.record ? `Neuer Rekord: ${msg.score} Punkte!` : `${msg.score} Punkte!`, 'Arme hoch für noch eine Runde.');
+    message(...TXT.result(msg));
   }
 }
 
 function updateMessage() {
   if (!conn) return message('Verbinde mit dem Fernseher …', `Code ${code} – die TV-Seite muss offen sein.`);
-  if (!bodySeen) return message('Ich sehe dich noch nicht', 'Geh 2–3 Schritte zurück, bis du von Kopf bis Fuss im Bild bist.');
-  if (tvState === 'play') return message('Spiel läuft! 🎈', 'Schau auf den Fernseher und platze die Ballone.');
+  if (!bodySeen) return message('Ich sehe dich noch nicht', TXT.far);
+  if (tvState === 'play') return message(...TXT.play);
   if (tvState === 'countdown') return message('Achtung, fertig …', 'Gleich geht’s los!');
-  if (tvState === 'results') return message('Runde vorbei!', 'Arme hoch für noch eine Runde.');
-  message('Bereit!', 'Heb beide Arme über den Kopf, um zu starten.');
+  if (tvState === 'results') return message(...TXT.results);
+  message(...TXT.ready);
 }
 
 /* ---------- Bildschirm wach halten ---------- */
@@ -316,4 +331,11 @@ async function switchToLite() {
     });
     const old = landmarker; landmarker = lite; lastTs = -1; old.close?.();
   } catch (e) { console.warn('Lite-Modell nicht verfügbar', e); }
+}
+
+// Rennspiel: Einleitungstext anpassen
+if (GAME === 'rennen') {
+  const p = document.querySelector('.hero > p');
+  if (p) p.textContent = 'Das Handy wird zur Kamera. Stell es vor dich, sodass es deinen Oberkörper und beide Hände sieht – im Sitzen geht das prima.';
+  document.title = 'Kurvenflitzer · Handy';
 }

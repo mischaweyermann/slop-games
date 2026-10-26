@@ -106,6 +106,39 @@ export function createAudio() {
     whoosh() { play((t) => noise({ at: t, dur: 0.45, vol: 0.18, freq: 400, to: 3000, q: 1.5 })); },
     end() { play((t) => [72, 76, 79, 84, 88].forEach((n, i) => tone({ f: midi(n), at: t + i * 0.11, dur: 0.5, type: 'triangle', vol: 0.16 }))); },
 
+    // Motorgeräusch fürs Rennspiel: zwei verstimmte Sägezähne durch einen Tiefpass
+    engine(on) {
+      if (!on) {
+        if (this._eng) { const e = this._eng; e.g.gain.setTargetAtTime(0, ctx.currentTime, 0.15); setTimeout(() => { e.o1.stop(); e.o2.stop(); }, 600); this._eng = null; }
+        return;
+      }
+      if (this._eng || !ensure()) return;
+      const o1 = ctx.createOscillator(), o2 = ctx.createOscillator();
+      o1.type = 'sawtooth'; o2.type = 'square';
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 600; lp.Q.value = 2;
+      const g = ctx.createGain(); g.gain.value = 0;
+      o1.connect(lp); o2.connect(lp); lp.connect(g).connect(sfx);
+      o1.start(); o2.start();
+      g.gain.setTargetAtTime(0.07, ctx.currentTime, 0.3);
+      this._eng = { o1, o2, lp, g };
+    },
+    engineSet(speed01, boost = false) {
+      const e = this._eng; if (!e) return;
+      const t = ctx.currentTime;
+      // «Gänge»: Drehzahl steigt in Stufen an
+      const gear = Math.min(3, Math.floor(speed01 * 4));
+      const rpm = 0.25 + ((speed01 * 4 - gear) * 0.75) + gear * 0.06;
+      const f = 48 + rpm * 70 + (boost ? 25 : 0);
+      e.o1.frequency.setTargetAtTime(f, t, 0.05);
+      e.o2.frequency.setTargetAtTime(f * 0.5 + 1.5, t, 0.05);
+      e.lp.frequency.setTargetAtTime(380 + speed01 * 900 + (boost ? 500 : 0), t, 0.08);
+      e.g.gain.setTargetAtTime(0.045 + speed01 * 0.045, t, 0.1);
+    },
+    skid(amount) {
+      if (!ensure() || amount < 0.1) return;
+      noise({ dur: 0.12, vol: 0.06 * amount, type: 'bandpass', freq: 2600, q: 3 });
+    },
+
     music(on) {
       if (!on && !ctx) return;
       if (!ensure()) return;

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kurvenflitzer</title>
+  <meta name="description" content="Gratis Rennspiel: Du lenkst mit den Händen ein unsichtbares Lenkrad. Handy oder Laptop-Kamera erkennt die Bewegung.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='24' fill='none' stroke='%23e8574f' stroke-width='8'/%3E%3Cpath d='M10 36h44M32 36v20' stroke='%23e8574f' stroke-width='7'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/tv.css">
+  <link rel="stylesheet" href="race.css">
+  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+  <script type="importmap">
+    { "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    } }
+  </script>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+
+  <div id="ui">
+    <!-- Startbildschirm -->
+    <section class="lobby" id="lobby">
+      <div class="brand">
+        <h1 class="logo" aria-label="Kurvenflitzer"><span class="word" data-word="Kurven"></span><span class="word" data-word="flitzer"></span></h1>
+        <p class="tagline">Setz dich hin, greif ein unsichtbares Lenkrad und dreh es. 3 Runden gegen 3 Gegner, sammle Münzen für Turbo!</p>
+        <ol class="steps">
+          <li><b>1</b><span>QR-Code scannen – oder Laptop-Kamera nutzen</span></li>
+          <li><b>2</b><span>Kamera vor dich stellen, Oberkörper und Hände im Bild</span></li>
+          <li><b>3</b><span>Hände vor die Brust wie am Lenkrad – los geht’s!</span></li>
+        </ol>
+        <a class="other-game" href="../">🎈 Zum Ballon-Platzer</a>
+      </div>
+
+      <div class="join card">
+        <div class="join-title">Mit dem Handy verbinden</div>
+        <div class="qr" id="qr"><div class="spinner"></div></div>
+        <div class="code-label">oder Code eingeben</div>
+        <div class="code" id="code">· · · · ·</div>
+        <div class="url" id="joinUrl"></div>
+        <div class="alt">
+          <button class="ghost" id="camBtn" type="button">💻 Kamera dieses Geräts</button>
+          <button class="ghost" id="keysBtn" type="button">⌨️ Mit Tastatur testen</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Rennen-Anzeige -->
+    <div class="hud" id="hud">
+      <div class="hud-left">
+        <div class="pill pos"><span class="label">Platz</span><span class="value"><b id="pos">4</b><small>/4</small></span></div>
+        <div class="pill lap"><span class="label">Runde</span><span class="value"><b id="lap">1</b><small>/3</small></span></div>
+        <div class="pill time"><span class="label">Zeit</span><span class="value" id="time">0:00.0</span></div>
+      </div>
+      <canvas class="minimap" id="minimap" width="360" height="360"></canvas>
+      <div class="speedo">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="track" cx="60" cy="60" r="50"/>
+          <circle class="bar" id="speedBar" cx="60" cy="60" r="50"/>
+          <circle class="boost" id="boostBar" cx="60" cy="60" r="40"/>
+        </svg>
+        <div class="speed-num"><b id="speed">0</b><small>km/h</small></div>
+      </div>
+      <div class="coins pill"><span>🪙</span><b id="coins">0</b></div>
+    </div>
+
+    <div class="wheel-hint" id="wheelHint">
+      <svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" stroke-width="9"/><path d="M14 54h72M50 54v34" stroke="currentColor" stroke-width="8" stroke-linecap="round"/></svg>
+    </div>
+
+    <div class="prompt" id="prompt">
+      <div class="ring">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <circle class="track" cx="50" cy="50" r="42"/>
+          <circle class="bar" id="promptBar" cx="50" cy="50" r="42"/>
+        </svg>
+        <span class="ring-icon" id="promptIcon">🏎️</span>
+      </div>
+      <div>
+        <div class="prompt-text" id="promptText"></div>
+        <div class="prompt-sub" id="promptSub"></div>
+      </div>
+    </div>
+
+    <div class="lights" id="lights"><span></span><span></span><span></span></div>
+    <div class="banner" id="banner"></div>
+
+    <section class="results card" id="results">
+      <div class="results-title" id="resultsTitle">Ziel!</div>
+      <div class="podium" id="podium"></div>
+      <div class="stats">
+        <div><b id="statTime">0:00</b><span>Gesamtzeit</span></div>
+        <div><b id="statBest">0:00</b><span>Beste Runde</span></div>
+        <div><b id="statCoins">0</b><span>Münzen</span></div>
+      </div>
+      <div class="results-hint" id="resultsHint">Beide Hände hoch über den Kopf für ein neues Rennen</div>
+    </section>
+
+    <div class="cam-pip" id="camPip" hidden><video id="localVideo" playsinline muted></video><canvas id="localOverlay"></canvas></div>
+
+    <div class="status" id="status"><span class="dot"></span><span id="statusText">Verbinde …</span></div>
+    <div class="corner">
+      <button class="ghost small" id="soundBtn" type="button">🔇 Ton an</button>
+      <button class="ghost small" id="fsBtn" type="button">⛶ Vollbild</button>
+    </div>
+    <div class="flash" id="flash"></div>
+  </div>
+
+  <script type="module" src="race.js"></script>
+</body>
+</html>

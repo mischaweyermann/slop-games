@@ -287,3 +287,12 @@ button.ghost.small { margin: 0; font-size: calc(1.5 * var(--u)); padding: calc(.
   font: 800 .9em 'Nunito', sans-serif; color: #fff; background: #3f325e; border: 0; border-radius: 999px;
   padding: .6em 1.3em; cursor: pointer;
 }
+
+.other-game {
+  display: inline-block; margin: calc(2.4 * var(--u)) 0 0 calc(1 * var(--u));
+  font: 800 calc(1.8 * var(--u)) 'Nunito', sans-serif; color: var(--ink); text-decoration: none;
+  background: rgba(255, 255, 255, .75); border: 2px solid #ece4ff; border-radius: 999px;
+  padding: calc(.9 * var(--u)) calc(2 * var(--u)); pointer-events: auto; vertical-align: middle;
+}
+.other-game:hover, .other-game:focus-visible { background: #fff; border-color: var(--lav); outline: none; }
+.lobby.hide .other-game, .lobby.editing .other-game { pointer-events: none; }
