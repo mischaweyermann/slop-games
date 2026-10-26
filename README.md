@@ -1,20 +1,22 @@
-# Ballon-Platzer 🎈
+# Slope Games 🎮
 
-Gratis Bewegungsspiel für den Fernseher. Das Handy ist die Kamera, der Körper ist der Controller.
+Gratis Bewegungsspiele für den Fernseher. Das Handy ist die Kamera, der Körper ist der Controller – ohne App, ohne eigenen Server.
 
-- **TV / Laptop:** `index.html` – 3D-Szene, Spiel, QR-Code zum Verbinden
-- **Handy:** `controller.html` – Kamera + Körpererkennung (MediaPipe), sendet nur Körperpunkte an den TV
+| Pfad | Inhalt |
+|---|---|
+| `/` | Startseite mit allen Spielen |
+| `/ballon-platzer/` | 🎈 Ballon-Platzer (1 Spieler, stehend) |
+| `/kurvenflitzer/` | 🏎️ Kurvenflitzer (1–4 Spieler am TV + online) |
+| `/controller.html` | Handy-Seite für alle Spiele (Kamera + Körpererkennung) |
+| `js/`, `css/` | Gemeinsamer Code (Sound, Charakter, Handy-Seite, Stile) |
 
-Kein eigener Server nötig. Die Verbindung läuft direkt zwischen Handy und TV (WebRTC über den kostenlosen PeerJS-Vermittlungsserver).
+Die Verbindung läuft direkt zwischen Handy und TV (WebRTC über den kostenlosen PeerJS-Vermittlungsserver). Das Kamerabild verlässt das Handy nie.
 
 ## Online stellen mit GitHub Pages (gratis, mit HTTPS)
 
-1. Neues Repository auf GitHub anlegen, z. B. `ballon-platzer`.
-2. Alle Dateien aus diesem Ordner hochladen (Ordnerstruktur beibehalten).
-3. Im Repo: **Settings → Pages → Source: Deploy from a branch → Branch: `main` / `(root)`** → Save.
-4. Nach ca. einer Minute läuft das Spiel unter `https://<dein-name>.github.io/ballon-platzer/`.
+Repo → **Settings → Pages → Deploy from a branch → `main` / `(root)`**. Danach läuft alles unter `https://<name>.github.io/<repo>/`. HTTPS ist Pflicht, sonst gibt der Handy-Browser die Kamera nicht frei.
 
-HTTPS ist Pflicht, sonst gibt der Handy-Browser die Kamera nicht frei. GitHub Pages, Cloudflare Pages und Netlify liefern das automatisch.
+# 🎈 Ballon-Platzer – `ballon-platzer/`
 
 ## Spielen
 
@@ -47,23 +49,29 @@ Die Figur übernimmt nur die *Richtungen* deiner Arme und Beine, die Längen kom
 
 **Tasten auf dem TV/Laptop:** `D` Maus-Testmodus · `C` Charakter · `F` Vollbild · `M` Ton an/aus · `Leertaste`/`OK` Start
 
-## 🏎️ Kurvenflitzer (Rennspiel) – `rennen/`
+## 🏎️ Kurvenflitzer – `kurvenflitzer/`
 
-Ich-Perspektive hinter dem Lenkrad eines Go-Karts. Du hältst ein **unsichtbares Lenkrad** vor der Brust und drehst es: Die Kamera misst den Winkel zwischen deinen beiden Händen, das ist der Lenkeinschlag. Gas gibt das Kart von selbst.
+Go-Kart-Rennen in der Ich-Perspektive. Du hältst ein **unsichtbares Lenkrad** vor der Brust und drehst es: Der Winkel zwischen deinen Händen ist der Lenkeinschlag. Gas gibt das Kart von selbst.
 
-- 3 Runden auf einem 1,1 km Rundkurs gegen 3 Gegner (Blitz, Sunny, Lila)
+- 3 Runden auf einem 1,1 km Rundkurs, mindestens 4 Karts (fehlende Plätze fahren KI-Gegner)
 - Münzen sammeln: 5 Münzen = 3 Sekunden **Turbo**
 - Wiese bremst, Reifenstapel schubsen zurück, Zusammenstösse kosten Tempo
-- Lässt du das Lenkrad los (Hände nicht sichtbar), geht das Gas weg
-- **Start:** beide Hände ruhig vor die Brust halten, bis der Ring voll ist → Startampel
+- **Start:** Alle halten die Hände ruhig vor der Brust, bis ihr Ring voll ist → Startampel
 - **Neues Rennen:** im Ziel beide Hände über den Kopf
 
-**Kamera-Optionen** (auf der Startseite des Spiels):
-1. **Handy** per QR-Code – dieselbe Handy-Seite wie beim Ballon-Platzer (`controller.html?g=rennen`)
-2. **Kamera dieses Geräts** – z. B. Laptop-Webcam, alles läuft direkt auf dem Laptop
-3. **Tastatur** zum Testen: ← → lenken, Leertaste startet
+### Mehrspieler am gleichen TV (bis 4)
+Jede Person scannt den QR-Code mit ihrem eigenen Handy. Der Bildschirm teilt sich automatisch (2 = nebeneinander, 3–4 = Viertel). Jede/r hat eigenes Cockpit, eigene Münzen und eigene Anzeige; die anderen sieht man als Karts in ihren Charakterfarben. Wer während eines Rennens dazukommt, fährt ab dem nächsten Rennen mit.
 
-Hände und Ärmel im Cockpit sowie die Farbe des Karts kommen vom Charakter aus dem Ballon-Platzer.
+### Online (mehrere TVs)
+1. TV A: **🌍 Online → Raum erstellen**
+2. TV B, C …: **🌍 Online → Code von TV A eingeben → Beitreten**
+3. An jedem TV können zusätzlich 1–4 Handys mitspielen (max. 8 Karts insgesamt)
+
+Der Gastgeber-TV steuert Start und KI-Gegner; alle TVs tauschen 15× pro Sekunde ihre Positionen aus (direkt per WebRTC, kein eigener Server). Der Start erfolgt, wenn an allen TVs alle bereit sind.
+
+### Weitere Eingaben
+- **Kamera dieses Geräts** – z. B. Laptop-Webcam
+- **Tastatur** zum Testen: Spieler 1 mit ← →, Spieler 2 mit A / D, Leertaste = bereit
 
 ## Lokal testen
 
@@ -71,14 +79,14 @@ Hände und Ärmel im Cockpit sowie die Farbe des Karts kommen vom Charakter aus 
 npx serve .            # oder: python3 -m http.server 8080
 ```
 
-Am Laptop `http://localhost:8080` (Ballon-Platzer) oder `http://localhost:8080/rennen/` (Kurvenflitzer) öffnen und **«Ohne Handy testen (Maus)»** klicken. Für den Handy-Test braucht es HTTPS, also am einfachsten direkt über GitHub Pages.
+Am Laptop `http://localhost:8080` öffnen und ein Spiel wählen. Ohne Handy: im Ballon-Platzer **«Ohne Handy testen (Maus)»**, im Kurvenflitzer **«⌨️ Tastatur»**. Für den Handy-Test braucht es HTTPS, also am einfachsten direkt über GitHub Pages.
 
 ## Technik
 
 | Teil | Bibliothek |
 |---|---|
 | 3D | Three.js 0.170 (CDN) |
-| Körpererkennung | MediaPipe Pose Landmarker lite 0.10.14 (läuft auf dem Handy) |
+| Körpererkennung | MediaPipe Pose Landmarker 0.10.14, Modell full (Fallback lite), läuft auf dem Handy |
 | Verbindung | PeerJS 1.5.4 (WebRTC) |
 | QR-Code | qrcode-generator 1.4.4 |
 | Sound | eigene WebAudio-Synth (`js/audio.js`), keine Dateien |
@@ -91,5 +99,5 @@ Am Laptop `http://localhost:8080` (Ballon-Platzer) oder `http://localhost:8080/r
 
 - Weitere Spiele: «Loch in der Wand», Torwart, Tanz-Posen
 - Eigene 3D-Modelle aus Blender (als `.glb` laden)
-- Mehrspieler: zwei Handys, geteilter Bildschirm
+- Mehrspieler auch für den Ballon-Platzer
 - Eigener PeerJS-Server, falls der Gratis-Server einmal überlastet ist (`?peer=host:port`)

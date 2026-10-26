@@ -1010,7 +1010,7 @@ function onData(msg) {
 }
 
 function controllerUrl() {
-  const u = new URL('controller.html', location.href);
+  const u = new URL('../controller.html', location.href);
   u.search = ''; u.hash = '';
   u.searchParams.set('c', code);
   if (params.get('peer')) u.searchParams.set('peer', params.get('peer'));
