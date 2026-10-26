@@ -1,40 +1,40 @@
-/* Charakter-Editor – Grössen in em, damit TV und Handy dieselbe Datei nutzen */
-.ce { display: grid; gap: .9em; color: #3f325e; }
-.ce button { font-family: 'Nunito', system-ui, sans-serif; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+/* Charakter-Editor (Weinrot) – Grössen in em, damit TV und Handy dieselbe Datei nutzen */
+.ce { display: grid; gap: .9em; color: #f6e3e1; font-family: 'Poppins', system-ui, sans-serif; }
+.ce button { font-family: 'Poppins', system-ui, sans-serif; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 
 .ce-presets { display: flex; gap: .5em; overflow-x: auto; padding: .2em .1em .5em; scrollbar-width: none; }
 .ce-presets::-webkit-scrollbar { display: none; }
 .ce-preset {
   flex: none; display: flex; flex-direction: column; align-items: center; gap: .35em;
-  min-width: 5.2em; padding: .55em .5em .5em; border-radius: 1.1em;
-  background: #fff; border: 2px solid #efe8f8; color: #3f325e; font-weight: 800; font-size: .82em;
+  min-width: 5.2em; padding: .6em .5em .5em; border-radius: 1.2em;
+  background: #5a1f25; border: 2px solid transparent; color: #f6e3e1; font-weight: 600; font-size: .8em;
   transition: transform .15s, border-color .15s;
 }
-.ce-preset:hover, .ce-preset:focus-visible { border-color: #b8a4ff; transform: translateY(-2px); outline: none; }
+.ce-preset:hover, .ce-preset:focus-visible { border-color: #e2574c; transform: translateY(-2px); outline: none; }
 .ce-face {
   width: 2.6em; height: 2.6em; border-radius: 50%; position: relative;
   background: radial-gradient(circle at 36% 58%, #2f2420 0 5%, transparent 6%), radial-gradient(circle at 64% 58%, #2f2420 0 5%, transparent 6%), var(--skin);
-  box-shadow: inset 0 -.25em 0 rgba(0, 0, 0, .06), 0 .5em 0 -.15em var(--top);
+  box-shadow: 0 .5em 0 -.15em var(--top);
 }
 .ce-face::before { content: ''; position: absolute; inset: -6% -4% 52%; border-radius: 50% 50% 35% 35%; background: var(--hair); }
-.ce-dice { width: 2.6em; height: 2.6em; display: grid; place-items: center; font-size: 1em; border-radius: 50%; background: #f5f0ff; }
-.ce-dice { font-size: 1.15em; }
+.ce-dice { width: 2.6em; height: 2.6em; display: grid; place-items: center; font-size: 1.15em; border-radius: 50%; background: #7d2a2e; }
 
-.ce-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: .3em; background: #f3edff; padding: .3em; border-radius: 1em; }
-.ce-tab { border: 0; background: transparent; color: #7a6c99; font-weight: 800; font-size: .88em; padding: .6em .3em; border-radius: .75em; }
-.ce-tab.active { background: #fff; color: #3f325e; box-shadow: 0 .2em .6em rgba(98, 66, 150, .12); }
+.ce-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: .3em; background: #3d1418; padding: .3em; border-radius: 999px; }
+.ce-tab { border: 0; background: transparent; color: #e2847b; font-weight: 600; font-size: .85em; padding: .6em .3em; border-radius: 999px; }
+.ce-tab.active { background: #e2574c; color: #fff; }
 
 .ce-body { display: grid; gap: .85em; }
-.ce-label { font-size: .72em; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: #7a6c99; margin-bottom: .45em; }
+.ce-label { font-size: .75em; font-weight: 500; color: #e2847b; margin-bottom: .45em; }
 .ce-opts { display: flex; flex-wrap: wrap; gap: .45em; }
 .ce-chip {
-  border: 2px solid #efe8f8; background: #fff; color: #3f325e; font-weight: 800; font-size: .86em;
-  padding: .45em .85em; border-radius: 999px; transition: background .15s, border-color .15s;
+  border: 0; background: #5a1f25; color: #f6e3e1; font-weight: 500; font-size: .85em;
+  padding: .5em .95em; border-radius: 999px; transition: background .15s;
 }
-.ce-chip.active { background: #3f325e; border-color: #3f325e; color: #fff; }
+.ce-chip:hover { background: #7d2a2e; }
+.ce-chip.active { background: #f7e9a6; color: #5a1f25; font-weight: 600; }
 .ce-swatch {
   width: 2.1em; height: 2.1em; border-radius: 50%; border: 0; padding: 0;
-  background: var(--c); box-shadow: inset 0 -.2em 0 rgba(0, 0, 0, .12), 0 0 0 2px #fff, 0 0 0 3px #e7e0f2;
+  background: var(--c); box-shadow: inset 0 -.2em 0 rgba(0, 0, 0, .15), 0 0 0 2px #3d1418;
   transition: transform .15s, box-shadow .15s;
 }
-.ce-swatch.active { transform: scale(1.12); box-shadow: inset 0 -.2em 0 rgba(0, 0, 0, .12), 0 0 0 3px #fff, 0 0 0 5.5px #3f325e; }
+.ce-swatch.active { transform: scale(1.12); box-shadow: inset 0 -.2em 0 rgba(0, 0, 0, .15), 0 0 0 3px #3d1418, 0 0 0 5.5px #f7e9a6; }

@@ -43,7 +43,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog('#f1e2d2', 22, 75);
+scene.fog = new THREE.Fog('#e7a593', 24, 80);
 
 const camera = new THREE.PerspectiveCamera(40, 16 / 9, 0.1, 220);
 const CAM_TARGET = new THREE.Vector3(0, 0.35, 0);
@@ -53,8 +53,8 @@ const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 scene.environmentIntensity = 0.55;
 
-scene.add(new THREE.HemisphereLight('#fff6ec', '#9cc58b', 1.25));
-const sun = new THREE.DirectionalLight('#ffe7cc', 2.6);
+scene.add(new THREE.HemisphereLight('#ffd9c2', '#7d3a40', 1.25));
+const sun = new THREE.DirectionalLight('#ffc9a0', 2.6);
 sun.position.set(4, 10, 8);
 sun.target.position.set(0, -1, 0);
 sun.castShadow = true;
@@ -83,9 +83,9 @@ const SPH = new THREE.SphereGeometry(1, 32, 20);
 const SPH_LO = new THREE.SphereGeometry(1, 18, 12);
 const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.85, ...extra });
 const PAL = {
-  ground: '#a9cf98', stage: '#c4e0b0', hills: ['#9cc68b', '#accf9a', '#bcd9a9', '#93bd84'],
-  treeTops: ['#7fb069', '#93c27a', '#e9a46b', '#f0c75e', '#c98a6b', '#8fbf7a'], trunk: '#a87b57',
-  flowers: ['#f3a6b8', '#f2c94c', '#fbf7f0', '#e8574f', '#9b7fd1'], bush: ['#86b874', '#7aab69', '#94c482'],
+  ground: '#a85c5a', stage: '#c27a70', hills: ['#a9555c', '#b8646a', '#c9767a', '#9c4a52'],
+  treeTops: ['#7e3d45', '#6f2f37', '#9c4a52', '#8a3b44', '#e2574c', '#f2c94c'], trunk: '#4b1c22',
+  flowers: ['#f7e9a6', '#f2c94c', '#f6e3e1', '#e2574c', '#9b7fd1'], bush: ['#8a3b44', '#7e3d45', '#9c4a52'],
 };
 
 // Himmel als Farbverlauf
@@ -94,9 +94,9 @@ scene.add(new THREE.Mesh(
   new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false, toneMapped: false,
     uniforms: {
-      top: { value: new THREE.Color('#8fc0d3') },
-      mid: { value: new THREE.Color('#cfe2df') },
-      bottom: { value: new THREE.Color('#f4e4d2') },
+      top: { value: new THREE.Color('#8e3a45') },
+      mid: { value: new THREE.Color('#e88a78') },
+      bottom: { value: new THREE.Color('#f8d2b4') },
     },
     vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: `uniform vec3 top; uniform vec3 mid; uniform vec3 bottom; varying vec3 vP;
@@ -122,7 +122,7 @@ scene.add(new THREE.Mesh(
   g.fillStyle = grd; g.fillRect(0, 0, 256, 256);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, fog: false, depthWrite: false, toneMapped: false }));
-  s.position.set(26, 22, -70); s.scale.setScalar(28);
+  s.position.set(22, 9, -70); s.scale.setScalar(34); // tiefstehende Abendsonne
   scene.add(s);
 }
 
@@ -185,9 +185,9 @@ function tree(x, z, s = 1, kind = Math.random() < 0.7 ? 'round' : 'cone') {
 // Requisiten: Pilze, Steine, Zaun
 function mushroom(x, z, s = 1) {
   const g = new THREE.Group();
-  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 0.3, 16), mat('#f6ecdc', { roughness: 0.7 }));
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 0.3, 16), mat('#f6e3e1', { roughness: 0.7 }));
   stem.position.y = 0.15; stem.castShadow = true; g.add(stem);
-  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.26, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat('#e8574f', { roughness: 0.45 }));
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.26, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat('#e2574c', { roughness: 0.45 }));
   cap.position.y = 0.27; cap.scale.y = 0.75; cap.castShadow = true; g.add(cap);
   for (let i = 0; i < 5; i++) {
     const a = i * 1.26, d = new THREE.Mesh(SPH_LO, mat('#fbf7f0', { roughness: 0.6 }));
@@ -199,14 +199,14 @@ function mushroom(x, z, s = 1) {
 
 const rockGeo = new THREE.IcosahedronGeometry(1, 1);
 function rock(x, z, s) {
-  const r = new THREE.Mesh(rockGeo, mat(pick(['#d8cfc2', '#c9bfb1', '#e2d9cc']), { roughness: 0.9, flatShading: true }));
+  const r = new THREE.Mesh(rockGeo, mat(pick(['#c98f86', '#b97f78', '#d9a198']), { roughness: 0.9, flatShading: true }));
   r.position.set(x, GROUND_Y + s * 0.25, z); r.scale.set(s, s * 0.6, s * 0.85); r.rotation.y = rand(0, 6);
   r.castShadow = true; r.receiveShadow = true; scene.add(r);
 }
 [[4.4, 0.3, 0.32], [4.8, 0.7, 0.2], [-5.4, -0.6, 0.38], [7.2, -2.2, 0.45], [-8.5, 0.5, 0.5]].forEach(([x, z, s]) => rock(x, z, s));
 
 function fence(x0, x1, z) {
-  const wood = mat('#c99a6e', { roughness: 0.75 });
+  const wood = mat('#6f2f37', { roughness: 0.75 });
   for (let x = x0; x <= x1 + 0.01; x += 0.8) {
     const p = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 0.12), wood);
     p.position.set(x, GROUND_Y + 0.35, z); p.castShadow = true; scene.add(p);
@@ -223,7 +223,7 @@ fence(6.7, 11.5, -1.2);
 
 // Wolken
 const clouds = [];
-const cloudMat = mat('#ffffff', { roughness: 1, emissive: '#fff4ea', emissiveIntensity: 0.3 });
+const cloudMat = mat('#f9d7c6', { roughness: 1, emissive: '#ffd8c4', emissiveIntensity: 0.4 });
 function makeCloud(x, y, z, s) {
   const g = new THREE.Group();
   [[0, 0, 0, 1], [0.95, -0.18, 0, 0.75], [-0.95, -0.22, 0, 0.72], [0.4, 0.48, 0, 0.72],
@@ -697,7 +697,7 @@ function setState(s) {
   ui.prompt.classList.remove('mid');
   send({ t: 'state', s });
   if (s === 'countdown') { resetGame(); audio.whoosh(); openEditor(false); }
-  if (s === 'play') { audio.go(); audio.music(true); popupCenter('Los!', '#3fcf96'); }
+  if (s === 'play') { audio.go(); audio.music(true); popupCenter('Los!', '#e2574c'); }
   if (s === 'results') showResults();
   if (s === 'lobby' || s === 'ready') audio.music(false);
 }
@@ -714,6 +714,8 @@ function showResults() {
   audio.music(false); audio.end();
   const record = game.score > best && game.score > 0;
   if (record) { best = game.score; try { localStorage.setItem('ballonplatzer.best', best); } catch { /* */ } }
+  // Spielzeit für die Startseite («Deine Bewegung»)
+  try { const st = JSON.parse(localStorage.getItem('slope.stats')) || {}; st.ballon = (st.ballon || 0) + GAME_TIME; localStorage.setItem('slope.stats', JSON.stringify(st)); } catch { /* privat */ }
   $('finalScore').textContent = game.score;
   $('statPopped').textContent = game.popped;
   $('statCombo').textContent = game.bestCombo;
@@ -734,7 +736,7 @@ function hitBalloon(b, side) {
   game.lastHit = now;
   game.bestCombo = Math.max(game.bestCombo, game.combo);
   const mult = game.combo >= 14 ? 4 : game.combo >= 9 ? 3 : game.combo >= 4 ? 2 : 1;
-  if (mult > game.mult) { popupCenter(`Combo ×${mult}!`, '#a98bff'); audio.combo(mult); }
+  if (mult > game.mult) { popupCenter(`Combo ×${mult}!`, '#e2574c'); audio.combo(mult); }
   game.mult = mult;
   const pts = (isGold ? 50 : 10) * mult;
   game.score += pts; game.popped++;

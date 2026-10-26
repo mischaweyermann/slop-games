@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ballon-Platzer</title>
   <meta name="description" content="Gratis Bewegungsspiel: Handy als Kamera, Fernseher als Bildschirm.">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cellipse cx='32' cy='26' rx='19' ry='22' fill='%23ff8fab'/%3E%3Cpath d='M29 48h6l-3 5z' fill='%23ff8fab'/%3E%3Cellipse cx='25' cy='17' rx='5' ry='7' fill='%23fff' opacity='.55'/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cellipse cx='32' cy='26' rx='19' ry='22' fill='%23e2574c'/%3E%3Cpath d='M29 48h6l-3 5z' fill='%23ff8fab'/%3E%3Cellipse cx='25' cy='17' rx='5' ry='7' fill='%23fff' opacity='.55'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/editor.css">
   <link rel="stylesheet" href="../css/tv.css">
   <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -27,6 +27,8 @@
     <!-- Startbildschirm -->
     <section class="lobby" id="lobby">
       <div class="brand">
+        <a class="back-link" href="../"><span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></span>Slope Games</a>
+        <span class="chip">1 Spieler · 60 Sekunden · stehend</span>
         <h1 class="logo" aria-label="Ballon-Platzer">
           <span class="word" data-word="Ballon"></span>
           <span class="word" data-word="Platzer"></span>
@@ -37,18 +39,21 @@
           <li><b>2</b><span>Handy hinstellen, 2–3&nbsp;m Abstand – du musst ganz im Bild sein</span></li>
           <li><b>3</b><span>Beide Arme hoch – los geht’s!</span></li>
         </ol>
-        <button class="char-btn" id="charBtn" type="button"><span>🎨</span> Charakter anpassen</button>
-        <a class="other-game" href="../kurvenflitzer/">🏎️ Kurvenflitzer</a>
-        <a class="other-game" href="../">🏠 Alle Spiele</a>
+        <div class="links">
+          <button class="char-btn" id="charBtn" type="button" style="margin-top: 0;"><span class="i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></span>Charakter anpassen</button>
+          <a class="other-game" href="../kurvenflitzer/">Kurvenflitzer</a>
+        </div>
       </div>
 
       <div class="join card">
         <div class="join-title">Mit dem Handy verbinden</div>
+        <div class="join-sub">QR-Code scannen, Handy hinstellen</div>
         <div class="qr" id="qr"><div class="spinner"></div></div>
         <div class="code-label">oder Code eingeben</div>
         <div class="code" id="code">· · · · ·</div>
         <div class="url" id="joinUrl"></div>
         <button class="ghost" id="demoBtn" type="button">Ohne Handy testen (Maus)</button>
+        <div class="privacy-note">Das Kamerabild bleibt auf dem Handy</div>
       </div>
     </section>
 

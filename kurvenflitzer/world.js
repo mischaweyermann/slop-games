@@ -82,14 +82,14 @@ function canvasTex(w, h, draw, repeat = true) {
 /* ---------- Landschaft (einmal pro Szene aufbauen) ---------- */
 export function buildWorld(scene) {
   const roadTex = canvasTex(128, 512, (g, w, h) => {
-    g.fillStyle = '#a49cb0'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#8a4a50'; g.fillRect(0, 0, w, h);
     for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '60,40,90'},0.05)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
-    g.fillStyle = '#fbf7f0'; g.fillRect(6, 0, 6, h); g.fillRect(w - 12, 0, 6, h);
+    g.fillStyle = '#f7e9a6'; g.fillRect(6, 0, 6, h); g.fillRect(w - 12, 0, 6, h);
     g.fillRect(w / 2 - 3, 0, 6, h * 0.5);
   });
   const curbTex = canvasTex(32, 64, (g, w, h) => {
-    g.fillStyle = '#e8574f'; g.fillRect(0, 0, w, h / 2);
-    g.fillStyle = '#fbf7f0'; g.fillRect(0, h / 2, w, h / 2);
+    g.fillStyle = '#e2574c'; g.fillRect(0, 0, w, h / 2);
+    g.fillStyle = '#f6e3e1'; g.fillRect(0, h / 2, w, h / 2);
   });
 
   function ribbon(off0, off1, y, vScale, texture, color = '#ffffff') {
@@ -116,11 +116,11 @@ export function buildWorld(scene) {
 
   // Wiese, Sand-Saum, Hügel, Himmel
   {
-    const ground = mesh(new THREE.CircleGeometry(800, 64), mat('#a9cf98', { roughness: 1 }), scene, [0, 0, 0], [1, 1, 1], [-Math.PI / 2, 0, 0], false);
+    const ground = mesh(new THREE.CircleGeometry(800, 64), mat('#a85c5a', { roughness: 1 }), scene, [0, 0, 0], [1, 1, 1], [-Math.PI / 2, 0, 0], false);
     ground.receiveShadow = true;
-    ribbon(-HALF_W - 4, -HALF_W - 1.3, 0.015, 10, null, '#c4e0b0');
-    ribbon(HALF_W + 1.3, HALF_W + 4, 0.015, 10, null, '#c4e0b0');
-    const hillMats = ['#9cc68b', '#accf9a', '#bcd9a9', '#93bd84'].map((c) => mat(c, { roughness: 1 }));
+    ribbon(-HALF_W - 4, -HALF_W - 1.3, 0.015, 10, null, '#c27a70');
+    ribbon(HALF_W + 1.3, HALF_W + 4, 0.015, 10, null, '#c27a70');
+    const hillMats = ['#a9555c', '#b8646a', '#c9767a', '#9c4a52'].map((c) => mat(c, { roughness: 1 }));
     for (let i = 0; i < 22; i++) {
       const a = (i / 22) * Math.PI * 2 + rand(-0.1, 0.1), d = rand(330, 430), r = rand(50, 110);
       mesh(SPH, pick(hillMats), scene, [Math.cos(a) * d, -r * 0.15, Math.sin(a) * d], [r, r * rand(0.3, 0.5), r], [0, 0, 0], false);
@@ -129,7 +129,7 @@ export function buildWorld(scene) {
       new THREE.SphereGeometry(600, 32, 16),
       new THREE.ShaderMaterial({
         side: THREE.BackSide, depthWrite: false, fog: false, toneMapped: false,
-        uniforms: { top: { value: new THREE.Color('#8fc0d3') }, mid: { value: new THREE.Color('#cfe2df') }, bottom: { value: new THREE.Color('#f4e4d2') } },
+        uniforms: { top: { value: new THREE.Color('#8e3a45') }, mid: { value: new THREE.Color('#e88a78') }, bottom: { value: new THREE.Color('#f8d2b4') } },
         vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
         fragmentShader: `uniform vec3 top; uniform vec3 mid; uniform vec3 bottom; varying vec3 vP;
           void main(){ float h = vP.y; vec3 c = mix(bottom, mid, smoothstep(-0.02, 0.18, h)); c = mix(c, top, smoothstep(0.15, 0.6, h));
@@ -138,7 +138,17 @@ export function buildWorld(scene) {
           }`,
       }),
     ));
-    const cloudMat = mat('#ffffff', { roughness: 1, emissive: '#fff4ea', emissiveIntensity: 0.35 });
+    // Tiefstehende Abendsonne
+    {
+      const c = document.createElement('canvas'); c.width = c.height = 256;
+      const g = c.getContext('2d'), grd = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+      grd.addColorStop(0, 'rgba(255,244,220,1)'); grd.addColorStop(0.2, 'rgba(255,240,214,1)'); grd.addColorStop(0.36, 'rgba(255,214,170,.55)'); grd.addColorStop(1, 'rgba(255,200,160,0)');
+      g.fillStyle = grd; g.fillRect(0, 0, 256, 256);
+      const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, fog: false, depthWrite: false, toneMapped: false }));
+      s.position.set(330, 40, -470); s.scale.setScalar(240); scene.add(s);
+    }
+    const cloudMat = mat('#f9d7c6', { roughness: 1, emissive: '#ffd8c4', emissiveIntensity: 0.4 });
     for (let i = 0; i < 14; i++) {
       const g = new THREE.Group();
       [[0, 0, 1], [1.1, -0.2, 0.75], [-1.1, -0.25, 0.72], [0.45, 0.5, 0.7], [-0.4, 0.4, 0.65]].forEach(([x, y, r]) => mesh(SPH_LO, cloudMat, g, [x, y, 0], [r, r * 0.85, r * 0.8], [0, 0, 0], false));
@@ -152,22 +162,22 @@ export function buildWorld(scene) {
   {
     const s = T[0];
     const checker = canvasTex(256, 32, (g, w, h) => {
-      for (let x = 0; x < 16; x++) for (let y = 0; y < 2; y++) { g.fillStyle = (x + y) % 2 ? '#3f325e' : '#fbf7f0'; g.fillRect(x * 16, y * 16, 16, 16); }
+      for (let x = 0; x < 16; x++) for (let y = 0; y < 2; y++) { g.fillStyle = (x + y) % 2 ? '#3d1418' : '#f6e3e1'; g.fillRect(x * 16, y * 16, 16, 16); }
     }, false);
     const line = new THREE.Mesh(new THREE.PlaneGeometry(HALF_W * 2, 1.8), new THREE.MeshStandardMaterial({ map: checker, roughness: 0.9 }));
     line.rotation.x = -Math.PI / 2; line.rotation.z = -Math.atan2(s.t.x, -s.t.z);
     line.position.set(s.p.x, 0.05, s.p.z); line.receiveShadow = true; scene.add(line);
 
     const arch = new THREE.Group();
-    const pillarMat = mat('#fbf7f0', { roughness: 0.6 });
+    const pillarMat = mat('#f6e3e1', { roughness: 0.6 });
     for (const side of [-1, 1]) {
       mesh(new THREE.CylinderGeometry(0.55, 0.65, 7, 20), pillarMat, arch, [side * (HALF_W + 2.2), 3.5, 0]);
       mesh(SPH, mat('#e8574f', { roughness: 0.4 }), arch, [side * (HALF_W + 2.2), 7.4, 0], [0.8, 0.8, 0.8]);
     }
     const bannerTex = canvasTex(1024, 160, (g, w, h) => {
       g.fillStyle = '#e8574f'; g.fillRect(0, 0, w, h);
-      for (let x = 0; x < w; x += 40) { g.fillStyle = (x / 40) % 2 ? '#3f325e' : '#fbf7f0'; g.fillRect(x, 0, 40, 20); g.fillStyle = (x / 40) % 2 ? '#fbf7f0' : '#3f325e'; g.fillRect(x, h - 20, 40, 20); }
-      g.fillStyle = '#fbf7f0'; g.font = '700 92px Fredoka, Nunito, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      for (let x = 0; x < w; x += 40) { g.fillStyle = (x / 40) % 2 ? '#3d1418' : '#f6e3e1'; g.fillRect(x, 0, 40, 20); g.fillStyle = (x / 40) % 2 ? '#f6e3e1' : '#3d1418'; g.fillRect(x, h - 20, 40, 20); }
+      g.fillStyle = '#f7e9a6'; g.font = '800 88px Poppins, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillText('KURVENFLITZER', w / 2, h / 2 + 4);
     }, false);
     const banner = mesh(new THREE.BoxGeometry((HALF_W + 2.2) * 2 + 1.2, 1.9, 0.4), [mat('#e8574f'), mat('#e8574f'), mat('#e8574f'), mat('#e8574f'), new THREE.MeshStandardMaterial({ map: bannerTex, roughness: 0.7 }), new THREE.MeshStandardMaterial({ map: bannerTex, roughness: 0.7 })], arch, [0, 6.4, 0]);
@@ -207,14 +217,14 @@ export function buildWorld(scene) {
       list.forEach((it, i) => { fn(it, m4); im.setMatrixAt(i, m4); if (colors) im.setColorAt(i, col.set(pick(colors))); });
       im.castShadow = true; im.receiveShadow = true; scene.add(im);
     };
-    inst(new THREE.CylinderGeometry(0.11, 0.16, 1.2, 10), mat('#a87b57', { roughness: 0.7 }), trunks,
+    inst(new THREE.CylinderGeometry(0.11, 0.16, 1.2, 10), mat('#4b1c22', { roughness: 0.7 }), trunks,
       ([x, z, s], m) => m.compose(new THREE.Vector3(x, 0.6 * s, z), q, new THREE.Vector3(s, s, s)));
     inst(SPH, mat('#ffffff', { roughness: 0.7 }), tops,
       ([x, z, s], m) => m.compose(new THREE.Vector3(x, 1.65 * s, z), q, new THREE.Vector3(0.85 * s, 0.92 * s, 0.85 * s)),
-      ['#7fb069', '#93c27a', '#e9a46b', '#f0c75e', '#8fbf7a', '#c98a6b']);
+      ['#7e3d45', '#6f2f37', '#9c4a52', '#8a3b44', '#e2574c', '#f2c94c']);
     inst(new THREE.ConeGeometry(0.7, 1.9, 18), mat('#ffffff', { roughness: 0.7 }), cones,
       ([x, z, s], m) => m.compose(new THREE.Vector3(x, 2.0 * s, z), q, new THREE.Vector3(s, s, s)),
-      ['#7fb069', '#93c27a', '#f0c75e', '#e9a46b']);
+      ['#6f2f37', '#7e3d45', '#9c4a52', '#e2574c']);
 
     // Reifenstapel aussen in Kurven
     const tires = [];
@@ -229,7 +239,7 @@ export function buildWorld(scene) {
     const tim = new THREE.InstancedMesh(tireGeo, mat('#ffffff', { roughness: 0.6 }), tires.length);
     tires.forEach(([x, z, h, c], i) => {
       m4.compose(new THREE.Vector3(x, 0.22 + h * 0.42, z), q, new THREE.Vector3(1, 1, 1)); tim.setMatrixAt(i, m4);
-      tim.setColorAt(i, col.set(h ? (c ? '#e8574f' : '#fbf7f0') : '#5d4f7c'));
+      tim.setColorAt(i, col.set(h ? (c ? '#e2574c' : '#f6e3e1') : '#3d1418'));
     });
     tim.castShadow = true; scene.add(tim);
 
@@ -254,7 +264,7 @@ const SKINS = ['#ffdcc6', '#f6c6a4', '#e3a97f', '#c08158', '#8d5b3d'];
 export function makeKart(scene, color, helmet, skin = pick(SKINS)) {
   const g = new THREE.Group();
   const body = mat(color, { roughness: 0.45, metalness: 0.05 });
-  const dark = mat('#3b3b45', { roughness: 0.6 });
+  const dark = mat('#2a0e11', { roughness: 0.6 });
   mesh(SPH, body, g, [0, 0.55, 0], [1.05, 0.36, 2.05]);
   mesh(SPH, body, g, [0, 0.62, 1.55], [0.75, 0.26, 0.7]);
   mesh(new THREE.BoxGeometry(1.7, 0.1, 0.45), body, g, [0, 0.92, -1.9]);

@@ -198,7 +198,7 @@ function drawSkeleton(lm) {
   ctx2d.lineCap = 'round';
   ctx2d.lineWidth = Math.max(4, W / 90);
   ctx2d.strokeStyle = 'rgba(255,255,255,.9)';
-  ctx2d.shadowColor = 'rgba(169,139,255,.9)'; ctx2d.shadowBlur = 10;
+  ctx2d.shadowColor = 'rgba(226,87,76,.9)'; ctx2d.shadowBlur = 10;
   ctx2d.beginPath();
   for (const [a, b] of BONES) {
     if (lm[a].visibility < 0.4 || lm[b].visibility < 0.4) continue;
@@ -208,11 +208,11 @@ function drawSkeleton(lm) {
   ctx2d.shadowBlur = 0;
   for (const i of [15, 16]) {
     if (lm[i].visibility < 0.4) continue;
-    ctx2d.fillStyle = '#ff8fa3';
+    ctx2d.fillStyle = '#f7e9a6';
     ctx2d.beginPath(); ctx2d.arc(lm[i].x * W, lm[i].y * H, W / 40, 0, Math.PI * 2); ctx2d.fill();
   }
   if (lm[0].visibility > 0.4) {
-    ctx2d.fillStyle = '#b6a3ff';
+    ctx2d.fillStyle = '#e2574c';
     ctx2d.beginPath(); ctx2d.arc(lm[0].x * W, lm[0].y * H, W / 30, 0, Math.PI * 2); ctx2d.fill();
   }
 }

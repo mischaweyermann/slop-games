@@ -5,180 +5,237 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Slope Games</title>
   <meta name="description" content="Gratis Bewegungsspiele für den Fernseher. Dein Handy ist die Kamera, dein Körper der Controller – ohne App.">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='16' fill='%233f325e'/%3E%3Cpath d='M14 46 L30 26 L38 36 L50 18' stroke='%23f2c94c' stroke-width='7' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#5a1f25">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%235a1f25'/%3E%3Cpath d='M12 46 L28 26 L36 36 L52 16' stroke='%23fff' stroke-width='7' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='36' cy='36' r='5' fill='%23e2574c'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --ink: #3f325e; --ink-soft: #7a6c99; --bg: #f7f1ea; --card: #ffffff;
-      --coral: #e8574f; --orange: #f39a4c; --yellow: #f2c94c; --green: #7fb069; --blue: #5aa9c9; --lilac: #9b7fd1; --pink: #f3a6b8;
-      --shadow: 0 18px 50px rgba(98, 66, 150, .14), 0 3px 10px rgba(98, 66, 150, .06);
+      --blush: #f6d6d3; --wine-800: #3d1418; --wine-700: #461519; --wine-600: #5a1f25; --wine-500: #7d2a2e;
+      --coral: #e2574c; --coral-2: #d9584f; --coral-dark: #b8403f; --cream: #f7e9a6; --lilac: #9b7fd1; --blue: #5aa9c9; --green: #7fd18b;
+      --text: #f6e3e1; --soft: #e2b3ae; --mute: #e2847b;
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; }
-    body {
-      font-family: 'Nunito', system-ui, sans-serif; color: var(--ink); background: var(--bg);
-      background-image: radial-gradient(60% 40% at 0% 0%, #fde3ea 0%, transparent 70%), radial-gradient(50% 40% at 100% 0%, #dcecf3 0%, transparent 70%);
-      -webkit-font-smoothing: antialiased; min-height: 100vh;
+    body { font-family: 'Poppins', system-ui, sans-serif; background: var(--blush); color: var(--text); -webkit-font-smoothing: antialiased; padding: clamp(10px, 2.4vw, 34px); min-height: 100vh; }
+    a { color: inherit; }
+    .shell {
+      max-width: 1380px; margin: 0 auto; background: var(--wine-600); border-radius: clamp(24px, 3vw, 40px);
+      padding: clamp(12px, 1.6vw, 22px); display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: clamp(12px, 1.6vw, 22px);
+      box-shadow: 0 30px 70px rgba(90, 31, 37, .35);
     }
-    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
-    header { padding: 28px 0 8px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-    .mark { display: flex; align-items: center; gap: 10px; font-family: 'Fredoka'; font-weight: 700; font-size: 22px; text-decoration: none; color: var(--ink); }
-    .mark svg { width: 38px; height: 38px; }
-    .badge { font-weight: 800; font-size: 13px; background: #fff; border-radius: 999px; padding: 7px 14px; box-shadow: 0 4px 12px rgba(98, 66, 150, .08); }
+    /* Seitenleiste */
+    .rail { background: var(--wine-700); border-radius: 26px; display: flex; flex-direction: column; align-items: center; padding: 20px 0; gap: 14px; position: sticky; top: 24px; align-self: start; min-height: min(760px, calc(100vh - 80px)); }
+    .rail .logo { margin-bottom: 16px; display: grid; place-items: center; }
+    .rail a.nav { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 16px; color: #c99696; transition: background .15s, color .15s; }
+    .rail a.nav:hover, .rail a.nav:focus-visible { background: var(--wine-600); color: #fff; outline: none; }
+    .rail a.nav.on { color: var(--coral); background: var(--wine-800); }
+    .rail .tv { margin-top: auto; width: 48px; height: 48px; border-radius: 16px; border: 2px dashed var(--coral); display: grid; place-items: center; color: #fff; }
+    .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-    .hero { padding: 48px 0 40px; display: grid; grid-template-columns: 1.15fr 1fr; gap: 40px; align-items: center; }
-    h1 { font-family: 'Fredoka'; font-weight: 700; font-size: clamp(48px, 8vw, 92px); line-height: .95; margin: 0 0 18px; letter-spacing: -.01em; }
-    h1 .ch { display: inline-block; color: var(--c); -webkit-text-stroke: .05em #fff; paint-order: stroke fill; text-shadow: 0 .06em 0 rgba(120, 70, 150, .1), 0 .12em .24em rgba(120, 70, 150, .18); animation: bob 2.8s ease-in-out infinite; animation-delay: calc(var(--i) * -.17s); }
-    @keyframes bob { 50% { transform: translateY(-.06em) rotate(-2deg); } }
-    .lead { font-size: clamp(17px, 2vw, 20px); line-height: 1.55; font-weight: 700; color: var(--ink-soft); margin: 0 0 26px; max-width: 34em; }
-    .cta { display: inline-flex; align-items: center; gap: 10px; font-family: 'Fredoka'; font-weight: 600; font-size: 20px; color: #fff; text-decoration: none; background: linear-gradient(135deg, #f0776f, var(--coral)); padding: 14px 26px; border-radius: 999px; box-shadow: 0 12px 26px rgba(232, 87, 79, .32), inset 0 -3px 0 rgba(0, 0, 0, .1); transition: transform .15s; }
-    .cta:hover, .cta:focus-visible { transform: translateY(-2px); outline: none; }
-    .hero-art { position: relative; aspect-ratio: 1 / .82; }
-    .hero-art svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 24px 40px rgba(98, 66, 150, .16)); }
+    main { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding: 6px 4px 0; }
+    .hello { font-size: clamp(18px, 2vw, 24px); color: var(--mute); margin: 0; font-weight: 400; }
+    .hello b { color: #fff; font-weight: 600; }
+    .badge { display: inline-flex; align-items: center; gap: 8px; background: var(--wine-700); border-radius: 999px; padding: 10px 18px; font-size: 14px; color: var(--soft); }
+    .badge b { color: #fff; font-weight: 600; }
 
-    h2 { font-family: 'Fredoka'; font-weight: 600; font-size: clamp(28px, 4vw, 38px); margin: 0 0 20px; }
-    .games { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; padding-bottom: 56px; }
-    .game { background: var(--card); border-radius: 30px; box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; text-decoration: none; color: inherit; transition: transform .2s; }
-    .game:hover, .game:focus-visible { transform: translateY(-4px); outline: none; }
-    .game:focus-visible { box-shadow: 0 0 0 4px var(--lilac), var(--shadow); }
-    .game .art { aspect-ratio: 16 / 9; position: relative; overflow: hidden; }
-    .game .art svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-    .game .body { padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
-    .game h3 { font-family: 'Fredoka'; font-weight: 600; font-size: 28px; margin: 0; }
-    .game p { margin: 0; font-weight: 700; color: var(--ink-soft); line-height: 1.5; }
-    .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-    .tag { font-size: 13px; font-weight: 800; background: #f3edff; color: var(--ink); border-radius: 999px; padding: 5px 12px; }
-    .tag.new { background: var(--yellow); color: #5b4300; }
-    .play { margin-top: auto; padding-top: 10px; font-family: 'Fredoka'; font-weight: 600; font-size: 19px; color: var(--coral); }
-    .game.soon { opacity: .7; pointer-events: none; }
+    .row { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 22px; }
+    /* Hauptkarte */
+    .hero { position: relative; min-height: 290px; border-radius: 32px; background: var(--coral-2); overflow: hidden; padding: clamp(22px, 2.6vw, 34px); display: flex; flex-direction: column; gap: 12px; text-decoration: none; }
+    .hero .blob { position: absolute; right: -60px; top: -80px; width: 400px; height: 400px; border-radius: 50%; background: var(--coral-dark); }
+    .hero .art { position: absolute; right: 0; bottom: 0; width: min(46%, 360px); height: auto; }
+    .hero > *:not(.blob):not(.art) { position: relative; }
+    .tags { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tag { font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 999px; background: rgba(61, 20, 24, .32); color: #fff; }
+    .tag.cream { background: var(--cream); color: var(--wine-600); }
+    .hero h1 { margin: 0; font-size: clamp(36px, 4.4vw, 56px); line-height: 1; font-weight: 700; color: #fff; letter-spacing: -.02em; }
+    .hero p { margin: 0; font-size: 15px; line-height: 1.55; max-width: 330px; color: #fde9e6; }
+    .play { margin-top: auto; align-self: flex-start; display: inline-flex; align-items: center; gap: 10px; background: #fff; color: var(--wine-600); font-weight: 600; font-size: 16px; padding: 11px 22px 11px 12px; border-radius: 999px; transition: background .15s; }
+    .hero:hover .play, .hero:focus-visible .play { background: var(--cream); }
+    .hero:focus-visible { outline: 4px solid var(--cream); outline-offset: 3px; }
 
-    .how { background: #fff; border-radius: 34px; box-shadow: var(--shadow); padding: 36px; margin-bottom: 56px; }
-    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin: 0; padding: 0; list-style: none; }
-    .steps li { display: flex; gap: 14px; align-items: flex-start; }
-    .steps b { flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font-family: 'Fredoka'; font-size: 22px; color: #fff; background: var(--c); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .1); }
-    .steps strong { display: block; font-size: 18px; margin: 2px 0 4px; }
-    .steps span { font-weight: 700; color: var(--ink-soft); line-height: 1.5; }
-    footer { padding: 0 0 40px; color: var(--ink-soft); font-weight: 700; font-size: 14px; display: flex; flex-wrap: wrap; gap: 8px 22px; }
+    /* Spieleliste */
+    .list { display: flex; flex-direction: column; gap: 12px; }
+    .list h2, .block h2 { margin: 0 0 2px; font-size: 20px; font-weight: 600; color: #fff; }
+    .game { display: flex; align-items: center; gap: 14px; background: var(--wine-700); border-radius: 22px; padding: 12px 16px 12px 12px; text-decoration: none; transition: background .15s, transform .15s; }
+    a.game:hover, a.game:focus-visible { background: var(--wine-500); transform: translateX(3px); outline: none; }
+    .game .ico { width: 60px; height: 60px; border-radius: 18px; display: grid; place-items: center; flex: none; }
+    .game .t { flex: 1; min-width: 0; }
+    .game .t b { display: block; font-weight: 600; font-size: 16px; color: #fff; }
+    .game .t span { display: block; font-size: 13px; color: var(--mute); }
+    .game.soon { opacity: .6; }
 
-    @media (max-width: 820px) {
-      .hero { grid-template-columns: 1fr; padding-top: 24px; gap: 10px; }
-      .hero-art { max-width: 460px; }
+    /* Schritte + Statistik */
+    .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .step { background: var(--wine-700); border-radius: 24px; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+    .step .n { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: #fff; }
+    .step b { font-size: 15px; font-weight: 600; color: #fff; }
+    .step span { font-size: 13px; line-height: 1.55; color: var(--soft); }
+    .stats { background: var(--wine-700); border-radius: 28px; padding: 20px 22px; display: flex; flex-direction: column; gap: 12px; }
+    .stats-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+    .stats-head small { font-size: 12px; color: #c99696; }
+    .stats-body { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .donut { position: relative; width: 132px; height: 132px; flex: none; }
+    .donut svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .donut .c { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+    .donut .c b { display: block; font-size: 30px; font-weight: 700; color: #fff; line-height: 1; }
+    .donut .c span { font-size: 11px; color: #c99696; }
+    .legend { display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+    .legend div { display: flex; align-items: center; gap: 8px; }
+    .legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .legend span { color: var(--soft); }
+    .legend b { color: #fff; font-weight: 600; }
+    .empty { font-size: 14px; line-height: 1.5; color: var(--soft); }
+
+    footer { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 13px; color: #c99696; padding: 4px 4px 6px; }
+
+    @media (max-width: 980px) {
+      .row { grid-template-columns: 1fr; }
+      .hero .art { width: 44%; opacity: .9; }
+    }
+    @media (max-width: 720px) {
+      .shell { grid-template-columns: 1fr; }
+      .rail { position: static; min-height: 0; flex-direction: row; padding: 10px 14px; gap: 6px; justify-content: space-between; }
+      .rail .logo { margin: 0; }
+      .rail .tv { margin-top: 0; }
       .steps { grid-template-columns: 1fr; }
-      .how { padding: 26px 22px; }
+      .hero { min-height: 340px; }
+      .hero .art { width: 60%; opacity: .45; }
     }
-    @media (prefers-reduced-motion: reduce) { h1 .ch { animation: none; } }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <a class="mark" href="./" aria-label="Slope Games Startseite">
-        <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="56" height="56" rx="16" fill="#3f325e"/><path d="M14 46 L30 26 L38 36 L50 18" stroke="#f2c94c" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Slope Games
-      </a>
-      <span class="badge">Gratis · ohne App</span>
-    </header>
+  <div class="shell" id="top">
+    <nav class="rail" aria-label="Hauptnavigation">
+      <a class="logo" href="./" aria-label="Slope Games Startseite"><svg width="38" height="38" viewBox="0 0 34 34" aria-hidden="true"><path d="M5 27 L14 14 L19 20 L29 7" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="19" cy="20" r="3.2" fill="#e2574c"/></svg></a>
+      <a class="nav on" href="#top" aria-label="Start"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></a>
+      <a class="nav" href="#spiele" aria-label="Spiele"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="11" rx="5"/><path d="M7 11v3M5.5 12.5h3M16 12h.01M18 14h.01"/></svg></a>
+      <a class="nav" href="#so" aria-label="So funktioniert’s"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17h.01"/></svg></a>
+      <a class="nav" href="#bewegung" aria-label="Deine Bewegung"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9v9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></svg></a>
+      <a class="tv" href="kurvenflitzer/" aria-label="Spiel auf dem TV starten"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    </nav>
 
-    <section class="hero">
-      <div>
-        <h1 aria-label="Slope Games"><span class="word" data-word="Slope"></span><br><span class="word" data-word="Games"></span></h1>
-        <p class="lead">Bewegungsspiele für den Fernseher. Dein Handy wird zur Kamera, dein Körper zum Controller. Einfach Spiel öffnen, QR-Code scannen, loslegen.</p>
-        <a class="cta" href="#spiele">Spiel auswählen ↓</a>
+    <main>
+      <div class="top">
+        <p class="hello"><span id="greet">Hallo</span>, <b>schön bist du da</b></p>
+        <span class="badge">Gratis · <b>ohne App</b> · für jeden Fernseher</span>
       </div>
-      <div class="hero-art" aria-hidden="true">
-        <svg viewBox="0 0 440 360">
-          <rect x="30" y="30" width="380" height="240" rx="28" fill="#3f325e"/>
-          <rect x="46" y="46" width="348" height="208" rx="16" fill="#cfe2df"/>
-          <path d="M46 200 Q140 150 230 190 T394 175 V254 H46Z" fill="#a9cf98"/>
-          <path d="M120 254 Q190 190 230 175 Q265 190 330 254Z" fill="#a49cb0"/>
-          <path d="M228 182 L224 254" stroke="#fbf7f0" stroke-width="5" stroke-dasharray="12 10"/>
-          <circle cx="110" cy="105" r="24" fill="#e8574f"/><circle cx="160" cy="80" r="20" fill="#f2c94c"/><circle cx="330" cy="95" r="22" fill="#5aa9c9"/><circle cx="290" cy="130" r="17" fill="#9b7fd1"/>
-          <circle cx="102" cy="96" r="6" fill="#fff" opacity=".55"/><circle cx="154" cy="73" r="5" fill="#fff" opacity=".55"/><circle cx="323" cy="87" r="5" fill="#fff" opacity=".55"/>
-          <rect x="190" y="270" width="60" height="20" fill="#3f325e"/><rect x="150" y="288" width="140" height="14" rx="7" fill="#3f325e"/>
-          <g transform="translate(360 300) rotate(-10)"><rect x="-18" y="-36" width="36" height="66" rx="9" fill="#e8574f"/><rect x="-12" y="-28" width="24" height="44" rx="4" fill="#fbf7f0"/><circle cx="0" cy="-20" r="5" fill="#3f325e"/></g>
-          <g stroke="#9b7fd1" stroke-width="12" stroke-linecap="round" fill="none"><path d="M70 330 v-36"/><path d="M70 300 l-20 -26 M70 300 l20 -26"/></g><circle cx="70" cy="270" r="14" fill="#f6c6a4"/>
-        </svg>
+
+      <div class="row" id="spiele">
+        <a class="hero" href="kurvenflitzer/">
+          <span class="blob" aria-hidden="true"></span>
+          <svg class="art" viewBox="0 0 300 240" aria-hidden="true">
+            <path d="M20 240 L140 110 L170 110 L290 240 Z" fill="#7d2a2e"/>
+            <path d="M150 116 V240" stroke="#f7e9a6" stroke-width="4" stroke-dasharray="14 12"/>
+            <ellipse cx="150" cy="232" rx="104" ry="14" fill="#3d1418" opacity=".45"/>
+            <ellipse cx="150" cy="200" rx="92" ry="30" fill="#f6e3e1"/>
+            <circle cx="150" cy="162" r="40" fill="#f6c6a4"/>
+            <path d="M108 160 a42 42 0 0 1 84 0 q-42 -16 -84 0z" fill="#3d1418"/>
+            <rect x="108" y="150" width="84" height="10" rx="5" fill="#f7e9a6"/>
+            <circle cx="137" cy="170" r="4" fill="#3d1418"/><circle cx="163" cy="170" r="4" fill="#3d1418"/>
+            <path d="M140 182 q10 7 20 0" stroke="#3d1418" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <circle cx="150" cy="224" r="30" fill="none" stroke="#3d1418" stroke-width="8"/>
+            <circle cx="124" cy="214" r="11" fill="#f6c6a4"/><circle cx="176" cy="214" r="11" fill="#f6c6a4"/>
+          </svg>
+          <div class="tags"><span class="tag cream">Neu</span><span class="tag">1–4 Spieler</span><span class="tag">Online</span></div>
+          <h1>Kurvenflitzer</h1>
+          <p>Go-Kart-Rennen mit unsichtbarem Lenkrad. Bis zu vier am gleichen TV oder online gegen Freunde – und ja, man darf sich rammen.</p>
+          <span class="play"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#e2574c"/><path d="M10 8l6 4-6 4z" fill="#ffffff"/></svg>Jetzt spielen</span>
+        </a>
+
+        <section class="list" aria-label="Alle Spiele">
+          <h2>Alle Spiele</h2>
+          <a class="game" href="ballon-platzer/">
+            <span class="ico" style="background: #f3a6b8;"><svg width="30" height="36" viewBox="0 0 30 36" aria-hidden="true"><ellipse cx="15" cy="14" rx="11" ry="13" fill="#e2574c"/><path d="M15 27 l-3 5 h6z" fill="#e2574c"/><path d="M10 8 q2 -3 5 -3" stroke="#ffffff" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg></span>
+            <span class="t"><b>Ballon-Platzer</b><span>1 Spieler · 60 Sekunden · stehend</span></span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+          </a>
+          <a class="game" href="kurvenflitzer/">
+            <span class="ico" style="background: #f7e9a6;"><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="none" stroke="#5a1f25" stroke-width="3.5"/><path d="M5 17h22M16 18v9" stroke="#5a1f25" stroke-width="3.5" stroke-linecap="round"/></svg></span>
+            <span class="t"><b>Kurvenflitzer</b><span>1–4 Spieler · Online · sitzend</span></span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+          </a>
+          <div class="game soon">
+            <span class="ico" style="background: #7d2a2e;"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#f6e3e1" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 7v10M8 11l4-4 4 4"/></svg></span>
+            <span class="t"><b>Loch in der Wand</b><span>Bald verfügbar</span></span>
+          </div>
+        </section>
       </div>
-    </section>
 
-    <h2 id="spiele">Spiele</h2>
-    <section class="games">
-      <a class="game" href="ballon-platzer/">
-        <div class="art" aria-hidden="true">
-          <svg viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice">
-            <defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bcdff0"/><stop offset="1" stop-color="#f9e3ea"/></linearGradient></defs>
-            <rect width="320" height="180" fill="url(#g1)"/>
-            <ellipse cx="80" cy="200" rx="140" ry="60" fill="#a9cf98"/><ellipse cx="260" cy="205" rx="150" ry="62" fill="#bcd9a9"/>
-            <g><ellipse cx="70" cy="70" rx="22" ry="26" fill="#e8574f"/><path d="M70 96 q-4 20 4 40" stroke="#fff" stroke-width="2" fill="none"/></g>
-            <g><ellipse cx="250" cy="55" rx="20" ry="24" fill="#5aa9c9"/><path d="M250 79 q4 20 -4 40" stroke="#fff" stroke-width="2" fill="none"/></g>
-            <g><ellipse cx="205" cy="105" rx="17" ry="20" fill="#f2c94c"/><path d="M205 125 q-3 14 3 30" stroke="#fff" stroke-width="2" fill="none"/></g>
-            <g><ellipse cx="115" cy="40" rx="15" ry="18" fill="#9b7fd1"/></g>
-            <circle cx="160" cy="92" r="30" fill="#f6c6a4"/><path d="M130 86 a30 30 0 0 1 60 0 q-30 -14 -60 0Z" fill="#9a6440"/>
-            <circle cx="150" cy="95" r="3.5" fill="#2f2420"/><circle cx="170" cy="95" r="3.5" fill="#2f2420"/><path d="M154 106 q6 5 12 0" stroke="#2f2420" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-            <rect x="140" y="120" width="40" height="40" rx="14" fill="#e8574f"/>
-            <path d="M142 128 l-28 -30 M178 128 l28 -36" stroke="#e8574f" stroke-width="11" stroke-linecap="round"/><circle cx="113" cy="96" r="8" fill="#f6c6a4"/><circle cx="207" cy="91" r="8" fill="#f6c6a4"/>
-          </svg>
-        </div>
-        <div class="body">
-          <h3>Ballon-Platzer 🎈</h3>
-          <p>Platze mit Händen und Kopf so viele Ballone wie möglich – aber Finger weg von den Gewitterwolken! Mit eigenem Charakter.</p>
-          <div class="tags"><span class="tag">1 Spieler</span><span class="tag">60 Sekunden</span><span class="tag">Stehend</span></div>
-          <span class="play">Spielen →</span>
-        </div>
-      </a>
+      <div class="row">
+        <section class="block" id="so" aria-label="So funktioniert’s">
+          <h2>So funktioniert’s</h2>
+          <div class="steps" style="margin-top: 12px;">
+            <div class="step"><span class="n" style="background: #e2574c;">1</span><b>Spiel auf dem TV öffnen</b><span>Smart-TV, Laptop per HDMI oder Chromecast – Hauptsache gross.</span></div>
+            <div class="step"><span class="n" style="background: #f7e9a6; color: #5a1f25;">2</span><b>QR-Code scannen</b><span>Jede Person nimmt ihr Handy. Es wird zur Kamera, keine App nötig.</span></div>
+            <div class="step"><span class="n" style="background: #9b7fd1;">3</span><b>Bewegen!</b><span>Die Körpererkennung läuft auf dem Handy. Das Kamerabild verlässt es nie.</span></div>
+          </div>
+        </section>
 
-      <a class="game" href="kurvenflitzer/">
-        <div class="art" aria-hidden="true">
-          <svg viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice">
-            <defs><linearGradient id="g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fc0d3"/><stop offset=".55" stop-color="#f4e4d2"/></linearGradient></defs>
-            <rect width="320" height="180" fill="url(#g2)"/>
-            <path d="M0 95 H320 V180 H0Z" fill="#a9cf98"/>
-            <path d="M60 180 L150 95 L170 95 L260 180Z" fill="#a49cb0"/>
-            <path d="M48 180 L148 95 L152 95 L66 180Z" fill="#e8574f"/><path d="M272 180 L172 95 L168 95 L254 180Z" fill="#e8574f"/>
-            <path d="M160 98 V180" stroke="#fbf7f0" stroke-width="3" stroke-dasharray="9 9"/>
-            <g transform="translate(205 108)"><ellipse cx="0" cy="8" rx="16" ry="7" fill="#5aa9c9"/><circle cx="0" cy="-2" r="7" fill="#fbf7f0"/></g>
-            <path d="M40 180 Q160 120 280 180Z" fill="#e8574f"/>
-            <circle cx="160" cy="150" r="34" fill="none" stroke="#3f325e" stroke-width="9"/><circle cx="160" cy="150" r="9" fill="#e8574f"/>
-            <path d="M126 150 H194" stroke="#3f325e" stroke-width="7"/>
-            <circle cx="132" cy="128" r="11" fill="#f6c6a4"/><circle cx="188" cy="128" r="11" fill="#f6c6a4"/>
-            <text x="290" y="40" font-family="Fredoka, sans-serif" font-weight="700" font-size="22" fill="#fff" text-anchor="end">🏁</text>
-          </svg>
-        </div>
-        <div class="body">
-          <h3>Kurvenflitzer 🏎️</h3>
-          <p>Go-Kart-Rennen in der Fahrerperspektive. Du lenkst ein unsichtbares Lenkrad mit deinen Händen – allein, zu viert am gleichen TV oder online gegen Freunde.</p>
-          <div class="tags"><span class="tag new">Neu</span><span class="tag">1–4 Spieler</span><span class="tag">Online</span><span class="tag">Sitzend</span></div>
-          <span class="play">Spielen →</span>
-        </div>
-      </a>
-    </section>
+        <section class="stats" id="bewegung" aria-label="Deine Bewegung">
+          <div class="stats-head"><h2 style="margin: 0; font-size: 20px; font-weight: 600; color: #fff;">Deine Bewegung</h2><small>auf diesem Gerät</small></div>
+          <div class="stats-body" id="statsBody">
+            <div class="donut">
+              <svg viewBox="0 0 120 120" aria-hidden="true">
+                <circle cx="60" cy="60" r="48" fill="none" stroke="#5a1f25" stroke-width="16"/>
+                <circle id="arcK" style="display:none" cx="60" cy="60" r="48" fill="none" stroke="#e2574c" stroke-width="16" stroke-linecap="round" stroke-dasharray="0 302"/>
+                <circle id="arcB" style="display:none" cx="60" cy="60" r="48" fill="none" stroke="#f7e9a6" stroke-width="16" stroke-linecap="round" stroke-dasharray="0 302"/>
+              </svg>
+              <div class="c"><div><b id="totalMin">0</b><span>Minuten</span></div></div>
+            </div>
+            <div class="legend">
+              <div><i style="background: #e2574c;"></i><span>Kurvenflitzer</span><b id="minK">0 Min.</b></div>
+              <div><i style="background: #f7e9a6;"></i><span>Ballon-Platzer</span><b id="minB">0 Min.</b></div>
+              <div><i style="background: #9b7fd1;"></i><span>Ballon-Rekord</span><b id="best">–</b></div>
+            </div>
+          </div>
+          <div class="empty" id="statsEmpty" hidden>Noch keine Runde gespielt – starte ein Spiel, dann siehst du hier, wie viel du dich bewegt hast.</div>
+        </section>
+      </div>
 
-    <section class="how">
-      <h2>So funktioniert’s</h2>
-      <ol class="steps">
-        <li><b style="--c:#e8574f">1</b><div><strong>Spiel auf dem TV öffnen</strong><span>Smart-TV-Browser, Laptop per HDMI oder Chromecast – Hauptsache gross.</span></div></li>
-        <li><b style="--c:#5aa9c9">2</b><div><strong>QR-Code mit dem Handy scannen</strong><span>Das Handy wird zur Kamera. Hinstellen, sodass es dich gut sieht.</span></div></li>
-        <li><b style="--c:#7fb069">3</b><div><strong>Bewegen!</strong><span>Die Körpererkennung läuft auf deinem Handy. Das Kamerabild verlässt es nie.</span></div></li>
-      </ol>
-    </section>
-
-    <footer>
-      <span>© Slope Games</span>
-      <span>🔒 Kein Kamerabild wird übertragen – nur Körperpunkte</span>
-      <span>Funktioniert am besten mit Chrome oder Safari</span>
-    </footer>
+      <footer>
+        <span>© Slope Games</span>
+        <span>Kein Kamerabild wird übertragen – nur Körperpunkte</span>
+        <span>Am besten mit Chrome oder Safari</span>
+      </footer>
+    </main>
   </div>
+
   <script>
-    document.querySelectorAll('h1 .word').forEach((w, wi) => {
-      const colors = ['#e8574f', '#f39a4c', '#f2c94c', '#7fb069', '#5aa9c9', '#9b7fd1', '#f3a6b8'];
-      [...w.dataset.word].forEach((ch, i) => {
-        const s = document.createElement('span'); s.className = 'ch'; s.textContent = ch;
-        s.style.setProperty('--c', colors[(i + wi * 3) % colors.length]); s.style.setProperty('--i', i + wi * 5);
-        w.appendChild(s);
-      });
-    });
+    // Begrüssung nach Tageszeit
+    const h = new Date().getHours();
+    document.getElementById('greet').textContent = h < 11 ? 'Guten Morgen' : h < 18 ? 'Guten Tag' : 'Guten Abend';
+    // Spielzeit (von den Spielen lokal gespeichert)
+    let stats = {};
+    try { stats = JSON.parse(localStorage.getItem('slope.stats')) || {}; } catch { stats = {}; }
+    let best = 0;
+    try { best = +localStorage.getItem('ballonplatzer.best') || 0; } catch { /* privat */ }
+    const k = Math.round((stats.kurvenflitzer || 0) / 60), b = Math.round((stats.ballon || 0) / 60), total = k + b;
+    document.getElementById('minK').textContent = k + ' Min.';
+    document.getElementById('minB').textContent = b + ' Min.';
+    document.getElementById('best').textContent = best ? best + ' Pkt.' : '–';
+    document.getElementById('totalMin').textContent = total;
+    const C = 2 * Math.PI * 48;
+    if (total > 0) {
+      const lk = C * (k / total), lb = C * (b / total);
+      if (k) document.getElementById('arcK').style.display = '';
+      if (b) document.getElementById('arcB').style.display = '';
+      document.getElementById('arcK').setAttribute('stroke-dasharray', `${Math.max(0, lk - 8)} ${C}`);
+      const arcB = document.getElementById('arcB');
+      arcB.setAttribute('stroke-dasharray', `${Math.max(0, lb - 8)} ${C}`);
+      arcB.setAttribute('stroke-dashoffset', `${-lk}`);
+    } else if (!best) {
+      document.getElementById('statsEmpty').hidden = false;
+    }
+    // aktiven Menüpunkt beim Scrollen markieren
+    const navs = [...document.querySelectorAll('.rail a.nav')];
+    const secs = navs.map((a) => document.querySelector(a.getAttribute('href')));
+    addEventListener('scroll', () => {
+      let i = 0; secs.forEach((s, j) => { if (s && s.getBoundingClientRect().top < innerHeight * 0.4) i = j; });
+      navs.forEach((a, j) => a.classList.toggle('on', j === i));
+    }, { passive: true });
   </script>
 </body>
 </html>

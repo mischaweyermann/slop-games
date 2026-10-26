@@ -15,7 +15,7 @@ export class Cockpit {
       body: mat('#e8574f', { roughness: 0.45 }),
       skin: mat('#ffdcc6', { roughness: 0.55 }),
       sleeve: mat('#e8574f', { roughness: 0.8 }),
-      dark: mat('#3f325e', { roughness: 0.55 }),
+      dark: mat('#3d1418', { roughness: 0.55 }),
     };
     const m = this.m;
     // Haube vorne + Seitenkästen
@@ -28,14 +28,14 @@ export class Cockpit {
     // Lenkrad
     const w = this.wheel = new THREE.Group();
     w.position.set(0, -0.36, -0.85); w.rotation.x = -0.45; w.scale.setScalar(0.72); c.add(w);
-    const rim = mat('#3f325e', { roughness: 0.4 });
+    const rim = mat('#2a0e11', { roughness: 0.4 });
     mesh(new THREE.TorusGeometry(0.21, 0.03, 14, 48), rim, w, [0, 0, 0], [1, 1, 1], [0, 0, 0], false);
     for (const a of [Math.PI / 2 + 0.05, -Math.PI / 2 - 0.05, Math.PI]) {
       const s = mesh(CYL, rim, w, [Math.cos(a) * 0.1, Math.sin(a) * 0.1, 0], [0.018, 0.2, 0.012], [0, 0, 0], false);
       s.rotation.z = a - Math.PI / 2;
     }
-    this.hub = mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.04, 24), mat('#e8574f', { roughness: 0.35 }), w, [0, 0, 0.02], [1, 1, 1], [Math.PI / 2, 0, 0], false);
-    mesh(new THREE.BoxGeometry(0.03, 0.03, 0.01), mat('#fbf7f0'), w, [0, 0.21, 0.03], [1, 1, 1], [0, 0, 0], false);
+    this.hub = mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.04, 24), mat('#e2574c', { roughness: 0.35 }), w, [0, 0, 0.02], [1, 1, 1], [Math.PI / 2, 0, 0], false);
+    mesh(new THREE.BoxGeometry(0.03, 0.03, 0.01), mat('#f7e9a6'), w, [0, 0.21, 0.03], [1, 1, 1], [0, 0, 0], false);
     // Griffpunkte (10 und 2 Uhr)
     this.grips = [-1, 1].map((sx) => {
       const a = Math.PI / 2 - sx * 1.05;

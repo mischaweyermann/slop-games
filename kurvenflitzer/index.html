@@ -8,7 +8,7 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='24' fill='none' stroke='%23e8574f' stroke-width='8'/%3E%3Cpath d='M10 36h44M32 36v20' stroke='%23e8574f' stroke-width='7'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/tv.css">
   <link rel="stylesheet" href="race.css">
   <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -24,32 +24,18 @@
   <canvas id="scene"></canvas>
 
   <div id="ui">
-    <!-- Startbildschirm -->
-    <section class="lobby" id="lobby">
-      <div class="brand">
+    <!-- Startbildschirm + Startaufstellung (Spielerplätze) -->
+    <section class="lobby kf" id="lobby">
+      <div class="kf-main">
+        <a class="back-link" href="../"><span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></span>Slope Games</a>
+        <span class="chip">3 Runden · 1,1 km · Rammen erlaubt</span>
         <h1 class="logo" aria-label="Kurvenflitzer"><span class="word" data-word="Kurven"></span><span class="word" data-word="flitzer"></span></h1>
-        <p class="tagline">Greif ein unsichtbares Lenkrad und dreh es. Allein, bis zu viert am gleichen TV – oder online gegen Freunde.</p>
-        <ol class="steps">
-          <li><b>1</b><span>Jede Person scannt den QR-Code mit ihrem Handy</span></li>
-          <li><b>2</b><span>Handy vor dich stellen, Oberkörper und Hände im Bild</span></li>
-          <li><b>3</b><span>Hände vor die Brust wie am Lenkrad – los geht’s!</span></li>
-        </ol>
-        <div class="links">
-          <a class="other-game" href="../">🏠 Alle Spiele</a>
-          <a class="other-game" href="../ballon-platzer/">🎈 Ballon-Platzer</a>
-        </div>
-      </div>
-
-      <div class="join card">
-        <div class="join-title">Mitspielen mit dem Handy</div>
-        <div class="qr" id="qr"><div class="spinner"></div></div>
-        <div class="code-label">oder Code eingeben</div>
-        <div class="code" id="code">· · · · ·</div>
-        <div class="url" id="joinUrl"></div>
-        <div class="alt">
-          <button class="ghost" id="camBtn" type="button">💻 Kamera dieses Geräts</button>
-          <button class="ghost" id="keysBtn" type="button">⌨️ Tastatur</button>
-          <button class="ghost" id="onlineBtn" type="button">🌍 Online</button>
+        <p class="tagline">Halte die Hände vor die Brust wie an einem Lenkrad und dreh es. Gas gibt das Kart von selbst.</p>
+        <div class="slots" id="slots" aria-label="Spielerplätze"></div>
+        <div class="kf-actions">
+          <button class="ghost" id="onlineBtn" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg>Online spielen</button>
+          <button class="ghost" id="camBtn" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="13" rx="2"/><path d="M8 22h8M12 18v4"/></svg>Kamera dieses Geräts</button>
+          <button class="ghost" id="keysBtn" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>Tastatur</button>
         </div>
         <div class="online" id="onlinePanel" hidden>
           <div class="online-row">
@@ -61,11 +47,21 @@
           <div class="online-info" id="onlineInfo">Spielt an verschiedenen Orten gegeneinander: Ein TV erstellt den Raum, die anderen treten mit dessen Code bei.</div>
         </div>
       </div>
+
+      <aside class="join">
+        <div class="join-title">Mitspielen</div>
+        <div class="join-sub">Jede Person scannt mit ihrem Handy</div>
+        <div class="qr" id="qr"><div class="spinner"></div></div>
+        <div class="code-label">oder Code eingeben</div>
+        <div class="code" id="code">· · · · ·</div>
+        <div class="url" id="joinUrl"></div>
+        <div class="privacy-note">Das Kamerabild bleibt auf dem Handy</div>
+      </aside>
     </section>
 
     <!-- Rennen: gemeinsame Anzeige -->
     <div class="hud" id="hud">
-      <div class="pill time"><span class="label">Zeit</span><span class="value" id="time">0:00.0</span></div>
+      <div class="pill time"><span class="label">Zeit</span><span class="value" id="time">0:00.0</span><span class="gap" id="gap"></span></div>
       <canvas class="minimap" id="minimap" width="360" height="360"></canvas>
     </div>
     <div id="phuds"></div>
