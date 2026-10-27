@@ -108,3 +108,16 @@ button.secondary { font: 500 14px 'Poppins', sans-serif; color: #fff; background
 .char-head h2 { font-weight: 700; font-size: 20px; margin: 0; color: #fff; }
 .char-head span { font-size: 13px; color: var(--mute); }
 #charEditor { font-size: 15px; }
+
+/* Verbindungs-Diagnose */
+.diag { margin-top: 14px; background: var(--bg); border-radius: 18px; padding: 12px 14px; display: grid; gap: 8px; }
+.diag-row { display: grid; grid-template-columns: 12px auto 1fr; align-items: center; gap: 10px; font-size: 13px; }
+.diag-row b { font-weight: 600; color: #fff; }
+.diag-row .t { color: var(--soft); text-align: right; }
+.diag-row .d { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+.diag-row.wait .d { background: var(--cream); animation: pulse 1.2s infinite; }
+.diag-row.ok .d { background: var(--green); }
+.diag-row.err .d { background: var(--coral); }
+.diag-row.err .t { color: #ffb3aa; }
+.diag-hint { margin: 4px 0 0; padding: 10px 12px; border-radius: 12px; background: rgba(226, 87, 76, .18); color: #ffd0ca; font-size: 13px; line-height: 1.45; }
+.inapp { margin: 0 auto 12px; max-width: 520px; background: var(--cream); color: var(--panel-2); border-radius: 18px; padding: 12px 14px; font-size: 14px; font-weight: 600; line-height: 1.4; }

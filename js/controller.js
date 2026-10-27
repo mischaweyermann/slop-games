@@ -75,16 +75,21 @@ ui.startBtn.addEventListener('click', async () => {
   }
   if (!window.isSecureContext) { showError('Bitte die Seite über https:// öffnen – sonst erlaubt der Browser keine Kamera.'); return; }
   ui.startBtn.disabled = true; ui.setupError.hidden = true;
+  connect(); // falls noch nicht verbunden
+  diag('dgCam', 'wait', 'startet …');
   try {
     await startCamera();
   } catch (e) {
     ui.startBtn.disabled = false;
+    diag('dgCam', 'err', e && e.name === 'NotAllowedError' ? 'nicht erlaubt' : 'Fehler');
     showError(e && e.name === 'NotAllowedError'
       ? 'Kamerazugriff verweigert. Erlaube die Kamera in den Browser-Einstellungen und versuche es nochmals.'
       : 'Kamera konnte nicht gestartet werden: ' + (e && e.message || e));
     return;
   }
+  diag('dgCam', 'ok', 'läuft');
   ui.setup.hidden = true; ui.running.hidden = false;
+  document.getElementById('running').prepend(document.getElementById('diag'));
   history.replaceState(null, '', '?c=' + code + (GAME === 'rennen' ? '&g=rennen' : '') + (params.get('peer') ? '&peer=' + params.get('peer') : ''));
   running = true;
   keepAwake();
@@ -223,16 +228,26 @@ const peerOptions = () => netOptions(params);
 const PID = deviceId();
 
 let reconnectTimer = null;
+let peerCode = '';
 function connect() {
+  if (code.length !== 5) return;
+  if (peer && !peer.destroyed && peerCode === code) return; // läuft schon
+  if (peer) { try { peer.destroy(); } catch { /* */ } conn = null; pending = null; }
+  peerCode = code;
   setChip('wait', 'Verbinde …');
+  diag('dgNet', 'wait', 'verbinde …'); diag('dgTv', 'wait', 'warte …');
   peer = new window.Peer(peerOptions());
-  peer.on('open', openConn);
+  peer.on('open', () => { diag('dgNet', 'ok', 'verbunden'); openConn(); });
   peer.on('error', (e) => {
     if (e.type === 'peer-unavailable') {
+      diag('dgTv', 'err', `Code ${code} nicht gefunden`);
+      hint('Kein Fernseher mit diesem Code. Ist die Spielseite auf dem TV offen? Stimmt der Code (siehe TV)?');
       setChip('err', 'TV nicht gefunden');
       message('Fernseher nicht gefunden', `Ist die TV-Seite offen und lautet der Code ${code}?`);
       retry();
     } else if (['network', 'server-error', 'socket-error', 'socket-closed'].includes(e.type)) {
+      diag('dgNet', 'err', 'kein Server');
+      hint('Der Verbindungsdienst ist nicht erreichbar. Internet am Handy prüfen (WLAN oder Mobilfunk an?).');
       setChip('err', 'Keine Verbindung');
       setTimeout(() => { peer.destroy(); connect(); }, 3000);
     } else {
@@ -255,11 +270,33 @@ function openConn() {
     if (pending !== c || c.open) return;
     pending = null; try { c.close(); } catch { /* */ }
     setChip('err', 'Verbindung hängt');
+    if (!c.__ice) {
+      // TV hat gar nicht geantwortet -> falscher Code oder TV-Seite zu
+      diag('dgTv', 'err', `TV ${code} antwortet nicht`);
+      hint('Der Fernseher antwortet nicht. Stimmt der Code? Ist die Spielseite auf dem TV offen (nicht im Standby)?');
+    } else {
+      diag('dgTv', 'err', 'kein Weg zum TV');
+      hint('Handy und TV finden keinen Weg zueinander. Fast immer hilft: Handy ins <b>gleiche WLAN</b> wie der TV (nicht Mobilfunk, nicht Gäste-WLAN). Danach Seite neu laden.');
+    }
     message('Verbindung zum TV klappt nicht', tries >= 2 ? 'Am besten Handy und TV im gleichen WLAN – Mobilfunk oder Gäste-WLAN blockieren oft.' : 'Neuer Versuch …');
     retry();
   }, 10000);
+  diag('dgTv', 'wait', 'verbinde …');
+  // Zustand der direkten Verbindung beobachten (zeigt, ob das Netzwerk blockiert)
+  const watchIce = () => {
+    const pc = c.peerConnection;
+    if (!pc) return setTimeout(watchIce, 200);
+    pc.addEventListener('iceconnectionstatechange', () => {
+      const st = pc.iceConnectionState;
+      if (st !== 'new') c.__ice = true;
+      if (st === 'checking') diag('dgTv', 'wait', 'suche Weg …');
+      if (st === 'failed') { diag('dgTv', 'err', 'blockiert'); hint('Das Netzwerk blockiert die Verbindung zum TV. Handy ins <b>gleiche WLAN</b> wie der TV bringen (nicht Mobilfunk, nicht Gäste-WLAN) und Seite neu laden.'); }
+    });
+  };
+  watchIce();
   c.on('open', () => {
     clearTimeout(openTimer); pending = null; tries = 0;
+    diag('dgTv', 'ok', 'verbunden'); hint('');
     conn = c;
     setChip('ok', 'Mit TV verbunden');
     check('chkTv', true);
@@ -273,6 +310,7 @@ function openConn() {
     if (pending === c) pending = null;
     if (conn !== c) return;
     conn = null; check('chkTv', false);
+    diag('dgTv', 'wait', 'getrennt – neuer Versuch …');
     setChip('wait', 'Verbindung verloren …');
     updateMessage();
     retry();
@@ -322,7 +360,22 @@ $('switchBtn').addEventListener('click', async () => {
   try { await startCamera(); } catch { facing = facing === 'user' ? 'environment' : 'user'; await startCamera().catch(() => {}); }
 });
 
-if (code.length === 5) ui.startBtn.focus();
+// Diagnose-Anzeige
+function diag(id, kind, text) { const el = document.getElementById(id); if (!el) return; el.className = 'diag-row ' + kind; el.querySelector('.t').textContent = text; }
+function hint(html) { const el = document.getElementById('dgHint'); el.innerHTML = html; el.hidden = !html; }
+
+// In-App-Browser (WhatsApp, Instagram, Facebook …) sperren oft Kamera und Verbindungen
+const UA = navigator.userAgent || '';
+if (/Instagram|FBAN|FBAV|FB_IAB|WhatsApp|Line\/|Snapchat|TikTok|musical_ly|; wv\)|GSA\//.test(UA)) {
+  const b = document.createElement('div'); b.className = 'inapp';
+  b.textContent = 'Du bist in einem App-Browser. Bitte öffne die Seite in Safari oder Chrome (Menü «…» → «Im Browser öffnen») – sonst funktionieren Kamera und Verbindung oft nicht.';
+  document.body.insertBefore(b, document.querySelector('main'));
+}
+if (!window.RTCPeerConnection) { diag('dgTv', 'err', 'nicht unterstützt'); hint('Dieser Browser kann keine direkte Verbindung aufbauen. Bitte Safari oder Chrome verwenden.'); }
+
+// Sofort mit dem TV verbinden (nicht erst nach dem Kamerastart)
+if (code.length === 5) { ui.startBtn.focus(); connect(); }
+ui.codeInput.addEventListener('input', () => { if (ui.codeInput.value.length === 5) { code = ui.codeInput.value; connect(); } });
 
 /* ---------- Charakter ---------- */
 const CHAR_KEY = 'ballonplatzer.character';

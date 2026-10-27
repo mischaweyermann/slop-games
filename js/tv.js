@@ -967,9 +967,12 @@ function startPeer() {
     if (!conn) setStatus('wait', 'Warte auf Handy …');
   });
   peer.on('connection', (c) => {
-    if (conn) { try { conn.close(); } catch { /* */ } }
-    conn = c;
+    if (!conn) setStatus('wait', 'Handy verbindet sich …');
+    setTimeout(() => { if (!c.open && conn !== c) setStatus(conn ? 'ok' : 'err', conn ? 'Handy verbunden (ein zweites kam nicht durch)' : 'Handy kommt nicht durch – gleiches WLAN wie der TV?'); }, 12000);
     c.on('open', () => {
+      // Erst wenn das neue Handy wirklich verbunden ist, das alte ablösen
+      if (conn && conn !== c) { const old = conn; conn = c; try { old.close(); } catch { /* */ } }
+      conn = c;
       setStatus('ok', 'Handy verbunden');
       audio.whoosh();
       send({ t: 'state', s: state });

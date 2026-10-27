@@ -52,6 +52,12 @@
       <button class="primary" id="startBtn" type="button">Kamera starten</button>
       <p class="privacy">🔒 Das Kamerabild bleibt auf deinem Handy. Zum Fernseher werden nur Körperpunkte gesendet.</p>
       <p class="error" id="setupError" hidden></p>
+      <div class="diag" id="diag" aria-live="polite">
+        <div class="diag-row" id="dgNet"><span class="d"></span><b>Internet</b><span class="t">prüfe …</span></div>
+        <div class="diag-row" id="dgTv"><span class="d"></span><b>Fernseher</b><span class="t">–</span></div>
+        <div class="diag-row" id="dgCam"><span class="d"></span><b>Kamera</b><span class="t">noch nicht gestartet</span></div>
+        <p class="diag-hint" id="dgHint" hidden></p>
+      </div>
     </section>
   </main>
 

@@ -433,6 +433,10 @@ function startPeer() {
 function acceptPhone(c) {
   let p = null;
   const pid = c.metadata && c.metadata.pid;
+  // Handy klopft an, kommt aber nicht durch -> Hinweis auf dem TV
+  toast('Ein Handy verbindet sich …');
+  const failTimer = setTimeout(() => { if (!c.open) toast('Ein Handy kommt nicht durch – bitte ins gleiche WLAN wie der TV (nicht Mobilfunk/Gäste-WLAN)'); }, 12000);
+  c.on('open', () => clearTimeout(failTimer));
   c.on('open', () => {
     const known = pid && locals.find((x) => x.pid === pid);
     if (known) {
@@ -682,7 +686,7 @@ function renderSlots() {
 function pBanner(p, text, bang = false) { const b = p.hud.banner; b.textContent = text; b.classList.toggle('bang', bang); b.classList.toggle('quick', bang); b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
 function banner(text) { const b = $('banner'); b.textContent = text; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
 let toastTimer = 0;
-function toast(text) { const t = $('toast'); t.textContent = text; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600); }
+function toast(text, ms = 2600) { const t = $('toast'); t.textContent = text; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), Math.max(ms, text.length > 50 ? 6000 : ms)); }
 function setPrompt(show, text = '', sub = '', icon = '🏎️', fill = 0) {
   $('prompt').classList.toggle('show', show);
   if (text) $('promptText').textContent = text;
