@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { createAudio } from './audio.js';
+import { peerOptions as netOptions } from './net.js';
 import { Avatar, D } from './avatar.js';
 import { createEditor, loadConfig, saveConfig, sanitize } from './character.js';
 
@@ -951,13 +952,7 @@ function tick() {
    ================================================================ */
 let peer = null, conn = null, code = '', retries = 0;
 
-function peerOptions() {
-  // ?peer=host:port erlaubt einen eigenen PeerJS-Server (z. B. lokal zum Testen)
-  const p = params.get('peer');
-  if (!p) return { debug: 1 };
-  const [host, port] = p.split(':');
-  return { host, port: +port || 443, path: '/', secure: location.protocol === 'https:', debug: 1 };
-}
+const peerOptions = () => netOptions(params);
 function newCode() { let s = ''; for (let i = 0; i < 5; i++) s += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]; return s; }
 
 function startPeer() {

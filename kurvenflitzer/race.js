@@ -8,6 +8,7 @@ import { createAudio } from '../js/audio.js';
 import { loadConfig, sanitize } from '../js/character.js';
 import { GRASS, WALL, T, N, SEG, TRACK_LEN, sample, nearest, nearestGlobal, lateral, buildWorld, makeKart } from './world.js';
 import { Cockpit } from './cockpit.js';
+import { peerOptions as netOptions } from '../js/net.js';
 
 /* ================================================================
    Grundlagen
@@ -100,6 +101,7 @@ let roster = [];              // Startaufstellung (Reihenfolge = Startplatz, vor
 const locals = [];            // Spieler an diesem TV (max. 4)
 const pendingPhones = [];     // Handys, die während eines Rennens dazukommen
 let raceT = 0;
+let lastJoinAt = -1e9, startAt = null;
 
 const setLayer = (obj, layer) => obj.traverse((o) => o.layers.set(layer));
 const kartColorOf = (p) => (['#f4efe6', '#3b3b45', '#c69c6d'].includes(p.cfg.topColor) ? P_COLORS[p.slot] : p.cfg.topColor);
@@ -212,7 +214,7 @@ function resetRace() {
     placeKart(r, 0);
   }
   for (const p of locals) {
-    Object.assign(p, { ready: false, readyT: 0, upT: 0, coinCount: 0, boost: 0, boostT: 0, laps: [], lapStart: 0, steer: 0, fovKick: 0, spin: 0, lastPlace: 0 });
+    Object.assign(p, { startNow: false, ready: false, readyT: 0, upT: 0, coinCount: 0, boost: 0, boostT: 0, laps: [], lapStart: 0, steer: 0, fovKick: 0, spin: 0, lastPlace: 0 });
     p.knock.set(0, 0, 0);
     p.taken.fill(0);
     if (p.racer) p.prevIdx = p.racer.idx;
@@ -267,7 +269,7 @@ addEventListener('keydown', (e) => {
   if (k === 'm') { audio.setMuted(!audio.muted); updateSoundBtn(); }
   if (k === 'k' && !e.repeat) addKeysPlayer();
   if (k === ' ' || k === 'enter') {
-    if (state === 'ready') for (const p of locals) if (p.source === 'keys') p.ready = true;
+    if (state === 'ready') for (const p of locals) if (p.source === 'keys') { if (p.ready) p.startNow = true; p.ready = true; }
     if (state === 'results' && stateT > 2 && locals.some((p) => p.source === 'keys')) requestRestart();
   }
 });
@@ -282,12 +284,17 @@ addEventListener('keyup', (e) => {
 /* ---------- Spieler hinzufügen ---------- */
 function joinLocal(source, conn = null) {
   if (state === 'countdown' || state === 'race') {
-    if (conn) { pendingPhones.push(conn); toast('Neue/r Spieler/in fährt ab dem nächsten Rennen mit'); }
+    if (conn) {
+      pendingPhones.push(conn);
+      toast('Neue Person erkannt – fährt ab dem nächsten Rennen mit');
+      sendPhone(conn, { t: 'state', s: 'queued', g: 'rennen' });
+    }
     return null;
   }
   if (locals.length >= MAX_LOCAL) { toast('Maximal 4 Spieler pro TV'); return null; }
   const p = createLocal(source, conn);
   if (!p) return null;
+  lastJoinAt = now; startAt = null;
   audio.unlock(); updateSoundBtn(); audio.whoosh();
   toast(`${pName(p)} ist dabei!`);
   p.hud.root.classList.toggle('show', state !== 'lobby'); p.cockpit.visible = state !== 'lobby';
@@ -387,12 +394,7 @@ let role = 'solo';             // 'solo' | 'host' | 'client'
 const tvConns = new Map();     // nur Gastgeber: tv-id -> { conn, players, ready }
 let hostConn = null, hostRoster = null, hostState = 'lobby', hostCode = '';
 
-function peerOptions() {
-  const p = params.get('peer');
-  if (!p) return { debug: 1 };
-  const [host, port] = p.split(':');
-  return { host, port: +port || 443, path: '/', secure: location.protocol === 'https:', debug: 1 };
-}
+const peerOptions = () => netOptions(params);
 function setStatus(kind, text) { $('status').className = 'status ' + kind; $('statusText').textContent = text; }
 function updateStatus() {
   const n = locals.length;
@@ -422,7 +424,7 @@ function startPeer() {
   peer.on('disconnected', () => setTimeout(() => peer && !peer.destroyed && peer.reconnect(), 1500));
   peer.on('error', (e) => {
     if (e.type === 'unavailable-id') { peer.destroy(); if (++retries > 2) { try { sessionStorage.removeItem('kurvenflitzer.code'); } catch { /* */ } } setTimeout(startPeer, 1500); }
-    else if (e.type === 'peer-unavailable') { if (role !== 'client' && joining) { joining = false; onlineInfo('Kein Raum mit diesem Code gefunden. Stimmt der Code?'); } }
+    else if (e.type === 'peer-unavailable') { if (role !== 'client' && joining) { joining = false; onlineInfo('Kein TV mit diesem Code gefunden. Stimmt der Code, und ist die Kurvenflitzer-Seite auf dem anderen TV offen?'); } }
     else if (['network', 'server-error', 'socket-error', 'socket-closed'].includes(e.type)) { setStatus('err', 'Keine Verbindung zum Server – neuer Versuch …'); setTimeout(() => { peer && peer.destroy(); startPeer(); }, 4000); }
   });
 }
@@ -430,9 +432,20 @@ function startPeer() {
 /* ---------- Handys ---------- */
 function acceptPhone(c) {
   let p = null;
+  const pid = c.metadata && c.metadata.pid;
   c.on('open', () => {
-    p = joinLocal('phone', c);
-    sendPhone(c, { t: 'state', s: phoneState(), g: 'rennen' });
+    const known = pid && locals.find((x) => x.pid === pid);
+    if (known) {
+      // Dasselbe Handy hat sich neu verbunden: alte Verbindung ersetzen
+      const old = known.conn; known.conn = c; p = known;
+      if (old && old !== c) { try { old.close(); } catch { /* */ } }
+    } else {
+      const queued = pid && pendingPhones.find((x) => x.metadata && x.metadata.pid === pid);
+      if (queued) pendingPhones.splice(pendingPhones.indexOf(queued), 1);
+      p = joinLocal('phone', c);
+      if (p) p.pid = pid;
+    }
+    sendPhone(c, { t: 'state', s: p ? phoneState() : 'queued', g: 'rennen' });
   });
   c.on('data', (msg) => {
     if (!msg || typeof msg !== 'object') return;
@@ -444,7 +457,7 @@ function acceptPhone(c) {
   c.on('close', () => {
     const i = pendingPhones.indexOf(c); if (i >= 0) pendingPhones.splice(i, 1);
     if (!p) p = locals.find((x) => x.conn === c) || null;
-    if (!p) return;
+    if (!p || p.conn !== c) return; // schon durch neue Verbindung ersetzt
     p.conn = null;
     if (state === 'race' || state === 'countdown') return; // fährt ohne Hände weiter (Gas weg), wird nach dem Rennen entfernt
     leaveLocal(p);
@@ -479,20 +492,22 @@ function renderJoin() {
   if (svg) { $('qr').innerHTML = svg; $('miniQr').innerHTML = svg; }
 }
 
+const tvPlayers = () => (role === 'host' ? [...tvConns.values()].reduce((n, t) => n + t.players.length, 0) : role === 'client' && hostRoster ? hostRoster.filter((d) => d.kind === 'human' && d.tv !== myTv).length : 0);
+
 /* ---------- Online: Raum erstellen / beitreten ---------- */
 let joining = false;
 function onlineInfo(html) { $('onlineInfo').innerHTML = html; }
 $('onlineBtn').addEventListener('click', (e) => { e.stopPropagation(); $('onlinePanel').hidden = !$('onlinePanel').hidden; });
 $('roomInput').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5); });
-$('hostBtn').addEventListener('click', (e) => { e.stopPropagation(); hostRoom(); });
 $('joinBtn').addEventListener('click', (e) => { e.stopPropagation(); joinRoom($('roomInput').value); });
 
-function hostRoom() {
+function hostRoom(auto = false) {
   if (!peer || !peer.open) { onlineInfo('Noch keine Verbindung zum Server – bitte kurz warten.'); return; }
   if (role === 'client') leaveRoom();
   role = 'host';
-  onlineInfo(`Raum erstellt! Auf den anderen TVs <b>Kurvenflitzer → 🌍 Online</b> öffnen und diesen Code eingeben: <b>${code}</b>`);
-  $('hostBtn').textContent = '✅ Gastgeber';
+  $('onlinePanel').hidden = false;
+  if (auto) toast('Online-Raum geöffnet – ein anderer TV tritt bei');
+  onlineInfo(`Online-Raum offen. Weitere TVs: <b>Kurvenflitzer → Online spielen</b> öffnen und diesen Code eingeben: <b>${code}</b>`);
   refreshRoster(); updateStatus();
 }
 function joinRoom(c) {
@@ -504,10 +519,16 @@ function joinRoom(c) {
   joining = true;
   onlineInfo('Verbinde mit Raum ' + c + ' …');
   const conn = peer.connect(PEER_PREFIX + c, { reliable: true, serialization: 'json', metadata: { type: 'tv', tv: myTv } });
+  const timer = setTimeout(() => {
+    if (conn.open || !joining) return;
+    joining = false; try { conn.close(); } catch { /* */ }
+    onlineInfo('Die Verbindung kam nicht zustande. Ist der andere TV auf der Kurvenflitzer-Seite? Manche Firmen-, Schul- oder Gäste-WLANs blockieren direkte Verbindungen – dann am besten zu Hause oder über den Handy-Hotspot versuchen.');
+  }, 15000);
+  conn.on('error', () => { if (joining) { joining = false; clearTimeout(timer); onlineInfo('Verbindung fehlgeschlagen – bitte nochmals versuchen.'); } });
   conn.on('open', () => {
+    clearTimeout(timer);
     joining = false; role = 'client'; hostConn = conn; hostCode = c;
     onlineInfo(`Verbunden mit Raum <b>${c}</b>. Der Gastgeber startet, sobald alle die Hände am Lenkrad haben.`);
-    $('hostBtn').textContent = 'Raum erstellen';
     sendPlayersToHost(); updateStatus();
   });
   conn.on('data', onHostMessage);
@@ -523,7 +544,9 @@ function joinRoom(c) {
 function leaveRoom() { if (hostConn) { const c = hostConn; hostConn = null; c.close(); } role = 'solo'; hostRoster = null; }
 
 function acceptTv(c) {
-  if (role !== 'host') { c.on('open', () => { try { c.send({ t: 'nohost' }); } catch { /* */ } setTimeout(() => c.close(), 300); }); return; }
+  // Ein anderer TV tritt bei: dieser TV wird automatisch Gastgeber (kein «Raum erstellen» nötig)
+  if (role === 'client') { c.on('open', () => { try { c.send({ t: 'nohost', why: 'client' }); } catch { /* */ } setTimeout(() => c.close(), 300); }); return; }
+  if (role !== 'host') hostRoom(true);
   const tv = c.metadata.tv;
   c.on('open', () => {
     tvConns.set(tv, { conn: c, players: [], ready: false });
@@ -569,7 +592,7 @@ function onHostMessage(msg) {
   else if (msg.t === 'reset') { if (pendingRoster) { hostRoster = pendingRoster; pendingRoster = null; } if (msg.list) hostRoster = msg.list; applyRoster(hostRoster || buildRoster()); setState(locals.length ? 'ready' : 'lobby'); }
   else if (msg.t === 'hstate') hostState = msg.s;
   else if (msg.t === 'bump') applyBump(msg);
-  else if (msg.t === 'nohost') { onlineInfo('Unter diesem Code gibt es keinen Online-Raum. Der andere TV muss zuerst «Raum erstellen» drücken.'); }
+  else if (msg.t === 'nohost') { onlineInfo('Dieser TV ist selbst schon Gast in einem anderen Raum. Gib den Code des Gastgeber-TVs ein.'); }
 }
 let pendingRoster = null;
 
@@ -744,7 +767,7 @@ function setState(s) {
   if (s === 'ready') {
     // Wartende Handys aufnehmen, getrennte Spieler entfernen
     for (const p of [...locals]) if (p.source === 'phone' && !p.conn) removeLocal(p);
-    while (pendingPhones.length && locals.length < MAX_LOCAL) { const c = pendingPhones.shift(); if (c.open) createLocal('phone', c); }
+    while (pendingPhones.length && locals.length < MAX_LOCAL) { const c = pendingPhones.shift(); if (c.open) { const q = createLocal('phone', c); if (q) { q.pid = c.metadata && c.metadata.pid; lastJoinAt = now; } } }
     sendPlayersToHost();
     refreshRoster();
     if (!locals.length) { setState('lobby'); return; }
@@ -754,7 +777,7 @@ function setState(s) {
   if (s === 'race') { $('lights').classList.add('show', 'go'); audio.go(); banner('LOS!'); setTimeout(() => $('lights').classList.remove('show'), 1200); }
   if (s === 'results') showResults();
   if (s === 'lobby') { audio.engine(false); refreshRoster(); resetRace(); camSnap = true; }
-  if (s === 'ready') camSnap = true;
+  if (s === 'ready') { camSnap = true; startAt = null; }
   if (s === 'results') saveStats();
   updateLayout();
   phonesState();
@@ -1048,14 +1071,27 @@ function tick() {
       }
     }
     const localReady = locals.length > 0 && locals.every((p) => p.ready);
+    // Wartezeit, damit weitere Personen noch den QR-Code scannen können:
+    // allein 8 s, mit mehreren 3 s – jede neue Person startet die Wartezeit neu.
+    const keysNow = locals.some((p) => p.source === 'keys' && p.startNow);
+    let waitLeft = 0;
+    if (localReady) {
+      if (startAt == null) startAt = Math.max(now + (locals.length + tvPlayers() >= 2 ? 3 : 8), lastJoinAt + 4);
+      waitLeft = keysNow ? 0 : Math.max(0, startAt - now);
+    } else startAt = null;
     if (role === 'client') {
       setPrompt(localReady, 'Warte auf die anderen …', hostState === 'race' ? 'Beim Gastgeber läuft noch ein Rennen' : 'Der Gastgeber startet, sobald alle bereit sind', '🌍', 1);
     } else if (role === 'host') {
       const others = [...tvConns.values()].filter((t) => t.players.length);
       const nReady = others.filter((t) => t.ready).length;
-      if (localReady && nReady === others.length) { broadcastTv({ t: 'go' }); setState('countdown'); }
-      else setPrompt(localReady && others.length > 0, 'Warte auf die anderen TVs …', `${nReady} von ${others.length} bereit`, '🌍', others.length ? nReady / others.length : 0);
-    } else if (localReady) setState('countdown');
+      if (localReady && nReady === others.length && waitLeft <= 0) { broadcastTv({ t: 'go' }); setState('countdown'); }
+      else if (localReady && nReady < others.length) setPrompt(true, 'Warte auf die anderen TVs …', `${nReady} von ${others.length} bereit`, '🌍', others.length ? nReady / others.length : 0);
+      else if (localReady) setPrompt(true, `Start in ${Math.ceil(waitLeft)} …`, 'Noch jemand? Jetzt QR-Code scannen', '🏁', 1 - waitLeft / 8);
+      else setPrompt(false);
+    } else if (localReady) {
+      if (waitLeft <= 0) setState('countdown');
+      else setPrompt(true, `Start in ${Math.ceil(waitLeft)} …`, locals.some((p) => p.source === 'keys') ? 'Noch jemand? QR scannen – oder Leertaste = sofort' : 'Noch jemand? Jetzt QR-Code scannen', '🏁', 1 - waitLeft / 8);
+    } else setPrompt(false);
   } else if (state === 'countdown') {
     for (const p of locals) updateLocal(p, dt, false);
     const n = Math.floor(stateT / 0.9);

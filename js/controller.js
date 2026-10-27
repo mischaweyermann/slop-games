@@ -2,6 +2,7 @@
 // Kamera -> MediaPipe Pose (läuft komplett auf dem Handy) -> Körperpunkte per WebRTC an den TV.
 
 import { createEditor, loadConfig, saveConfig } from './character.js';
+import { peerOptions as netOptions, deviceId } from './net.js';
 
 const $ = (id) => document.getElementById(id);
 const PEER_PREFIX = 'ballonplatzer-v1-';
@@ -218,12 +219,8 @@ function drawSkeleton(lm) {
 }
 
 /* ---------- Verbindung zum TV ---------- */
-function peerOptions() {
-  const p = params.get('peer');
-  if (!p) return { debug: 1 };
-  const [host, port] = p.split(':');
-  return { host, port: +port || 443, path: '/', secure: location.protocol === 'https:', debug: 1 };
-}
+const peerOptions = () => netOptions(params);
+const PID = deviceId();
 
 let reconnectTimer = null;
 function connect() {
@@ -246,10 +243,23 @@ function connect() {
 }
 function retry() { clearTimeout(reconnectTimer); reconnectTimer = setTimeout(openConn, 2500); }
 
+let pending = null, openTimer = null, tries = 0;
 function openConn() {
   if (!peer || peer.destroyed || peer.disconnected) return;
-  const c = peer.connect(PEER_PREFIX + code, { reliable: false, serialization: 'json' });
+  if ((conn && conn.open) || pending) return; // schon verbunden bzw. Versuch läuft – keine doppelten Spieler
+  tries++;
+  const c = pending = peer.connect(PEER_PREFIX + code, { reliable: true, serialization: 'json', metadata: { type: 'phone', pid: PID } });
+  // Kommt die Verbindung nicht zustande (Netzwerk blockiert), nach 10 s neu versuchen
+  clearTimeout(openTimer);
+  openTimer = setTimeout(() => {
+    if (pending !== c || c.open) return;
+    pending = null; try { c.close(); } catch { /* */ }
+    setChip('err', 'Verbindung hängt');
+    message('Verbindung zum TV klappt nicht', tries >= 2 ? 'Am besten Handy und TV im gleichen WLAN – Mobilfunk oder Gäste-WLAN blockieren oft.' : 'Neuer Versuch …');
+    retry();
+  }, 10000);
   c.on('open', () => {
+    clearTimeout(openTimer); pending = null; tries = 0;
     conn = c;
     setChip('ok', 'Mit TV verbunden');
     check('chkTv', true);
@@ -258,7 +268,9 @@ function openConn() {
     updateMessage();
   });
   c.on('data', onTv);
+  c.on('error', () => { if (pending === c) { pending = null; retry(); } });
   c.on('close', () => {
+    if (pending === c) pending = null;
     if (conn !== c) return;
     conn = null; check('chkTv', false);
     setChip('wait', 'Verbindung verloren …');
@@ -284,6 +296,7 @@ function onTv(msg) {
 function updateMessage() {
   if (!conn) return message('Verbinde mit dem Fernseher …', `Code ${code} – die TV-Seite muss offen sein.`);
   if (!bodySeen) return message('Ich sehe dich noch nicht', TXT.far);
+  if (tvState === 'queued') return message('Du bist dabei! 🎉', 'Das aktuelle Rennen läuft noch – du fährst ab dem nächsten Rennen mit.');
   if (tvState === 'play') return message(...TXT.play);
   if (tvState === 'countdown') return message('Achtung, fertig …', 'Gleich geht’s los!');
   if (tvState === 'results') return message(...TXT.results);

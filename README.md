@@ -56,15 +56,15 @@ Go-Kart-Rennen in der Ich-Perspektive. Du hältst ein **unsichtbares Lenkrad** v
 - 3 Runden auf einem 1,1 km Rundkurs, mindestens 4 Karts (fehlende Plätze fahren KI-Gegner)
 - Münzen sammeln: 5 Münzen = 3 Sekunden **Turbo**
 - Wiese bremst, Reifenstapel schubsen zurück, Zusammenstösse kosten Tempo
-- **Start:** Alle halten die Hände ruhig vor der Brust, bis ihr Ring voll ist → Startampel
+- **Start:** Alle halten die Hände ruhig vor der Brust, bis ihr Balken voll ist. Danach läuft «Start in …» (allein 8 s, zu mehreren 3 s), damit weitere Personen noch scannen können – jede neue Person verlängert die Wartezeit.
 - **Neues Rennen:** im Ziel beide Hände über den Kopf
 
 ### Mehrspieler am gleichen TV (bis 4)
 Jede Person scannt den QR-Code mit ihrem eigenen Handy. Der Bildschirm teilt sich automatisch (2 = nebeneinander, 3–4 = Viertel). Jede/r hat eigenes Cockpit, eigene Münzen und eigene Anzeige; die anderen sieht man als Karts in ihren Charakterfarben. Wer während eines Rennens dazukommt, fährt ab dem nächsten Rennen mit.
 
 ### Online (mehrere TVs)
-1. TV A: **🌍 Online → Raum erstellen**
-2. TV B, C …: **🌍 Online → Code von TV A eingeben → Beitreten**
+1. TV B: **Online spielen** → den Code von TV A eingeben (steht auf TV A in der QR-Karte) → **Beitreten**
+2. TV A wird automatisch Gastgeber – dort muss nichts gedrückt werden
 3. An jedem TV können zusätzlich 1–4 Handys mitspielen (max. 8 Karts insgesamt)
 
 Der Gastgeber-TV steuert Start und KI-Gegner; alle TVs tauschen 15× pro Sekunde ihre Positionen aus (direkt per WebRTC, kein eigener Server). Der Start erfolgt, wenn an allen TVs alle bereit sind.
