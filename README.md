@@ -47,8 +47,9 @@ Jede Person scannt den QR-Code mit ihrem eigenen Handy. Der Bildschirm teilt sic
 ### Online (mehrere TVs)
 1. TV A: **Online spielen → 🔗 Einladungs-Link teilen** und den Link per WhatsApp o. ä. schicken
 2. Der Freund öffnet den Link auf **seinem TV/Laptop** (nicht auf dem Handy) – sein Bildschirm tritt automatisch bei. Alternativ dort **Online spielen** → Code von TV A eingeben → **Beitreten**
-3. Wichtig: Handys scannen immer den QR-Code auf **ihrem eigenen** Bildschirm. Wer den QR-Code von TV A scannt, fährt auf TV A mit.
-4. An jedem TV können zusätzlich 1–4 Handys mitspielen (max. 8 Karts insgesamt)
+3. Bis der andere Bildschirm verbunden ist, startet keiner allein (oben steht «Warte auf den eingeladenen Bildschirm …» bzw. «Verbinde mit Raum …»; beide Hände hoch = trotzdem allein fahren). In der Lobby zeigt ein grüner Balken, wer am anderen Bildschirm dabei ist.
+4. Wichtig: Handys scannen immer den QR-Code auf **ihrem eigenen** Bildschirm. Wer den QR-Code von TV A scannt, fährt auf TV A mit.
+5. An jedem TV können zusätzlich 1–4 Handys mitspielen (max. 8 Karts insgesamt)
 
 Der Gastgeber-TV steuert Start und KI-Gegner; alle TVs tauschen 15× pro Sekunde ihre Positionen aus (direkt per WebRTC, kein eigener Server). Der Start erfolgt, wenn an allen TVs alle bereit sind.
 

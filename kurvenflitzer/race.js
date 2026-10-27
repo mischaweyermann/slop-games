@@ -169,6 +169,7 @@ function buildRoster() {
   }
   let humans = locals.map(humanDef);
   if (role === 'host') {
+    humans = humans.map((d) => ({ ...d, name: `TV1 · ${d.name}` }));
     let k = 2;
     for (const t of tvConns.values()) {
       humans = humans.concat(t.players.map((d, i) => ({ ...d, name: `TV${k} · P${i + 1}` })));
@@ -529,19 +530,25 @@ const tvPlayers = () => (role === 'host' ? [...tvConns.values()].reduce((n, t) =
 
 /* ---------- Online: Raum erstellen / beitreten ---------- */
 let joining = false, autoJoined = false;
+let wantRoom = '', joinFailed = false; // Gast: soll in diesen Raum (nicht allein losfahren)
+let awaitGuestUntil = 0;               // Gastgeber: hat eingeladen, wartet auf den anderen Bildschirm
 function autoJoin(c, n) {
+  wantRoom = c.toUpperCase(); joinFailed = false;
   $('onlinePanel').hidden = false; $('roomInput').value = c.toUpperCase();
   if (n === 0) toast(matchMedia('(pointer: coarse)').matches && innerWidth < 900
     ? 'Tipp: Den Einladungs-Link am besten auf dem TV oder Laptop öffnen – die Handys scannen dann dort den QR-Code'
     : `Einladung: trete Raum ${c.toUpperCase()} bei …`, 8000);
   joinRoom(c);
   // Falls es nicht klappt (z. B. Gastgeber noch nicht bereit): noch zweimal versuchen
-  setTimeout(() => { if (role !== 'client' && !joining && n < 3) autoJoin(c, n + 1); }, 21000);
+  setTimeout(() => {
+    if (role === 'client' || joining || !wantRoom) return;
+    if (n < 3) autoJoin(c, n + 1); else { joinFailed = true; onlineInfo(`Raum <b>${wantRoom}</b> ist nicht erreichbar. Läuft der Kurvenflitzer auf dem anderen Bildschirm? Ist das Internet an beiden Orten an?`); }
+  }, 21000);
 }
 function onlineInfo(html) { $('onlineInfo').innerHTML = html; }
 $('onlineBtn').addEventListener('click', (e) => { e.stopPropagation(); $('onlinePanel').hidden = !$('onlinePanel').hidden; });
 $('roomInput').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5); });
-$('joinBtn').addEventListener('click', (e) => { e.stopPropagation(); joinRoom($('roomInput').value); });
+$('joinBtn').addEventListener('click', (e) => { e.stopPropagation(); if ($('roomInput').value.length === 5) autoJoin($('roomInput').value, 0); else joinRoom($('roomInput').value); });
 // Einladungs-Link für einen anderen Bildschirm (öffnet dort den Kurvenflitzer und tritt automatisch bei)
 function inviteUrl() {
   const u = new URL(location.href); u.search = ''; u.hash = '';
@@ -553,6 +560,7 @@ $('inviteBtn').addEventListener('click', async (e) => {
   e.stopPropagation();
   if (!code) return;
   const url = inviteUrl();
+  awaitGuestUntil = now + 150; startAt = null;
   $('inviteUrl').textContent = url.replace(/^https?:\/\//, '');
   const text = 'Komm Kurvenflitzer fahren! Öffne den Link auf deinem TV oder Laptop (nicht auf dem Handy):';
   try {
@@ -598,6 +606,7 @@ function joinRoom(c) {
     if (hostConn !== conn) return;
     hostConn = null; hostRoster = null; role = 'solo';
     toast('Verbindung zum Online-Raum beendet');
+    if (wantRoom && state !== 'race' && state !== 'countdown') setTimeout(() => role === 'solo' && wantRoom && autoJoin(wantRoom, 0), 2000);
     onlineInfo('Die Verbindung zum Raum wurde beendet.');
     if (state !== 'race' && state !== 'countdown') { refreshRoster(); if (state === 'ready') resetRace(); }
     updateStatus();
@@ -757,6 +766,28 @@ function renderSlots() {
   }
   const html = slots.join('');
   if (html !== renderSlots.last) { $('slots').innerHTML = html; renderSlots.last = html; }
+  renderNetbar();
+}
+// Lobby: Online-Zustand gut sichtbar + wer an den anderen Bildschirmen mitfährt
+function renderNetbar() {
+  let cls = '', head = '', people = [];
+  if (role === 'client') {
+    cls = 'ok'; head = `🌍 Online im Raum ${hostCode}`;
+    people = (hostRoster || []).filter((d) => d.kind === 'human' && d.tv !== myTv);
+  } else if (role === 'host') {
+    cls = 'ok'; head = `🌍 Online-Raum ${code} · ${tvConns.size + 1} Bildschirme`;
+    for (const t of tvConns.values()) people = people.concat(t.players.map((d, i) => ({ ...d, name: d.name || `P${i + 1}` })));
+  } else if (wantRoom) {
+    cls = joinFailed ? 'err' : 'wait'; head = joinFailed ? `⚠️ Raum ${wantRoom} nicht erreichbar` : `⏳ Verbinde mit Raum ${wantRoom} …`;
+  } else if (awaitGuestUntil > now) {
+    cls = 'wait'; head = `⏳ Warte auf den eingeladenen Bildschirm (Code ${code})`;
+  }
+  const bar = $('netbar');
+  if (!head) { bar.hidden = true; renderNetbar.last = ''; return; }
+  const list = role === 'host' ? [...tvConns.values()].map((t, k) => t.players.map((d, i) => `<span class="np" style="--c:${d.pc || d.color}">TV${k + 2} · P${i + 1}</span>`).join('') || `<span class="np empty">TV${k + 2}: noch niemand – QR-Code dort scannen</span>`).join('')
+    : people.map((d) => `<span class="np" style="--c:${d.pc || d.color}">${d.name}</span>`).join('') || (role === 'client' ? '<span class="np empty">Beim Gastgeber noch niemand bereit</span>' : '');
+  const html = `<b>${head}</b>${list ? `<span class="nl">Am anderen Bildschirm: ${list}</span>` : ''}`;
+  if (html !== renderNetbar.last) { bar.innerHTML = html; bar.className = 'netbar ' + cls; bar.hidden = false; renderNetbar.last = html; }
 }
 function pBanner(p, text, bang = false) { const b = p.hud.banner; b.textContent = text; b.classList.toggle('bang', bang); b.classList.toggle('quick', bang); b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
 function banner(text) { const b = $('banner'); b.textContent = text; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
@@ -1427,7 +1458,16 @@ function tick() {
       if (startAt == null) startAt = Math.max(now + (locals.length + tvPlayers() >= 2 ? 3 : 8), lastJoinAt + 4);
       waitLeft = keysNow ? 0 : Math.max(0, startAt - now);
     } else startAt = null;
-    if (role === 'client') {
+    // Eingeladen, aber (noch) nicht im Raum: nicht allein losfahren
+    const goAlone = locals.some((p) => p.source === 'keys' && p.startNow) || locals.some((p) => p.aloneT > 1);
+    if (wantRoom && role !== 'client' && goAlone) { wantRoom = ''; toast('Ok – du fährst allein'); }
+    for (const p of locals) p.aloneT = p.input.handsUp && hasControl(p) && (wantRoom && role !== 'client' || awaitGuestUntil > now) ? (p.aloneT || 0) + realDt : 0;
+    if (wantRoom && role !== 'client') {
+      startAt = null;
+      setPrompt(true, joinFailed ? `Raum ${wantRoom} nicht erreichbar` : `Verbinde mit Raum ${wantRoom} …`, joinFailed ? 'Anderen Bildschirm prüfen · beide Hände hoch = allein fahren' : 'Bitte warten – ihr fahrt gleich zusammen', joinFailed ? '⚠️' : '🌍', joinFailed ? 0 : (now % 1.5) / 1.5);
+    } else if (role !== 'client' && awaitGuestUntil > now && tvConns.size === 0 && localReady) {
+      if (goAlone) { awaitGuestUntil = 0; } else { startAt = null; setPrompt(true, 'Warte auf den eingeladenen Bildschirm …', `Link geschickt? Noch ${Math.ceil(awaitGuestUntil - now)} s · beide Hände hoch = ohne warten starten`, '🌍', 1 - (awaitGuestUntil - now) / 150); }
+    } else if (role === 'client') {
       setPrompt(localReady, 'Warte auf die anderen …', hostState === 'race' ? 'Beim Gastgeber läuft noch ein Rennen' : 'Der Gastgeber startet, sobald alle bereit sind', '🌍', 1);
     } else if (role === 'host') {
       const others = [...tvConns.values()].filter((t) => t.players.length);
