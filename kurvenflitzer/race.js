@@ -9,6 +9,7 @@ import { loadConfig, sanitize } from '../js/character.js';
 import { GRASS, WALL, T, N, SEG, TRACK_LEN, sample, nearest, nearestGlobal, lateral, buildWorld, makeKart } from './world.js';
 import { Cockpit } from './cockpit.js';
 import { peerOptions as netOptions } from '../js/net.js';
+import { ITEMS, ITEM_KEYS, CRANKS, itemSvg, buildItemBoxes, animateBoxes, makeFxSprite, makeProjectile, itemTexture } from './items.js';
 
 /* ================================================================
    Grundlagen
@@ -91,6 +92,7 @@ for (let s = 70; s < TRACK_LEN - 30; s += 42) {
 }
 const coinGeo = new THREE.CylinderGeometry(0.75, 0.75, 0.16, 28); coinGeo.rotateX(Math.PI / 2);
 const coinMat = new THREE.MeshPhysicalMaterial({ color: '#f2c94c', metalness: 0.85, roughness: 0.25, clearcoat: 1, emissive: '#8a5a00', emissiveIntensity: 0.25 });
+const BOXES = buildItemBoxes(scene, sample, TRACK_LEN);
 const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _s1 = new THREE.Vector3(1, 1, 1), _s0 = new THREE.Vector3(0, 0, 0);
 
 /* ================================================================
@@ -114,7 +116,9 @@ function createRacer(def) {
     pos: new THREE.Vector3(), heading: 0, v: 0, idx: 0, lap: 0, prog: -10, finished: null,
     s: 0, off: 0, offT: 0, laneT: 0, vmax: def.vmax || 32,
     tgt: { x: 0, z: 0, h: 0, v: 0 }, gotAt: -1e9,
+    fx: null, items: [], itemAt: 0, fxSprite: makeFxSprite(),
   };
+  r.kart.add(r.fxSprite);
   return r;
 }
 function removeRacer(r) { scene.remove(r.kart); racers.delete(r.id); }
@@ -131,11 +135,12 @@ function createLocal(source, conn = null) {
   const p = {
     slot, id: `${myTv}:${slot}`, source, conn, camera, cockpit: new Cockpit(camera, 5 + slot), coins,
     cfg: slot === 0 ? loadConfig(CHAR_KEY) : sanitize({}),
-    input: { steer: 0, onWheel: false, handsUp: false, lastAt: -1e9, l: false, r: false },
+    input: { steer: 0, onWheel: false, handsUp: false, armsDown: false, cursor: null, lastAt: -1e9, l: false, r: false },
     keyMap: null, racer: null, ready: false, readyT: 0, upT: 0,
     taken: new Uint8Array(COINS.length), coinCount: 0, boost: 0, boostT: 0,
     laps: [], lapStart: 0, prevIdx: 0, bumpCd: 0, wallCd: 0, offroad: false, steer: 0, shake: 0, fovKick: 0, camTarget: new THREE.Vector3(),
     knock: new THREE.Vector3(), spin: 0, bangCd: 0, lastPlace: 0, changeUntil: 0,
+    items: [], aim: null, downT: 0, crankUp: false, noItemCd: 0, rollT: 0, lastKey: '',
   };
   if (source === 'keys') p.keyMap = locals.some((q) => q.keyMap === 'arrows') ? 'ad' : 'arrows';
   if (slot > 0) p.cfg = sanitize({ ...p.cfg, topColor: P_COLORS[slot] });
@@ -211,12 +216,16 @@ function resetRace() {
     r.heading = Math.atan2(sp.t.x, sp.t.z);
     r.idx = nearestGlobal(r.pos); r.prog = r.idx * SEG - TRACK_LEN;
     r.tgt = { x: r.pos.x, z: r.pos.z, h: r.heading, v: 0 };
+    r.fx = null; r.items = []; r.itemAt = 0;
     placeKart(r, 0);
   }
+  for (const b of BOXES) b.until = 0;
+  shots.length = 0;
   for (const p of locals) {
     Object.assign(p, { startNow: false, ready: false, readyT: 0, upT: 0, coinCount: 0, boost: 0, boostT: 0, laps: [], lapStart: 0, steer: 0, fovKick: 0, spin: 0, lastPlace: 0 });
     p.knock.set(0, 0, 0);
     p.taken.fill(0);
+    p.items = []; closeAim(p); p.downT = 0; p.crankUp = false; p.handback = 0;
     if (p.racer) p.prevIdx = p.racer.idx;
   }
 }
@@ -244,6 +253,19 @@ function onPose(p, k, w = 640, h = 480) {
   const L = hand('l'), R = hand('r');
   const headY = ok(P.nose, 0.4) ? P.nose.y : (P.lSh.y + P.rSh.y) / 2 - sw * 0.6;
   inp.handsUp = !!(L && R && L.y < headY - sw * 0.15 && R.y < headY - sw * 0.15);
+  // Beide Arme hängen nach unten (Item-Menü): Ellbogen unter den Schultern, Hände unter den Ellbogen
+  // oder – im Sitzen häufig – ganz unten aus dem Bild
+  const down = (s) => {
+    const Sh = P[s + 'Sh'], El = P[s + 'El'], Wr = P[s + 'Wr'];
+    if (!ok(El)) return Wr.y > Sh.y + sw * 1.3 && ok(Wr, 0.2);
+    if (El.y < Sh.y + sw * 0.55 || Math.abs(El.x - Sh.x) > sw * 0.75) return false;
+    return ok(Wr, 0.25) ? Wr.y > El.y + sw * 0.3 : true;
+  };
+  inp.armsDown = down('l') && down('r');
+  // Zeiger für das Item-Menü: die höhere Hand
+  const midX = (P.lSh.x + P.rSh.x) / 2, midY = (P.lSh.y + P.rSh.y) / 2;
+  const ptr = L && R ? (L.y < R.y ? L : R) : L || R;
+  inp.cursor = ptr && !inp.armsDown ? { x: clamp((ptr.x - midX) / (sw * 3.4) + 0.5, 0, 1), y: clamp((ptr.y - (midY - sw * 1.1)) / (sw * 2.4), 0, 1) } : null;
   if (!L || !R) { inp.onWheel = false; return; }
   const dx = R.x - L.x, dy = R.y - L.y, dist = Math.hypot(dx, dy);
   inp.onWheel = dist > sw * 0.35 && dist < sw * 3.2 && !inp.handsUp;
@@ -256,14 +278,21 @@ function onPose(p, k, w = 640, h = 480) {
 const hasControl = (p) => p.source === 'keys' || now - p.input.lastAt < 0.6;
 const gripping = (p) => p.source === 'keys' || (hasControl(p) && p.input.onWheel);
 
-const KEYS = { arrows: { l: ['arrowleft'], r: ['arrowright'] }, ad: { l: ['a'], r: ['d'] } };
+const KEYS = { arrows: { l: ['arrowleft'], r: ['arrowright'], u: ['arrowup'], d: ['arrowdown'] }, ad: { l: ['a'], r: ['d'], u: ['w'], d: ['s'] } };
 addEventListener('keydown', (e) => {
   audio.unlock(); updateSoundBtn();
   const k = e.key.toLowerCase();
   if (e.target && e.target.tagName === 'INPUT') return;
   for (const p of locals) if (p.keyMap) {
-    if (KEYS[p.keyMap].l.includes(k)) p.input.l = true;
-    if (KEYS[p.keyMap].r.includes(k)) p.input.r = true;
+    const km = KEYS[p.keyMap], side = km.l.includes(k) ? 'l' : km.r.includes(k) ? 'r' : '';
+    if (side) {
+      p.input[side] = true;
+      if (p.aim && !e.repeat) aimStep(p, side === 'l' ? -1 : 1);
+      if (!e.repeat && p.racer && p.racer.fx && p.racer.fx.kind === 'engine' && side !== p.lastKey) crank(p, 0.5);
+      if (side) p.lastKey = side;
+    }
+    if (km.u.includes(k) && !e.repeat) keyItem(p);
+    if (km.d.includes(k) && p.aim) closeAim(p, true);
   }
   if (k === 'f') toggleFullscreen();
   if (k === 'm') { audio.setMuted(!audio.muted); updateSoundBtn(); }
@@ -581,6 +610,7 @@ function onClientMessage(tv, msg) {
   else if (msg.t === 'st') { applyStates(msg.l); broadcastTv(msg, tv); }
   else if (msg.t === 'again') { if (state === 'results' || state === 'ready') doRestart(); }
   else if (msg.t === 'bump') { const r = racers.get(msg.i); if (r && r.local) applyBump(msg); else if (r && r.kind === 'ai') bumpAI(r, msg.nx, msg.nz, msg.k); else broadcastTv(msg, tv); }
+  else if (msg.t === 'item') onItemMsg(msg, tv);
 }
 // Gast empfängt vom Gastgeber
 function onHostMessage(msg) {
@@ -596,6 +626,7 @@ function onHostMessage(msg) {
   else if (msg.t === 'reset') { if (pendingRoster) { hostRoster = pendingRoster; pendingRoster = null; } if (msg.list) hostRoster = msg.list; applyRoster(hostRoster || buildRoster()); setState(locals.length ? 'ready' : 'lobby'); }
   else if (msg.t === 'hstate') hostState = msg.s;
   else if (msg.t === 'bump') applyBump(msg);
+  else if (msg.t === 'item') onItemMsg(msg);
   else if (msg.t === 'nohost') { onlineInfo('Dieser TV ist selbst schon Gast in einem anderen Raum. Gib den Code des Gastgeber-TVs ein.'); }
 }
 let pendingRoster = null;
@@ -608,6 +639,7 @@ function applyStates(list) {
     if (!r || r.kind !== 'remote') continue;
     r.tgt = { x: s.x, z: s.z, h: s.h, v: s.v };
     r.prog = s.p; r.lap = s.lp; r.finished = s.f; r.gotAt = now;
+    r.fx = s.e ? { kind: ITEM_KEYS[s.e - 1], t0: now, until: now + 0.6 } : null;
     if (r.firstSnap !== false) { r.pos.set(s.x, 0, s.z); r.heading = s.h; r.firstSnap = false; }
   }
 }
@@ -618,7 +650,7 @@ function netTick(dt) {
   if (netT <= 0 && (state === 'race' || state === 'countdown' || state === 'results' || state === 'ready')) {
     netT = 1 / 15;
     const own = [...racers.values()].filter((r) => r.kind === 'local' || (role === 'host' && r.kind === 'ai'));
-    const l = own.map((r) => ({ i: r.id, x: +r.pos.x.toFixed(2), z: +r.pos.z.toFixed(2), h: +r.heading.toFixed(3), v: +r.v.toFixed(1), p: +r.prog.toFixed(1), lp: r.lap, f: r.finished }));
+    const l = own.map((r) => ({ i: r.id, x: +r.pos.x.toFixed(2), z: +r.pos.z.toFixed(2), h: +r.heading.toFixed(3), v: +r.v.toFixed(1), p: +r.prog.toFixed(1), lp: r.lap, f: r.finished, e: r.fx ? ITEM_KEYS.indexOf(r.fx.kind) + 1 : 0 }));
     if (role === 'host') broadcastTv({ t: 'st', l }); else sendHost({ t: 'st', l });
   }
   if (role === 'client' && readyT <= 0) { readyT = 0.5; sendHost({ t: 'ready', v: state === 'ready' && locals.length > 0 && locals.every((p) => p.ready) }); }
@@ -651,7 +683,9 @@ function createHud(p) {
         <span class="sep"></span>
         <div><div class="lbl">Runde</div><div class="num plap"><b>1</b><small>/${LAPS}</small></div></div>
       </div>
+      <div class="pitems"><span class="islot"></span><span class="islot"></span><span class="hint">Arme runter</span></div>
     </div>
+    <div class="pfx"><span class="ic"></span><span class="tx"></span><span class="cr"></span></div>
     <div class="pbottom">
       <div class="pcoins">${ICON.coin}<b>0</b></div>
       <div class="pturbo">${ICON.bolt}Turbo<span class="seg"><i></i><i></i><i></i><i></i><i></i></span></div>
@@ -659,13 +693,23 @@ function createHud(p) {
     <div class="speedo"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="track" cx="60" cy="60" r="50"/><circle class="bar" cx="60" cy="60" r="50"/><g class="ticks">${TICKS}</g></svg>
       <div class="speed-num"><b>0</b><small>km/h</small></div></div>
     <div class="pwheel"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" stroke-width="9"/><path d="M14 54h72M50 54v34" stroke="currentColor" stroke-width="8" stroke-linecap="round"/></svg></div>
-    <div class="pbanner"></div>`;
+    <div class="pbanner"></div>
+    <div class="phand"><b></b><span>Autopilot · Hände zurück ans Lenkrad!</span></div>
+    <div class="paim">
+      <div class="aim-head"><div class="aim-title">Auf wen werfen?</div><div class="aim-sub"></div></div>
+      <div class="aim-targets"></div>
+      <div class="aim-items"></div>
+      <div class="aim-cursor"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10m0-.5V4a1.5 1.5 0 0 1 3 0v6m0-4.5a1.5 1.5 0 0 1 3 0V12m0-4a1.5 1.5 0 0 1 3 0v6.5a7 7 0 0 1-7 7h-1a7 7 0 0 1-5.6-2.8L4 17.3a1.6 1.6 0 0 1 2.5-2L9 17.5V11" fill="#fff" stroke="#3d1418" stroke-width="1.4" stroke-linejoin="round"/></svg></div>
+    </div>`;
   $('phuds').appendChild(el);
   const q = (sel) => el.querySelector(sel);
   return {
     root: el, pos: q('.ppos b'), posOf: q('.ppos small'), lap: q('.plap b'), speed: q('.speed-num b'), speedo: q('.speedo'),
     bar: q('.speedo .bar'), coins: q('.pcoins b'), coinsBox: q('.pcoins'), turbo: q('.pturbo'), segs: [...el.querySelectorAll('.pturbo .seg i')],
     change: q('.pchange'), wheel: q('.pwheel'), banner: q('.pbanner'),
+    items: q('.pitems'), itemSlots: [...el.querySelectorAll('.pitems .islot')], fx: q('.pfx'), fxIc: q('.pfx .ic'), fxTx: q('.pfx .tx'), fxCr: q('.pfx .cr'),
+    hand: q('.phand'), handNum: q('.phand b'),
+    aim: q('.paim'), aimTitle: q('.aim-title'), aimSub: q('.aim-sub'), aimTargets: q('.aim-targets'), aimItems: q('.aim-items'), aimCursor: q('.aim-cursor'), aimKey: '',
   };
 }
 function renderSlots() {
@@ -817,6 +861,7 @@ function saveStats() {
   try {
     const st = JSON.parse(localStorage.getItem('slope.stats')) || {};
     st.kurvenflitzer = (st.kurvenflitzer || 0) + Math.round(raceT) * Math.max(1, locals.length);
+    st.races = (st.races || 0) + 1;
     localStorage.setItem('slope.stats', JSON.stringify(st));
   } catch { /* privat */ }
 }
@@ -830,9 +875,13 @@ function doRestart() {
 const fwd = new THREE.Vector3(), _v = new THREE.Vector3();
 function updateLocal(p, dt, driving) {
   const r = p.racer; if (!r) return;
+  const fx = r.fx ? r.fx.kind : '';
+  const auto = !!p.aim || now < (p.handback || 0);    // Autopilot: Menü offen oder 3-2-1 danach
   let target = 0;
-  if (p.source === 'keys') target = (p.input.r ? 1 : 0) - (p.input.l ? 1 : 0);
+  if (auto) target = autoSteer(r, 1);                  // fährt selbst weiter
+  else if (p.source === 'keys') target = (p.input.r ? 1 : 0) - (p.input.l ? 1 : 0);
   else if (gripping(p)) target = p.input.steer;
+  if (fx === 'swap' && !auto) target = -target;         // Spiegel-Lenkung
   p.steer += (target - p.steer) * damp(p.source === 'keys' ? 6 : 14, dt);
   r.steer = p.steer;
 
@@ -844,9 +893,12 @@ function updateLocal(p, dt, driving) {
     vT = p.boostT > 0 ? V_BOOST : V_MAX;
     vT *= 1 - 0.22 * Math.abs(p.steer) ** 1.5;
     if (p.offroad) vT = Math.min(vT, V_GRASS);
-    if (!gripping(p)) vT *= 0.45; // Hände weg vom Lenkrad = Gas weg
+    if (auto) vT *= 0.85;
+    else if (!gripping(p)) vT *= 0.45; // Hände weg vom Lenkrad = Gas weg
+    if (fx === 'reverse') vT *= 0.75;
+    if (fx === 'stop' || fx === 'engine') vT = 0;
   }
-  r.v += (vT - r.v) * (r.v < vT ? 0.5 : 1.4) * dt;
+  r.v += (vT - r.v) * (r.v < vT ? 0.5 : fx === 'stop' ? 6 : 1.4) * dt;
   r.v = Math.max(0, r.v);
   r.heading -= p.steer * 1.5 * Math.min(1, r.v / 9) * dt;
   // Nach einem Rempler: seitlich wegrutschen und kurz schleudern
@@ -901,8 +953,20 @@ function updateLocal(p, dt, driving) {
       if (p.boost >= 1) { p.boost = 0; p.boostT = 3; audio.gold(); pBanner(p, 'TURBO!'); sendPhone(p.conn, { t: 'hit', gold: true }); }
     }
   }
+  // Item-Boxen
+  if (driving) for (const b of BOXES) {
+    if (now < b.until) continue;
+    if ((b.pos.x - r.pos.x) ** 2 + (b.pos.z - r.pos.z) ** 2 < 2.3 * 2.3) { b.until = now + 4; giveItem(p); }
+  }
   if (p.offroad && r.v > 8 && Math.random() < dt * 6) audio.skid(0.4);
   r.prog = (r.lap - 1) * TRACK_LEN + r.idx * SEG;
+}
+// Lenkeinschlag, um der Strecke zu folgen (Autopilot während des Item-Menüs, KI unter Spiegel-Lenkung)
+function autoSteer(r, look = 1) {
+  const ahead = T[(r.idx + Math.round(14 / SEG)) % N];
+  const lat = lateral(r.pos, r.idx);
+  const tx = ahead.p.x - ahead.r.x * lat * 0.4 - r.pos.x, tz = ahead.p.z - ahead.r.z * lat * 0.4 - r.pos.z;
+  return clamp(-angDiff(r.heading, Math.atan2(tx, tz)) * 2.2 * look, -1, 1);
 }
 function updateLaps(p) {
   const r = p.racer; if (!r || r.finished != null) return;
@@ -921,6 +985,213 @@ function updateLaps(p) {
   } else if (p.prevIdx < N * 0.15 && i > N * 0.85) r.lap--;
   p.prevIdx = i;
   r.prog = (r.lap - 1) * TRACK_LEN + r.idx * SEG;
+}
+
+/* ================================================================
+   Items: einsammeln, Menü (beide Arme runter), werfen, Wirkung
+   ================================================================ */
+const shots = [];               // fliegende Items
+const AIM_OPEN = 0.35, AIM_GRAB = 0.3, AIM_DROP = 0.65, AIM_MAX = 10;
+
+function giveItem(p) {
+  if (p.items.length >= 2) return;
+  const kind = ITEM_KEYS[Math.floor(Math.random() * ITEM_KEYS.length)];
+  p.items.push(kind);
+  p.rollT = 0.9;               // kurze «Würfel»-Animation im Item-Feld
+  audio.combo(3);
+  sendPhone(p.conn, { t: 'fx', title: `Item: ${ITEMS[kind].name}`, sub: 'Beide Arme nach unten = Menü öffnen und auf jemanden werfen', ms: 3500 });
+}
+const throwTargets = (p) => standings().filter((o) => o !== p.racer && !o.gone && o.finished == null);
+
+function openAim(p) {
+  if (!p.items.length || p.aim) return;
+  const targets = throwTargets(p);
+  if (!targets.length) { pBanner(p, 'Niemand zum Abwerfen'); return; }
+  p.aim = { t0: now, cx: 0.5, cy: 0.85, grabbed: p.items.length === 1 ? 0 : null, hover: -1, dwell: 0, sel: 0, targets };
+  audio.whoosh();
+  p.hud.aim.classList.add('show');
+  renderAim(p, true);
+}
+const HANDBACK = 3; // Sekunden Autopilot nach dem Menü, damit die Hände zurück ans Lenkrad können
+function closeAim(p, cancelled = false) {
+  if (!p.aim) return;
+  p.aim = null; p.downT = 0;
+  if (state === 'race' && p.racer && p.racer.finished == null) { p.handback = now + HANDBACK; p.handbackShown = 0; }
+  if (p.hud) p.hud.aim.classList.remove('show');
+  if (cancelled) audio.skid(0.5);
+}
+function keyItem(p) {
+  if (state !== 'race' || !p.racer || p.racer.finished != null) return;
+  if (!p.aim) { openAim(p); if (p.aim) p.aim.grabbed = 0; return; }
+  const t = p.aim.targets[p.aim.sel];
+  if (t) throwItem(p, p.aim.grabbed ?? 0, t);
+}
+function aimStep(p, d) { const a = p.aim; if (!a || !a.targets.length) return; a.sel = (a.sel + d + a.targets.length) % a.targets.length; audio.tick(); renderAim(p); }
+
+// Positionen im Menü (0..1): Ziele oben im Bogen, eigene Items unten
+function aimLayout(a, nItems) {
+  const n = a.targets.length;
+  const tg = a.targets.map((_, i) => { const f = n === 1 ? 0.5 : 0.17 + (0.66 * i) / (n - 1); return { x: f, y: 0.3 - Math.sin(f * Math.PI) * 0.06 }; });
+  const it = Array.from({ length: nItems }, (_, i) => ({ x: nItems === 1 ? 0.5 : 0.4 + i * 0.2, y: 0.82 }));
+  return { tg, it, tw: n === 1 ? 0.3 : Math.min(0.24, 0.66 / (n - 1)) };
+}
+function updateAim(p, dt) {
+  const a = p.aim; if (!a) return;
+  if (now - a.t0 > AIM_MAX || !p.items.length || state !== 'race' || (p.racer && p.racer.finished != null)) { closeAim(p, true); return; }
+  // Beide Arme wieder runter = Menü schliessen
+  if (now - a.t0 > 1.2 && p.input.armsDown) { p.downT += dt; if (p.downT > 0.5) { closeAim(p, true); return; } } else if (now - a.t0 > 1.2) p.downT = 0;
+  if (p.source === 'keys') { renderAim(p); return; }
+  const c = p.input.cursor;
+  if (c && hasControl(p)) { a.cx = lerp(a.cx, c.x, damp(16, dt)); a.cy = lerp(a.cy, c.y, damp(16, dt)); }
+  const L = aimLayout(a, p.items.length);
+  let hover = -1;
+  if (a.grabbed == null) {
+    L.it.forEach((q, i) => { if (Math.hypot(a.cx - q.x, (a.cy - q.y) * 0.6) < 0.1) hover = i; });
+    a.dwell = hover >= 0 && hover === a.hover ? a.dwell + dt : 0;
+    if (hover >= 0 && a.dwell >= AIM_GRAB) { a.grabbed = hover; a.dwell = 0; audio.tick(); }
+  } else {
+    L.tg.forEach((q, i) => { if (Math.abs(a.cx - q.x) < L.tw / 2 && Math.abs(a.cy - q.y) < 0.16) hover = i; });
+    a.dwell = hover >= 0 && hover === a.hover ? a.dwell + dt : 0;
+    if (hover >= 0 && a.dwell >= AIM_DROP) { throwItem(p, a.grabbed, a.targets[hover]); return; }
+  }
+  if (hover !== a.hover && hover >= 0) audio.tick();
+  a.hover = hover;
+  renderAim(p);
+}
+function renderAim(p, full = false) {
+  const a = p.aim, h = p.hud; if (!a) return;
+  const L = aimLayout(a, p.items.length);
+  const sel = p.source === 'keys' ? a.sel : a.hover;
+  const key = a.targets.map((t) => t.id).join() + '|' + p.items.join();
+  if (full || h.aimKey !== key) {
+    h.aimKey = key;
+    h.aimTargets.innerHTML = a.targets.map((t, i) => {
+      const place = standings().indexOf(t) + 1;
+      return `<div class="aim-t" style="left:${L.tg[i].x * 100}%;top:${L.tg[i].y * 100}%;--c:${t.local ? P_COLORS[t.local.slot] : t.color};width:${Math.min(17, L.tw * 100 - 2)}%"><span class="pl">${place}.</span><span class="kd"></span><b>${t.name}</b><i class="ring"></i></div>`;
+    }).join('');
+    h.aimItems.innerHTML = p.items.map((k, i) => `<div class="aim-i" style="left:${L.it[i].x * 100}%;top:${L.it[i].y * 100}%;--c:${ITEMS[k].color}">${itemSvg(k)}<span>${ITEMS[k].name}</span></div>`).join('');
+    h.aimSub.textContent = p.source === 'keys' ? `${p.keyMap === 'arrows' ? '← →' : 'A / D'} Ziel wählen · ${p.keyMap === 'arrows' ? '↑' : 'W'} werfen · ${p.keyMap === 'arrows' ? '↓' : 'S'} zurück` : 'Item mit der Hand auf eine Person ziehen und kurz halten · beide Arme runter = zurück';
+  }
+  [...h.aimTargets.children].forEach((el, i) => {
+    el.classList.toggle('hover', i === sel);
+    el.style.setProperty('--d', i === sel && p.source !== 'keys' && a.grabbed != null ? clamp(a.dwell / AIM_DROP, 0, 1) : 0);
+  });
+  [...h.aimItems.children].forEach((el, i) => {
+    const grabbed = a.grabbed === i;
+    el.classList.toggle('grabbed', grabbed);
+    el.classList.toggle('hover', a.grabbed == null && i === a.hover);
+    if (grabbed && p.source !== 'keys') { el.style.left = a.cx * 100 + '%'; el.style.top = a.cy * 100 + '%'; }
+    else if (grabbed) { const t = L.tg[a.sel]; el.style.left = t.x * 100 + '%'; el.style.top = (t.y + 0.28) * 100 + '%'; }
+    else { el.style.left = L.it[i].x * 100 + '%'; el.style.top = L.it[i].y * 100 + '%'; }
+  });
+  h.aimCursor.style.left = a.cx * 100 + '%'; h.aimCursor.style.top = a.cy * 100 + '%';
+  h.aimCursor.hidden = p.source === 'keys' || a.grabbed != null;
+  h.aimTitle.textContent = a.grabbed == null ? 'Greif dein Item' : 'Auf wen werfen?';
+}
+
+function throwItem(p, idx, target) {
+  const kind = p.items[idx]; if (!kind || !target) return;
+  p.items.splice(idx, 1);
+  closeAim(p);
+  launch(p.racer, target, kind, p.racer.name);
+  pBanner(p, `${ITEMS[kind].name} → ${target.name}`);
+  audio.whoosh();
+}
+function aiThrow(r) {
+  const kind = r.items.shift();
+  const others = standings().filter((o) => o !== r && !o.gone && o.finished == null);
+  if (!others.length) return;
+  // lieber auf Menschen und auf die, die vorne liegen
+  const humans = others.filter((o) => o.def.kind === 'human');
+  const ahead = (humans.length ? humans : others).filter((o) => o.prog > r.prog);
+  const pool = ahead.length ? ahead : humans.length ? humans : others;
+  launch(r, pool[Math.floor(Math.random() * pool.length)], kind, r.name);
+}
+// Das Item fliegt sichtbar zum Ziel; die Wirkung kommt beim Einschlag (bzw. übers Netz)
+function launch(from, target, kind, fromName) {
+  const s = makeProjectile(scene, kind);
+  s.position.copy(from.pos).setY(2);
+  shots.push({ s, from: from.pos.clone().setY(2), target, kind, fromName, t: 0, dur: clamp(from.pos.distanceTo(target.pos) / 70, 0.35, 0.9) });
+}
+function updateShots(dt) {
+  for (let i = shots.length - 1; i >= 0; i--) {
+    const sh = shots[i];
+    sh.t += dt;
+    const f = Math.min(1, sh.t / sh.dur);
+    sh.s.position.lerpVectors(sh.from, _v.copy(sh.target.pos).setY(1.6), f);
+    sh.s.position.y += Math.sin(f * Math.PI) * 5;
+    sh.s.material.rotation = sh.t * 10;
+    if (f >= 1) { scene.remove(sh.s); sh.s.material.dispose(); shots.splice(i, 1); deliver(sh.target, sh.kind, sh.fromName); }
+  }
+}
+function deliver(r, kind, fromName) {
+  if (r.local || (r.kind === 'ai' && role !== 'client')) applyItem(r, kind, fromName);
+  else sendItem(r.id, kind, fromName);
+}
+function applyItem(r, kind, fromName = '') {
+  if (r.finished != null || r.gone) return;
+  const d = ITEMS[kind];
+  r.fx = { kind, t0: now, until: now + d.dur, crank: 0, from: fromName };
+  if (kind === 'stop') r.v = 0;
+  const p = r.local;
+  if (p) {
+    if (kind === 'stop') p.boostT = 0;
+    p.shake = Math.max(p.shake, 0.6); p.crankUp = false;
+    pBanner(p, d.hit, true);
+    audio.bad();
+    sendPhone(p.conn, { t: 'fx', bad: true, title: d.hit, sub: kind === 'engine' ? `Heb ${CRANKS}× beide Arme über den Kopf, um den Motor anzukurbeln!` : `${fromName ? fromName + ' hat dich erwischt. ' : ''}Hält ${Math.round(d.dur)} Sekunden.`, ms: kind === 'engine' ? 6000 : d.dur * 1000 });
+  }
+  // Wer geworfen hat, sieht den Treffer
+  const thrower = locals.find((q) => q.racer && q.racer.name === fromName);
+  if (thrower && thrower !== p) pBanner(thrower, `Treffer! ${r.name}`, true);
+}
+function endFx(r, text = '') {
+  if (!r.fx) return;
+  r.fx = null;
+  if (r.local && text) { pBanner(r.local, text); audio.combo(2); sendPhone(r.local.conn, { t: 'fx', title: text, sub: 'Weiter geht’s!', ms: 1500 }); }
+}
+function crank(p, amount = 1) {
+  const r = p.racer; if (!r || !r.fx || r.fx.kind !== 'engine') return;
+  r.fx.crank += amount;
+  audio.pop(Math.min(8, Math.floor(r.fx.crank * 2)));
+  sendPhone(p.conn, { t: 'hit' });
+  if (r.fx.crank >= CRANKS) { endFx(r, 'Motor läuft!'); r.v = Math.max(r.v, 8); }
+}
+// pro Bild: Item-Menü öffnen, Ankurbeln zählen, abgelaufene Wirkungen beenden
+function updateItems(p, dt) {
+  const r = p.racer; if (!r) return;
+  p.rollT = Math.max(0, p.rollT - dt);
+  p.noItemCd -= dt;
+  if (state !== 'race' || r.finished != null) { closeAim(p); return; }
+  const fx = r.fx ? r.fx.kind : '';
+  if (fx === 'engine' && p.source !== 'keys') {
+    // Ankurbeln: Arme über den Kopf und wieder runter
+    if (p.input.handsUp) p.crankUp = true;
+    else if (p.crankUp && p.input.onWheel || p.crankUp && p.input.armsDown) { p.crankUp = false; crank(p); }
+  }
+  if (r.fx && now > r.fx.until) endFx(r, r.fx.kind === 'engine' ? 'Motor läuft wieder' : 'Wieder normal');
+  if (p.aim) { updateAim(p, dt); return; }
+  if (p.handback && now >= p.handback) { p.handback = 0; pBanner(p, 'FAHR!', true); audio.go(); sendPhone(p.conn, { t: 'fx', title: 'Du fährst wieder!', sub: 'Hände ans Lenkrad.', ms: 1500 }); }
+  if (p.handback) return;
+  if (p.source === 'keys' || fx === 'engine') return;
+  if (p.input.armsDown && hasControl(p)) {
+    p.downT += dt;
+    if (p.downT >= AIM_OPEN) {
+      if (p.items.length) openAim(p);
+      else if (p.noItemCd <= 0) { p.noItemCd = 3; pBanner(p, 'Noch kein Item – fahr durch eine ?-Box'); }
+      p.downT = 0;
+    }
+  } else p.downT = 0;
+}
+function sendItem(id, kind, from) {
+  const msg = { t: 'item', i: id, k: kind, f: from };
+  if (role === 'host') broadcastTv(msg); else sendHost(msg);
+}
+function onItemMsg(msg, fromTv = null) {
+  const r = racers.get(msg.i);
+  if (!r || !ITEMS[msg.k]) { if (fromTv && role === 'host') broadcastTv(msg, fromTv); return; }
+  if (r.local || (r.kind === 'ai' && role !== 'client')) applyItem(r, msg.k, msg.f);
+  else if (role === 'host') broadcastTv(msg, fromTv);
 }
 
 /* ---------- Rempler ---------- */
@@ -971,6 +1242,13 @@ function updateAI(r, dt, mode) {
     if (r.finished != null) target = 18;
   } else if (mode === 'demo') target *= 0.8;
   else target = 0;
+  if (r.fx && now > r.fx.until && r.kind === 'ai') r.fx = null;
+  const fx = r.fx ? r.fx.kind : '';
+  if (fx === 'stop' || fx === 'engine') target = 0;
+  if (fx === 'reverse') target *= 0.65;
+  if (fx === 'swap') { target *= 0.8; if (Math.random() < dt * 1.5) r.offT = rand(-5, 5); }
+  if (fx === 'stop') r.v = Math.max(0, r.v - 60 * dt);
+  if (fx === 'engine' && now > r.fx.t0 + 4) endFx(r, 'Motor läuft wieder');
   r.v += (target - r.v) * (r.v < target ? 0.45 : 1.6) * dt;
   r.s += r.v * dt;
   r.laneT -= dt;
@@ -986,6 +1264,13 @@ function updateAI(r, dt, mode) {
   r.prog = r.s - TRACK_LEN;
   r.lap = Math.floor(r.prog / TRACK_LEN) + 1;
   if (mode === 'race' && r.finished == null && r.prog >= LAPS * TRACK_LEN) r.finished = raceT;
+  if (mode === 'race' && r.finished == null) {
+    for (const b of BOXES) {
+      if (now < b.until || r.items.length) continue;
+      if ((b.pos.x - r.pos.x) ** 2 + (b.pos.z - r.pos.z) ** 2 < 2.3 * 2.3) { b.until = now + 4; if (Math.random() < 0.6) { r.items.push(ITEM_KEYS[Math.floor(Math.random() * ITEM_KEYS.length)]); r.itemAt = now + rand(3, 9); } }
+    }
+    if (r.items.length && now > r.itemAt && state === 'race') aiThrow(r);
+  }
 }
 function updateRemote(r, dt) {
   // Weiche Bewegung zwischen den Netz-Updates (plus Vorausrechnen)
@@ -998,8 +1283,17 @@ function updateRemote(r, dt) {
 }
 function placeKart(r, dt) {
   r.kart.position.copy(r.pos);
-  r.kart.rotation.y = r.heading;
+  const fx = r.fx && now < r.fx.until ? r.fx.kind : '';
+  r.turn = lerp(r.turn || 0, fx === 'reverse' ? Math.PI : 0, damp(6, dt || 1));
+  r.kart.rotation.y = r.heading + r.turn;
   r.kart.visible = !r.gone;
+  const sp = r.fxSprite;
+  sp.visible = !!fx;
+  if (fx) {
+    if (sp.material.map !== itemTexture(fx)) { sp.material.map = itemTexture(fx); sp.material.needsUpdate = true; }
+    sp.position.y = 3.1 + Math.sin(now * 5) * 0.15;
+    const k = 1.5 + Math.sin(now * 9) * 0.08; sp.scale.set(k, k, 1);
+  }
   for (const w of r.kart.userData.wheels) w.rotation.x += r.v * dt / 0.42;
 }
 
@@ -1032,7 +1326,8 @@ function updatePlayerCam(p, dt) {
   const r = p.racer, cam = p.camera;
   if (!r) return;
   p.shake = Math.max(0, p.shake - dt * 1.5);
-  fwd.set(Math.sin(r.heading), 0, Math.cos(r.heading));
+  const back = r.turn || 0;
+  fwd.set(Math.sin(r.heading + back), 0, Math.cos(r.heading + back));
   const bump = p.offroad ? Math.sin(now * 40) * 0.025 * Math.min(1, r.v / 10) : 0;
   cam.position.copy(r.pos).addScaledVector(fwd, -0.2);
   cam.position.y = 1.25 + bump + (Math.random() - 0.5) * p.shake * 0.3;
@@ -1104,7 +1399,8 @@ function tick() {
     if (stateT >= 2.9) { $('lights').dataset.n = ''; setState('race'); }
   } else if (state === 'race' || state === 'results') {
     if (state === 'race') raceT += realDt;
-    for (const p of locals) { updateLocal(p, dt, p.racer && p.racer.finished == null); updateLaps(p); }
+    for (const p of locals) { updateLocal(p, dt, p.racer && p.racer.finished == null); updateLaps(p); updateItems(p, realDt); }
+    updateShots(dt);
     if (simAI) for (const r of racers.values()) if (r.kind === 'ai') updateAI(r, dt, 'race');
     if (state === 'race') {
       const allDone = locals.every((p) => !p.racer || p.racer.finished != null);
@@ -1126,6 +1422,7 @@ function tick() {
     placeKart(r, dt);
   }
   netTick(realDt);
+  animateBoxes(BOXES, now, dt);
 
   // Cockpits, Münzen, Kameras
   for (const p of locals) {
@@ -1204,7 +1501,28 @@ function tick() {
       const segOn = p.boostT > 0 ? Math.ceil((p.boostT / 3) * 5) : Math.round(p.boost * 5);
       h.segs.forEach((g, k) => g.classList.toggle('on', k < segOn));
       if (h.coins.textContent != p.coinCount) { h.coins.textContent = p.coinCount; h.coinsBox.classList.remove('bump'); void h.coinsBox.offsetWidth; h.coinsBox.classList.add('bump'); }
-      h.wheel.classList.toggle('show', state === 'race' && r.finished == null && !gripping(p));
+      const fxk = r.fx ? r.fx.kind : '';
+      const hb = p.handback && state === 'race' ? Math.ceil(p.handback - now) : 0;
+      h.hand.classList.toggle('show', hb > 0);
+      if (hb > 0 && h.handNum.textContent !== String(hb)) { h.handNum.textContent = hb; h.hand.classList.remove('tick'); void h.hand.offsetWidth; h.hand.classList.add('tick'); audio.tick(); }
+      h.wheel.classList.toggle('show', state === 'race' && r.finished == null && !gripping(p) && !p.aim && !hb && fxk !== 'engine');
+      // Items (mit kurzer Würfel-Animation nach dem Einsammeln)
+      const shown = p.items.map((k, n) => (p.rollT > 0 && n === p.items.length - 1 ? ITEM_KEYS[Math.floor(now * 12) % ITEM_KEYS.length] : k));
+      const ikey = shown.join() + (p.rollT > 0);
+      if (h.items.dataset.k !== ikey) {
+        h.items.dataset.k = ikey;
+        h.itemSlots.forEach((sl, n) => { const k = shown[n]; sl.innerHTML = k ? itemSvg(k) : ''; sl.style.setProperty('--c', k ? ITEMS[k].color : ''); sl.classList.toggle('full', !!k); });
+        h.items.classList.toggle('has', p.items.length > 0 && p.rollT <= 0);
+      }
+      h.items.classList.toggle('show', state === 'race' && r.finished == null);
+      // Wirkung eines Treffers
+      h.fx.classList.toggle('show', !!fxk && state === 'race');
+      if (fxk) {
+        const left = Math.max(0, r.fx.until - now);
+        if (h.fx.dataset.k !== fxk) { h.fx.dataset.k = fxk; h.fxIc.innerHTML = itemSvg(fxk); h.fx.style.setProperty('--c', ITEMS[fxk].color); }
+        h.fxTx.textContent = fxk === 'engine' ? (p.source === 'keys' ? 'Motor aus – ← → abwechselnd drücken!' : `Motor aus – ${CRANKS}× beide Arme hoch!`) : `${ITEMS[fxk].fx} · ${Math.ceil(left)} s`;
+        h.fxCr.innerHTML = fxk === 'engine' ? Array.from({ length: CRANKS }, (_, n) => `<i class="${n < Math.floor(r.fx.crank) ? 'on' : ''}"></i>`).join('') : '';
+      }
     }
     // Abstand zum Vordermann (nur bei einem Spieler, sonst zu eng)
     let gapTxt = '';
@@ -1257,6 +1575,8 @@ tick();
 // Test-Hilfe (Konsole)
 window.__race = {
   locals, racers, get state() { return state; }, get role() { return role; }, get code() { return code; }, get roster() { return roster; },
+  BOXES, give: (i, k) => { const p = locals[i]; if (p) p.items.push(k); }, hit: (i, k) => locals[i] && applyItem(locals[i].racer, k, 'Test'),
+  aim: (i) => locals[i] && locals[i].aim, get now() { return now; },
   setState, onPose: (i, k, w, h) => locals[i] && onPose(locals[i], k, w, h), addKeysPlayer, hostRoom, joinRoom, T, N, TRACK_LEN,
   finishLocal: (i) => { const p = locals[i]; if (p && p.racer) { p.racer.lap = LAPS; const s = T[N - 20]; p.racer.pos.set(s.p.x, 0, s.p.z); p.racer.idx = N - 20; p.prevIdx = N - 20; p.racer.heading = Math.atan2(s.t.x, s.t.z); p.racer.v = 30; } },
 };

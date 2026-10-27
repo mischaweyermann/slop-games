@@ -166,11 +166,6 @@
 
         <section class="list" aria-label="Alle Spiele">
           <h2>Alle Spiele</h2>
-          <a class="game" href="ballon-platzer/">
-            <span class="ico" style="background: #f3a6b8;"><svg width="30" height="36" viewBox="0 0 30 36" aria-hidden="true"><ellipse cx="15" cy="14" rx="11" ry="13" fill="#e2574c"/><path d="M15 27 l-3 5 h6z" fill="#e2574c"/><path d="M10 8 q2 -3 5 -3" stroke="#ffffff" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg></span>
-            <span class="t"><b>Ballon-Platzer</b><span>1 Spieler · 60 Sekunden · stehend</span></span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
-          </a>
           <a class="game" href="kurvenflitzer/">
             <span class="ico" style="background: #f7e9a6;"><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="none" stroke="#5a1f25" stroke-width="3.5"/><path d="M5 17h22M16 18v9" stroke="#5a1f25" stroke-width="3.5" stroke-linecap="round"/></svg></span>
             <span class="t"><b>Kurvenflitzer</b><span>1–4 Spieler · Online · sitzend</span></span>
@@ -200,14 +195,12 @@
               <svg viewBox="0 0 120 120" aria-hidden="true">
                 <circle cx="60" cy="60" r="48" fill="none" stroke="#5a1f25" stroke-width="16"/>
                 <circle id="arcK" style="display:none" cx="60" cy="60" r="48" fill="none" stroke="#e2574c" stroke-width="16" stroke-linecap="round" stroke-dasharray="0 302"/>
-                <circle id="arcB" style="display:none" cx="60" cy="60" r="48" fill="none" stroke="#f7e9a6" stroke-width="16" stroke-linecap="round" stroke-dasharray="0 302"/>
               </svg>
               <div class="c"><div><b id="totalMin">0</b><span>Minuten</span></div></div>
             </div>
             <div class="legend">
               <div><i style="background: #e2574c;"></i><span>Kurvenflitzer</span><b id="minK">0 Min.</b></div>
-              <div><i style="background: #f7e9a6;"></i><span>Ballon-Platzer</span><b id="minB">0 Min.</b></div>
-              <div><i style="background: #9b7fd1;"></i><span>Ballon-Rekord</span><b id="best">–</b></div>
+              <div><i style="background: #f7e9a6;"></i><span>Rennen gefahren</span><b id="races">0</b></div>
             </div>
           </div>
           <div class="empty" id="statsEmpty" hidden>Noch keine Runde gespielt – starte ein Spiel, dann siehst du hier, wie viel du dich bewegt hast.</div>
@@ -229,23 +222,16 @@
     // Spielzeit (von den Spielen lokal gespeichert)
     let stats = {};
     try { stats = JSON.parse(localStorage.getItem('slope.stats')) || {}; } catch { stats = {}; }
-    let best = 0;
-    try { best = +localStorage.getItem('ballonplatzer.best') || 0; } catch { /* privat */ }
-    const k = Math.round((stats.kurvenflitzer || 0) / 60), b = Math.round((stats.ballon || 0) / 60), total = k + b;
+    const k = Math.round((stats.kurvenflitzer || 0) / 60), races = stats.races || 0;
     document.getElementById('minK').textContent = k + ' Min.';
-    document.getElementById('minB').textContent = b + ' Min.';
-    document.getElementById('best').textContent = best ? best + ' Pkt.' : '–';
-    document.getElementById('totalMin').textContent = total;
+    document.getElementById('races').textContent = races;
+    document.getElementById('totalMin').textContent = k;
     const C = 2 * Math.PI * 48;
-    if (total > 0) {
-      const lk = C * (k / total), lb = C * (b / total);
-      if (k) document.getElementById('arcK').style.display = '';
-      if (b) document.getElementById('arcB').style.display = '';
-      document.getElementById('arcK').setAttribute('stroke-dasharray', `${Math.max(0, lk - 8)} ${C}`);
-      const arcB = document.getElementById('arcB');
-      arcB.setAttribute('stroke-dasharray', `${Math.max(0, lb - 8)} ${C}`);
-      arcB.setAttribute('stroke-dashoffset', `${-lk}`);
-    } else if (!best) {
+    if (k > 0 || races > 0) {
+      const arc = document.getElementById('arcK');
+      arc.style.display = '';
+      arc.setAttribute('stroke-dasharray', `${Math.max(4, C * Math.min(1, k / 60) - 8)} ${C}`);
+    } else {
       document.getElementById('statsEmpty').hidden = false;
     }
     // Vollbild (z. B. am Fernseher)
