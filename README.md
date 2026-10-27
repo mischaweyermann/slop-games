@@ -1,4 +1,4 @@
-# Slope Games 🎮
+# Slop Games 🎮
 
 Gratis Bewegungsspiele für den Fernseher. Das Handy ist die Kamera, der Körper ist der Controller – ohne App, ohne eigenen Server.
 
@@ -45,9 +45,10 @@ Wer getroffen wurde, ist **20 Sekunden geschützt** (im Menü ausgegraut; ein Wu
 Jede Person scannt den QR-Code mit ihrem eigenen Handy. Der Bildschirm teilt sich automatisch (2 = nebeneinander, 3–4 = Viertel). Jede/r hat eigenes Cockpit, eigene Münzen und eigene Anzeige; die anderen sieht man als Karts in ihren Charakterfarben. Wer während eines Rennens dazukommt, fährt ab dem nächsten Rennen mit.
 
 ### Online (mehrere TVs)
-1. TV B: **Online spielen** → den Code von TV A eingeben (steht auf TV A in der QR-Karte) → **Beitreten**
-2. TV A wird automatisch Gastgeber – dort muss nichts gedrückt werden
-3. An jedem TV können zusätzlich 1–4 Handys mitspielen (max. 8 Karts insgesamt)
+1. TV A: **Online spielen → 🔗 Einladungs-Link teilen** und den Link per WhatsApp o. ä. schicken
+2. Der Freund öffnet den Link auf **seinem TV/Laptop** (nicht auf dem Handy) – sein Bildschirm tritt automatisch bei. Alternativ dort **Online spielen** → Code von TV A eingeben → **Beitreten**
+3. Wichtig: Handys scannen immer den QR-Code auf **ihrem eigenen** Bildschirm. Wer den QR-Code von TV A scannt, fährt auf TV A mit.
+4. An jedem TV können zusätzlich 1–4 Handys mitspielen (max. 8 Karts insgesamt)
 
 Der Gastgeber-TV steuert Start und KI-Gegner; alle TVs tauschen 15× pro Sekunde ihre Positionen aus (direkt per WebRTC, kein eigener Server). Der Start erfolgt, wenn an allen TVs alle bereit sind.
 

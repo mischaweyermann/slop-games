@@ -444,7 +444,7 @@ function startPeer() {
     retries = 0;
     try { sessionStorage.setItem('kurvenflitzer.code', code); } catch { /* */ }
     renderJoin(); updateStatus();
-    if (params.get('room')) joinRoom(params.get('room'));
+    if (params.get('room') && !autoJoined) { autoJoined = true; setTimeout(() => autoJoin(params.get('room'), 0), 1500); }
   });
   peer.on('connection', (c) => {
     if (c.metadata && c.metadata.type === 'tv') return acceptTv(c);
@@ -528,11 +528,39 @@ function renderJoin() {
 const tvPlayers = () => (role === 'host' ? [...tvConns.values()].reduce((n, t) => n + t.players.length, 0) : role === 'client' && hostRoster ? hostRoster.filter((d) => d.kind === 'human' && d.tv !== myTv).length : 0);
 
 /* ---------- Online: Raum erstellen / beitreten ---------- */
-let joining = false;
+let joining = false, autoJoined = false;
+function autoJoin(c, n) {
+  $('onlinePanel').hidden = false; $('roomInput').value = c.toUpperCase();
+  if (n === 0) toast(matchMedia('(pointer: coarse)').matches && innerWidth < 900
+    ? 'Tipp: Den Einladungs-Link am besten auf dem TV oder Laptop öffnen – die Handys scannen dann dort den QR-Code'
+    : `Einladung: trete Raum ${c.toUpperCase()} bei …`, 8000);
+  joinRoom(c);
+  // Falls es nicht klappt (z. B. Gastgeber noch nicht bereit): noch zweimal versuchen
+  setTimeout(() => { if (role !== 'client' && !joining && n < 3) autoJoin(c, n + 1); }, 21000);
+}
 function onlineInfo(html) { $('onlineInfo').innerHTML = html; }
 $('onlineBtn').addEventListener('click', (e) => { e.stopPropagation(); $('onlinePanel').hidden = !$('onlinePanel').hidden; });
 $('roomInput').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5); });
 $('joinBtn').addEventListener('click', (e) => { e.stopPropagation(); joinRoom($('roomInput').value); });
+// Einladungs-Link für einen anderen Bildschirm (öffnet dort den Kurvenflitzer und tritt automatisch bei)
+function inviteUrl() {
+  const u = new URL(location.href); u.search = ''; u.hash = '';
+  u.searchParams.set('room', code);
+  if (params.get('peer')) u.searchParams.set('peer', params.get('peer'));
+  return u.toString();
+}
+$('inviteBtn').addEventListener('click', async (e) => {
+  e.stopPropagation();
+  if (!code) return;
+  const url = inviteUrl();
+  $('inviteUrl').textContent = url.replace(/^https?:\/\//, '');
+  const text = 'Komm Kurvenflitzer fahren! Öffne den Link auf deinem TV oder Laptop (nicht auf dem Handy):';
+  try {
+    if (navigator.share && matchMedia('(pointer: coarse)').matches) { await navigator.share({ title: 'Kurvenflitzer', text, url }); return; }
+    await navigator.clipboard.writeText(`${text} ${url}`);
+    toast('Link kopiert – per WhatsApp o. ä. schicken');
+  } catch { toast('Link: ' + url.replace(/^https?:\/\//, ''), 8000); }
+});
 
 function hostRoom(auto = false) {
   if (!peer || !peer.open) { onlineInfo('Noch keine Verbindung zum Server – bitte kurz warten.'); return; }
@@ -540,7 +568,7 @@ function hostRoom(auto = false) {
   role = 'host';
   $('onlinePanel').hidden = false;
   if (auto) toast('Online-Raum geöffnet – ein anderer TV tritt bei');
-  onlineInfo(`Online-Raum offen. Weitere TVs: <b>Kurvenflitzer → Online spielen</b> öffnen und diesen Code eingeben: <b>${code}</b>`);
+  onlineInfo(`Online-Raum offen – ein anderer Bildschirm ist dabei. Handys scannen immer den QR-Code auf ihrem eigenen Bildschirm.`);
   refreshRoster(); updateStatus();
 }
 function joinRoom(c) {
@@ -555,13 +583,14 @@ function joinRoom(c) {
   const timer = setTimeout(() => {
     if (conn.open || !joining) return;
     joining = false; try { conn.close(); } catch { /* */ }
-    onlineInfo('Die Verbindung kam nicht zustande. Ist der andere TV auf der Kurvenflitzer-Seite? Manche Firmen-, Schul- oder Gäste-WLANs blockieren direkte Verbindungen – dann am besten zu Hause oder über den Handy-Hotspot versuchen.');
-  }, 15000);
+    onlineInfo('Die Verbindung kam nicht zustande – neuer Versuch läuft. Ist der andere Bildschirm auf der Kurvenflitzer-Seite? Manche Firmen-, Schul- oder Gäste-WLANs blockieren direkte Verbindungen – dann am besten zu Hause oder über den Handy-Hotspot versuchen.');
+  }, 20000);
   conn.on('error', () => { if (joining) { joining = false; clearTimeout(timer); onlineInfo('Verbindung fehlgeschlagen – bitte nochmals versuchen.'); } });
   conn.on('open', () => {
     clearTimeout(timer);
     joining = false; role = 'client'; hostConn = conn; hostCode = c;
-    onlineInfo(`Verbunden mit Raum <b>${c}</b>. Der Gastgeber startet, sobald alle die Hände am Lenkrad haben.`);
+    onlineInfo(`Verbunden mit Raum <b>${c}</b>. Jetzt scannt jede Person den QR-Code <b>auf diesem Bildschirm</b>. Der Gastgeber startet, sobald alle die Hände am Lenkrad haben.`);
+    toast(`Online im Raum ${c}! Handys: QR-Code auf DIESEM Bildschirm scannen`, 6000);
     sendPlayersToHost(); updateStatus();
   });
   conn.on('data', onHostMessage);

@@ -1,4 +1,4 @@
-// Slope Games – Handy-Seite (Kurvenflitzer)
+// Slop Games – Handy-Seite (Kurvenflitzer)
 // Kamera -> MediaPipe Pose (läuft komplett auf dem Handy) -> Körperpunkte per WebRTC an den TV.
 
 import { createEditor, loadConfig, saveConfig } from './character.js';

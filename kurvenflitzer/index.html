@@ -27,7 +27,7 @@
     <!-- Startbildschirm + Startaufstellung (Spielerplätze) -->
     <section class="lobby kf" id="lobby">
       <div class="kf-main">
-        <a class="back-link" href="../"><span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></span>Slope Games</a>
+        <a class="back-link" href="../"><span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></span>Slop Games</a>
         <span class="chip">3 Runden · 1,1 km · Rammen erlaubt</span>
         <h1 class="logo" aria-label="Kurvenflitzer"><span class="word" data-word="Kurven"></span><span class="word" data-word="flitzer"></span></h1>
         <p class="tagline">Halte die Hände vor die Brust wie an einem Lenkrad und dreh es. Gas gibt das Kart von selbst.</p>
@@ -38,19 +38,28 @@
           <button class="ghost" id="keysBtn" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>Tastatur</button>
         </div>
         <div class="online" id="onlinePanel" hidden>
-          <div class="online-row">
-                        <input id="roomInput" maxlength="5" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Raum-Code">
-            <button class="ghost" id="joinBtn" type="button">Beitreten</button>
+          <div class="online-step">
+            <b>Freund mit eigenem Bildschirm einladen</b>
+            <span>Schick diesen Link. Dein Freund öffnet ihn auf <u>seinem</u> TV oder Laptop – nicht auf dem Handy.</span>
+            <div class="online-row"><button class="ghost" id="inviteBtn" type="button">🔗 Einladungs-Link teilen</button><code class="invite-url" id="inviteUrl"></code></div>
           </div>
-          <div class="online-info" id="onlineInfo">Gegen Freunde an einem anderen Ort: Gib auf dem anderen TV den Code dieses TVs ein (rechts in der Karte) – oder tippe hier den Code des anderen TVs ein.</div>
+          <div class="online-step">
+            <b>Du wurdest eingeladen?</b>
+            <span>Code des anderen Bildschirms eingeben:</span>
+            <div class="online-row">
+              <input id="roomInput" maxlength="5" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Raum-Code">
+              <button class="ghost" id="joinBtn" type="button">Beitreten</button>
+            </div>
+          </div>
+          <div class="online-info" id="onlineInfo">Danach scannt jede Person den QR-Code auf <b>ihrem eigenen</b> Bildschirm.</div>
         </div>
       </div>
 
       <aside class="join">
         <div class="join-title">Mitspielen</div>
-        <div class="join-sub">Jede Person scannt mit ihrem Handy</div>
+        <div class="join-sub">Nur für Handys <b>vor diesem Bildschirm</b></div>
         <div class="qr" id="qr"><div class="spinner"></div></div>
-        <div class="code-label">oder Code eingeben</div>
+        <div class="code-label">oder Code auf dem Handy eingeben</div>
         <div class="code" id="code">· · · · ·</div>
         <div class="url" id="joinUrl"></div>
         <div class="privacy-note">Das Kamerabild bleibt auf dem Handy</div>

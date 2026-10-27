@@ -1,4 +1,4 @@
-// Slope Games – Einstellungen
+// Slop Games – Einstellungen
 // TURN-Relay (Metered.ca): leitet die Verbindung Handy ↔ TV weiter, wenn kein
 // direkter Weg möglich ist (Mobilfunk, Gäste-WLAN, Firmennetz, zwei TVs online).
 // Werte aus dem Metered-Dashboard eintragen: App-Name (xyz.metered.live → "xyz")
