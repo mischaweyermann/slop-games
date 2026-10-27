@@ -96,6 +96,11 @@
     .stats-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
     .stats-wrap { display: flex; flex-direction: column; gap: 12px; }
     .stats-wrap .stats { flex: 1; }
+    .stats-body { flex: 1; justify-content: center; gap: clamp(20px, 3vw, 48px); }
+    .stats-body .donut { width: clamp(132px, 22vh, 220px); height: clamp(132px, 22vh, 220px); }
+    .stats-body .donut .c b { font-size: clamp(30px, 4.5vh, 48px); }
+    .stats-body .donut .c span { font-size: clamp(11px, 1.6vh, 15px); }
+    .stats-body .legend { font-size: clamp(14px, 2vh, 18px); gap: clamp(10px, 1.8vh, 18px); }
     .stats-head small { font-size: 12px; color: #c99696; }
     .stats-body { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
     .donut { position: relative; width: 132px; height: 132px; flex: none; }
@@ -267,7 +272,6 @@
           <section class="block stats-wrap" aria-label="Deine Bewegung">
             <h2>Deine Bewegung</h2>
             <div class="stats">
-              <div class="stats-head"><small>auf diesem Gerät</small></div>
               <div class="stats-body" id="statsBody">
                 <div class="donut">
                   <svg viewBox="0 0 120 120" aria-hidden="true">
