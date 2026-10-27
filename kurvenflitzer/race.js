@@ -9,6 +9,7 @@ import { loadConfig, sanitize } from '../js/character.js';
 import { GRASS, WALL, T, N, SEG, TRACK_LEN, sample, nearest, nearestGlobal, lateral, buildWorld, makeKart } from './world.js';
 import { Cockpit } from './cockpit.js';
 import { peerOptions as netOptions } from '../js/net.js';
+import { dial, relayListen, warmRelay } from '../js/relay.js';
 import { ITEMS, ITEM_KEYS, CRANKS, itemSvg, buildItemBoxes, animateBoxes, makeFxSprite, makeProjectile, itemTexture } from './items.js';
 
 /* ================================================================
@@ -436,6 +437,11 @@ function updateStatus() {
   $('miniOnline').textContent = mo;
 }
 
+let relayCode = '';
+function onIncoming(c) {
+  if (c.metadata && c.metadata.type === 'tv') return acceptTv(c);
+  acceptPhone(c);
+}
 function startPeer() {
   if (!window.Peer) { setStatus('err', 'Verbindungsdienst nicht geladen'); return; }
   try { code = sessionStorage.getItem('kurvenflitzer.code') || newCode(); } catch { code = newCode(); }
@@ -445,12 +451,11 @@ function startPeer() {
     retries = 0;
     try { sessionStorage.setItem('kurvenflitzer.code', code); } catch { /* */ }
     renderJoin(); updateStatus();
+    // Ausweichweg über das Relay: Handys und andere Bildschirme erreichen diesen TV auch aus fremden Netzen
+    if (relayCode !== code) { relayCode = code; relayListen(PEER_PREFIX + code, onIncoming); }
     if (params.get('room') && !autoJoined) { autoJoined = true; setTimeout(() => autoJoin(params.get('room'), 0), 1500); }
   });
-  peer.on('connection', (c) => {
-    if (c.metadata && c.metadata.type === 'tv') return acceptTv(c);
-    acceptPhone(c);
-  });
+  peer.on('connection', onIncoming);
   peer.on('disconnected', () => setTimeout(() => peer && !peer.destroyed && peer.reconnect(), 1500));
   peer.on('error', (e) => {
     if (e.type === 'unavailable-id') { peer.destroy(); if (++retries > 2) { try { sessionStorage.removeItem('kurvenflitzer.code'); } catch { /* */ } } setTimeout(startPeer, 1500); }
@@ -465,14 +470,14 @@ function acceptPhone(c) {
   const pid = c.metadata && c.metadata.pid;
   // Handy klopft an, kommt aber nicht durch -> Hinweis auf dem TV
   toast('Ein Handy verbindet sich …');
-  const failTimer = setTimeout(() => { if (!c.open) toast('Ein Handy kommt nicht durch – bitte ins gleiche WLAN wie der TV (nicht Mobilfunk/Gäste-WLAN)'); }, 12000);
+  const failTimer = setTimeout(() => { if (!c.open && !(pid && locals.some((x) => x.pid === pid))) toast('Ein Handy kommt nicht durch – es wird weiter versucht. Internet am Handy prüfen.'); }, 20000);
   c.on('open', () => clearTimeout(failTimer));
   c.on('open', () => {
     const known = pid && locals.find((x) => x.pid === pid);
     if (known) {
       // Dasselbe Handy hat sich neu verbunden: alte Verbindung ersetzen
       const old = known.conn; known.conn = c; p = known;
-      if (old && old !== c) { try { old.close(); } catch { /* */ } }
+      if (old && old !== c && old.open) (known.alt ||= new Set()).add(old); // als Reserve behalten
     } else {
       const queued = pid && pendingPhones.find((x) => x.metadata && x.metadata.pid === pid);
       if (queued) pendingPhones.splice(pendingPhones.indexOf(queued), 1);
@@ -491,7 +496,10 @@ function acceptPhone(c) {
   c.on('close', () => {
     const i = pendingPhones.indexOf(c); if (i >= 0) pendingPhones.splice(i, 1);
     if (!p) p = locals.find((x) => x.conn === c) || null;
-    if (!p || p.conn !== c) return; // schon durch neue Verbindung ersetzt
+    if (p && p.conn !== c) { if (p.alt) p.alt.delete(c); return; } // nur eine Reserve-Verbindung
+    if (!p) return;
+    const alt = p.alt && [...p.alt].find((x) => x.open);
+    if (alt) { p.alt.delete(alt); p.conn = alt; return; }
     p.conn = null;
     if (state === 'race' || state === 'countdown') return; // fährt ohne Hände weiter (Gas weg), wird nach dem Rennen entfernt
     leaveLocal(p);
@@ -587,11 +595,11 @@ function joinRoom(c) {
   if (role === 'host') { for (const t of tvConns.values()) t.conn.close(); tvConns.clear(); }
   joining = true;
   onlineInfo('Verbinde mit Raum ' + c + ' …');
-  const conn = peer.connect(PEER_PREFIX + c, { reliable: true, serialization: 'json', metadata: { type: 'tv', tv: myTv } });
+  const conn = dial(peer, PEER_PREFIX + c, { reliable: true, serialization: 'json', metadata: { type: 'tv', tv: myTv } });
   const timer = setTimeout(() => {
     if (conn.open || !joining) return;
     joining = false; try { conn.close(); } catch { /* */ }
-    onlineInfo('Die Verbindung kam nicht zustande – neuer Versuch läuft. Ist der andere Bildschirm auf der Kurvenflitzer-Seite? Manche Firmen-, Schul- oder Gäste-WLANs blockieren direkte Verbindungen – dann am besten zu Hause oder über den Handy-Hotspot versuchen.');
+    onlineInfo('Die Verbindung kam nicht zustande – neuer Versuch läuft. Ist der andere Bildschirm auf der Kurvenflitzer-Seite?');
   }, 20000);
   conn.on('error', () => { if (joining) { joining = false; clearTimeout(timer); onlineInfo('Verbindung fehlgeschlagen – bitte nochmals versuchen.'); } });
   conn.on('open', () => {
@@ -620,13 +628,21 @@ function acceptTv(c) {
   if (role !== 'host') hostRoom(true);
   const tv = c.metadata.tv;
   c.on('open', () => {
-    tvConns.set(tv, { conn: c, players: [], ready: false });
+    const ex = tvConns.get(tv);
+    // Derselbe Bildschirm kann kurz zwei Wege haben (direkt + Relay): den neuen nehmen, den alten als Reserve behalten
+    if (ex) { ex.alt.add(ex.conn); ex.conn = c; return; }
+    tvConns.set(tv, { conn: c, players: [], ready: false, alt: new Set() });
     toast('Ein weiterer TV ist dem Raum beigetreten');
     updateStatus();
     try { c.send({ t: 'roster', list: roster, s: state }); } catch { /* */ }
   });
   c.on('data', (msg) => onClientMessage(tv, msg));
   c.on('close', () => {
+    const ex = tvConns.get(tv);
+    if (!ex) return;
+    if (ex.conn !== c) { ex.alt.delete(c); return; }
+    const alt = [...ex.alt].find((x) => x.open);
+    if (alt) { ex.alt.delete(alt); ex.conn = alt; return; } // auf den anderen Weg wechseln
     tvConns.delete(tv);
     toast('Ein TV hat den Raum verlassen');
     if (state !== 'race' && state !== 'countdown') { refreshRoster(); if (state === 'ready') resetRace(); }
@@ -1665,6 +1681,7 @@ document.querySelectorAll('.logo .word').forEach((w, wi) => {
 
 updateLayout();
 setState('lobby');
+warmRelay();
 startPeer();
 if (params.has('keys')) addKeysPlayer();
 tick();

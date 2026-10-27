@@ -57,7 +57,13 @@ Der Gastgeber-TV steuert Start und KI-Gegner; alle TVs tauschen 15× pro Sekunde
 - **Kamera dieses Geräts** – z. B. Laptop-Webcam
 - **Tastatur** zum Testen: Spieler 1 mit ← →, Spieler 2 mit A / D, Leertaste = bereit, ↑ / W = Item-Menü & werfen, ↓ / S = zurück
 
-## Verbindung in jedem Netz (TURN-Relay)
+## Verbindung in jedem Netz
+
+Die Geräte versuchen sich zuerst **direkt** zu verbinden (WebRTC, schnellster Weg). Klappt das nach 4 Sekunden nicht – z. B. zwei verschiedene Heimnetze, Mobilfunk, Gäste-WLAN –, läuft die Verbindung automatisch über einen **Umweg**: einen öffentlichen MQTT-Server über eine normale Web-Verbindung (`js/relay.js`, Reihenfolge: broker.emqx.io → broker.hivemq.com → test.mosquitto.org). Kein Konto, kein eigener Server. Übertragen werden nur Spieldaten (Körperpunkte, Positionen), nie ein Kamerabild. Auf dem Handy steht dann «verbunden (über Relay)».
+
+Testen: `?relay=only` erzwingt den Umweg, `?relay=off` schaltet ihn ab, `?mqtt=ws://…` nimmt einen eigenen Broker.
+
+### Optional: TURN-Relay (Metered)
 
 Normalerweise verbinden sich Handy und TV direkt. In Mobilfunk, Gäste-WLAN, Firmennetzen
 oder online zwischen zwei Wohnungen geht das oft nicht – dann braucht es ein **Relay**.
