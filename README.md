@@ -42,7 +42,13 @@ Auf der Strecke stehen vier Reihen **?-Boxen**. Wer durchfährt, bekommt ein Ite
 Wer getroffen wurde, ist **20 Sekunden geschützt** (im Menü ausgegraut; ein Wurf in dieser Zeit prallt ab und das Item kommt zurück). Über getroffenen Karts schwebt das Symbol, damit alle sehen, wen es erwischt hat. KI-Gegner sammeln und werfen auch.
 
 ### Mehrspieler am gleichen TV (bis 4)
-Jede Person scannt den QR-Code mit ihrem eigenen Handy. Der Bildschirm teilt sich automatisch (2 = nebeneinander, 3–4 = Viertel). Jede/r hat eigenes Cockpit, eigene Münzen und eigene Anzeige; die anderen sieht man als Karts in ihren Charakterfarben. Wer während eines Rennens dazukommt, fährt ab dem nächsten Rennen mit.
+Zwei Wege, auch gemischt:
+- **Jede Person mit eigenem Handy:** QR-Code scannen, auf dem Handy «Nur ich» wählen.
+- **Mehrere vor einer Kamera:** Ein Handy (oder die Laptop-Kamera über «Kamera dieses Geräts») filmt bis zu 4 Personen nebeneinander. Auf dem Handy «Mehrere» wählen (Standard). Jede erkannte Person bekommt automatisch einen eigenen Platz; wer das Bild verlässt, wird in der Lobby nach ein paar Sekunden wieder entfernt.
+
+**Fahrer & Name:** Für jede neue Person öffnet sich am TV «Wähl deinen Fahrer». Mit der Hand auf einen Charakter oder einen Namensvorschlag zeigen und kurz halten, dann «✓ Fertig». Alternativ oder zusätzlich auf dem Handy unter **Spieler**: Name eintippen, Charakter wählen oder «Charakter genau einstellen». Wer allein spielt, wird beim nächsten Mal mit gespeichertem Namen direkt übernommen.
+
+Der Bildschirm teilt sich automatisch (2 = nebeneinander, 3–4 = Viertel). Wer während eines Rennens dazukommt, fährt ab dem nächsten Rennen mit.
 
 ### Weitere Eingaben
 - **Kamera dieses Geräts** – z. B. Laptop-Webcam

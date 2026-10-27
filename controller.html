@@ -44,6 +44,11 @@
         <input id="codeInput" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="5" placeholder="ABCDE">
       </label>
 
+      <div class="cam-choice" role="radiogroup" aria-label="Wer spielt mit diesem Handy?">
+        <button type="button" class="seg" data-mode="single" role="radio" aria-checked="false">Nur ich</button>
+        <button type="button" class="seg active" data-mode="multi" role="radio" aria-checked="true">Mehrere <small>bis 4 vor 1 Kamera</small></button>
+      </div>
+
       <div class="cam-choice" role="radiogroup" aria-label="Kamera">
         <button type="button" class="seg active" data-cam="user" role="radio" aria-checked="true">Frontkamera</button>
         <button type="button" class="seg" data-cam="environment" role="radio" aria-checked="false">Rückkamera <small>bessere Qualität</small></button>
@@ -91,10 +96,11 @@
   <section class="screen char-wrap">
     <div class="card char-card">
       <div class="char-head">
-        <h2>Dein Charakter</h2>
-        <span>Änderungen siehst du sofort auf dem TV</span>
+        <h2>Spieler</h2>
+        <span>Name und Charakter – Änderungen siehst du sofort auf dem TV</span>
       </div>
-      <div id="charEditor"></div>
+      <p class="players-empty" id="playersEmpty">Sobald die Kamera jemanden erkennt, erscheint hier eine Karte. Den Fahrer könnt ihr auch direkt am TV mit der Hand auswählen.</p>
+      <div class="players" id="players"></div>
     </div>
   </section>
 

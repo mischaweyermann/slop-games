@@ -5,7 +5,8 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { createAudio } from '../js/audio.js';
-import { loadConfig, sanitize } from '../js/character.js';
+import { loadConfig, sanitize, PRESETS } from '../js/character.js';
+import { MultiTracker } from '../js/tracker.js';
 import { GRASS, WALL, T, N, SEG, TRACK_LEN, sample, nearest, nearestGlobal, lateral, buildWorld, makeKart } from './world.js';
 import { Cockpit } from './cockpit.js';
 import { peerOptions as netOptions } from '../js/net.js';
@@ -144,6 +145,8 @@ function createLocal(source, conn = null) {
   };
   if (source === 'keys') p.keyMap = locals.some((q) => q.keyMap === 'arrows') ? 'ad' : 'arrows';
   if (slot > 0) p.cfg = sanitize({ ...p.cfg, topColor: P_COLORS[slot] });
+  p.name = freshNames(1)[0] || `P${slot + 1}`;
+  p.setupDone = source === 'keys';   // Kamera-Spieler wählen erst Fahrer + Namen
   p.hud = createHud(p);
   locals.push(p);
   locals.sort((a, b) => a.slot - b.slot);
@@ -155,7 +158,15 @@ function removeLocal(p) {
   scene.remove(p.camera); scene.remove(p.coins); p.hud.root.remove();
   if (p.racer) p.racer.local = null;
 }
-const pName = (p) => `P${p.slot + 1}`;
+const pName = (p) => p.name || `P${p.slot + 1}`;
+// Lustige Namensvorschläge (bei der Fahrer-Auswahl wählbar, am Handy frei änderbar)
+const FUN_NAMES = ['Turbo-Tiger', 'Blitz-Bine', 'Kurven-Kai', 'Raketen-Rosi', 'Drift-Dani', 'Flitzer-Fritz', 'Düsen-Dora', 'Rallye-Ruedi', 'Wirbel-Wanda', 'Boxen-Bruno', 'Sause-Susi', 'Brumm-Beni', 'Nitro-Nino', 'Hupen-Heidi', 'Vollgas-Vreni', 'Zack-Zoe', 'Rakete Ralf', 'Kiesel-Kim'];
+function freshNames(n, except = []) {
+  const used = new Set(locals.map((q) => q.name).concat(except));
+  const pool = FUN_NAMES.filter((x) => !used.has(x)).sort(() => Math.random() - 0.5);
+  return pool.slice(0, n);
+}
+const cleanName = (t, fallback) => String(t || '').replace(/[<>&"]/g, '').trim().slice(0, 14) || fallback;
 const humanDef = (p) => ({ id: p.id, kind: 'human', tv: myTv, name: pName(p), color: kartColorOf(p), helmet: HELMETS[p.slot], skin: p.cfg.skin, pc: P_COLORS[p.slot] });
 
 /* ---------- Startaufstellung zusammenstellen ---------- */
@@ -192,6 +203,18 @@ function gridPos(slot) { // Startplatz 0 = vorne
 }
 function resetRace() {
   raceT = 0;
+  placeGrid();
+  for (const b of BOXES) b.until = 0;
+  shots.length = 0;
+  for (const p of locals) {
+    Object.assign(p, { startNow: false, ready: false, readyT: 0, upT: 0, coinCount: 0, boost: 0, boostT: 0, laps: [], lapStart: 0, steer: 0, fovKick: 0, spin: 0, lastPlace: 0 });
+    p.knock.set(0, 0, 0);
+    p.taken.fill(0);
+    p.items = []; closeAim(p); p.downT = 0; p.crankUp = false; p.handback = 0;
+    if (p.racer) p.prevIdx = p.racer.idx;
+  }
+}
+function placeGrid() {
   for (const r of racers.values()) {
     const g = gridPos(r.slot), sp = sample(g.s);
     r.finished = null; r.v = 0; r.lap = 0;
@@ -203,15 +226,7 @@ function resetRace() {
     r.fx = null; r.items = []; r.itemAt = 0; r.safeUntil = 0; r.itemLap = -99;
     placeKart(r, 0);
   }
-  for (const b of BOXES) b.until = 0;
-  shots.length = 0;
-  for (const p of locals) {
-    Object.assign(p, { startNow: false, ready: false, readyT: 0, upT: 0, coinCount: 0, boost: 0, boostT: 0, laps: [], lapStart: 0, steer: 0, fovKick: 0, spin: 0, lastPlace: 0 });
-    p.knock.set(0, 0, 0);
-    p.taken.fill(0);
-    p.items = []; closeAim(p); p.downT = 0; p.crankUp = false; p.handback = 0;
-    if (p.racer) p.prevIdx = p.racer.idx;
-  }
+  for (const p of locals) if (p.racer) p.prevIdx = p.racer.idx;
 }
 
 /* ================================================================
@@ -310,7 +325,7 @@ function joinLocal(source, conn = null) {
   lastJoinAt = now; startAt = null;
   audio.unlock(); updateSoundBtn(); audio.whoosh();
   toast(`${pName(p)} ist dabei!`);
-  p.hud.root.classList.toggle('show', state !== 'lobby'); p.cockpit.visible = state !== 'lobby';
+  { const playing = state === 'countdown' || state === 'race' || state === 'results'; p.hud.root.classList.toggle('show', playing); p.cockpit.visible = playing; }
   refreshRoster();
   if (state === 'lobby') setState('ready'); else if (state === 'ready') resetRace();
   updateStatus();
@@ -337,22 +352,11 @@ $('keysBtn').addEventListener('click', (e) => { e.stopPropagation(); addKeysPlay
 const VISION = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs';
 const WASM = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm';
 const MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task';
-const IDX = [0, 11, 12, 13, 14, 15, 16, 19, 20, 23, 24, 25, 26, 27, 28];
-class OneEuro {
-  constructor(minCutoff = 1.4, beta = 7, dCutoff = 1.2) { Object.assign(this, { minCutoff, beta, dCutoff, x: null, dx: 0, t: 0 }); }
-  static a(c, dt) { const r = 2 * Math.PI * c * dt; return r / (r + 1); }
-  filter(v, t) {
-    if (this.x === null) { this.x = v; this.t = t; return v; }
-    const dt = Math.max((t - this.t) / 1000, 1e-3); this.t = t;
-    this.dx += OneEuro.a(this.dCutoff, dt) * ((v - this.x) / dt - this.dx);
-    this.x += OneEuro.a(this.minCutoff + this.beta * Math.abs(this.dx), dt) * (v - this.x);
-    return this.x;
-  }
-}
-let camPlayer = null;
+const camPlayers = new Map(); // Track-ID -> Spieler (Kamera dieses Geräts)
+let camOn = false;
 async function useLocalCamera() {
   const btn = $('camBtn');
-  if (camPlayer) return;
+  if (camOn) return;
   if (!window.isSecureContext) { toast('Die Kamera braucht https://'); return; }
   btn.disabled = true; btn.textContent = '⏳ Kamera startet …';
   try {
@@ -362,28 +366,37 @@ async function useLocalCamera() {
     btn.textContent = '⏳ KI wird geladen …';
     const { FilesetResolver, PoseLandmarker } = await import(VISION);
     const vision = await FilesetResolver.forVisionTasks(WASM);
-    const opts = (delegate) => ({ baseOptions: { modelAssetPath: MODEL, delegate }, runningMode: 'VIDEO', numPoses: 1, minPoseDetectionConfidence: 0.5, minPosePresenceConfidence: 0.5, minTrackingConfidence: 0.5 });
+    const opts = (delegate) => ({ baseOptions: { modelAssetPath: MODEL, delegate }, runningMode: 'VIDEO', numPoses: 4, minPoseDetectionConfidence: 0.5, minPosePresenceConfidence: 0.5, minTrackingConfidence: 0.5 });
     let lm; try { lm = await PoseLandmarker.createFromOptions(vision, opts('GPU')); } catch { lm = await PoseLandmarker.createFromOptions(vision, opts('CPU')); }
-    camPlayer = joinLocal('cam');
-    if (!camPlayer) { btn.disabled = false; btn.textContent = '💻 Kamera dieses Geräts'; return; }
-    btn.textContent = '✅ Kamera aktiv';
-    const filters = IDX.map(() => [new OneEuro(), new OneEuro()]);
+    camOn = true;
+    btn.textContent = '✅ Kamera aktiv · bis 4 Personen';
+    toast('Kamera läuft – alle, die mitfahren, setzen sich ins Bild');
+    const tracker = new MultiTracker(4);
     const ov = $('localOverlay'), g = ov.getContext('2d');
     let last = -1;
     const loop = () => {
-      if (video.readyState >= 2 && camPlayer) {
+      if (video.readyState >= 2) {
         const ts = performance.now();
         if (ts > last) {
           last = ts;
-          const l = lm.detectForVideo(video, ts).landmarks?.[0];
+          const res = lm.detectForVideo(video, ts);
           ov.width = video.videoWidth; ov.height = video.videoHeight; g.clearRect(0, 0, ov.width, ov.height);
-          if (l) {
-            const k = [];
-            IDX.forEach((i, n) => { k.push(1 - filters[n][0].filter(l[i].x, ts), filters[n][1].filter(l[i].y, ts), l[i].visibility ?? 1); });
-            onPose(camPlayer, k, video.videoWidth, video.videoHeight);
-            g.fillStyle = '#ff8fa3';
-            for (const i of [15, 16]) if (l[i].visibility > 0.3) { g.beginPath(); g.arc(l[i].x * ov.width, l[i].y * ov.height, ov.width / 28, 0, 7); g.fill(); }
+          const tracks = tracker.update(res.landmarks || [], ts);
+          const seen = new Set();
+          for (const tr of tracks) {
+            seen.add(tr.id);
+            let p = camPlayers.get(tr.id);
+            if (!p && state !== 'race' && state !== 'countdown' && locals.length < MAX_LOCAL) {
+              p = joinLocal('cam');
+              if (p) { p.trackId = tr.id; camPlayers.set(tr.id, p); }
+            }
+            if (!p) continue;
+            p.lostAt = 0;
+            onPose(p, tracker.points(tr, ts), video.videoWidth, video.videoHeight);
+            g.fillStyle = P_COLORS[p.slot];
+            for (const i of [15, 16]) if (tr.lm[i].visibility > 0.3) { g.beginPath(); g.arc(tr.lm[i].x * ov.width, tr.lm[i].y * ov.height, ov.width / 28, 0, 7); g.fill(); }
           }
+          for (const [id, p] of camPlayers) if (!seen.has(id) && !p.lostAt) p.lostAt = now;
         }
       }
       requestAnimationFrame(loop);
@@ -434,44 +447,96 @@ function startPeer() {
 
 /* ---------- Handys ---------- */
 function acceptPhone(c) {
-  let p = null;
   const pid = c.metadata && c.metadata.pid;
-  // Handy klopft an, kommt aber nicht durch -> Hinweis auf dem TV
+  c.__multi = !!(c.metadata && c.metadata.multi);
+  c.__ps = new Map(); // Person (Track-ID, bzw. 0 bei «nur ich») -> Spieler
   toast('Ein Handy verbindet sich …');
-  const failTimer = setTimeout(() => { if (!c.open && !(pid && locals.some((x) => x.pid === pid))) toast('Ein Handy kommt nicht durch – es wird weiter versucht. Internet am Handy prüfen.'); }, 20000);
-  c.on('open', () => clearTimeout(failTimer));
+  const failTimer = setTimeout(() => { if (!c.open && !(pid && locals.some((x) => x.pid === pid))) toast('Ein Handy kommt nicht durch – bitte ins gleiche WLAN wie der TV'); }, 20000);
   c.on('open', () => {
-    const known = pid && locals.find((x) => x.pid === pid);
-    if (known) {
-      // Dasselbe Handy hat sich neu verbunden: alte Verbindung ersetzen
-      const old = known.conn; known.conn = c; p = known;
-      if (old && old !== c && old.open) (known.alt ||= new Set()).add(old); // als Reserve behalten
-    } else {
-      const queued = pid && pendingPhones.find((x) => x.metadata && x.metadata.pid === pid);
-      if (queued) pendingPhones.splice(pendingPhones.indexOf(queued), 1);
-      p = joinLocal('phone', c);
-      if (p) p.pid = pid;
-    }
-    sendPhone(c, { t: 'state', s: p ? phoneState() : 'queued', g: 'rennen' });
+    clearTimeout(failTimer);
+    // Dasselbe Handy hat sich neu verbunden: seine Spieler übernehmen
+    if (pid) for (const q of locals) if (q.pid === pid) { q.conn = c; c.__ps.set(q.trackId || 0, q); }
+    if (!c.__multi && !c.__ps.size) addPhonePlayer(c, 0);
+    sendPhone(c, { t: 'state', s: c.__queued ? 'queued' : phoneState(), g: 'rennen' });
+    syncPhone(c);
   });
   c.on('data', (msg) => {
     if (!msg || typeof msg !== 'object') return;
-    if (!p) { const q = locals.find((x) => x.conn === c); if (q) p = q; }
-    if (msg.t === 'p') { if (p && msg.k) onPose(p, msg.k, msg.w, msg.h); }
-    else if (msg.t === 'char') { if (p) { p.cfg = sanitize(msg.c); p.cockpit.setColors(p.cfg, kartColorOf(p)); if (state !== 'race' && state !== 'countdown') { refreshRoster(); if (state === 'ready') resetRace(); } } }
+    if (msg.t === 'p') { const p = c.__ps.get(0); if (p && msg.k) { p.lostAt = 0; onPose(p, msg.k, msg.w, msg.h); } }
+    else if (msg.t === 'mp') onMulti(c, msg);
+    else if (msg.t === 'mode') setPhoneMode(c, msg.m === 'multi');
+    else if (msg.t === 'char') { const p = !c.__multi && c.__ps.get(0); if (p) applyChar(p, { cfg: msg.c }); }
+    else if (msg.t === 'setp') { const p = c.__ps.get(msg.id == null ? 0 : msg.id); if (p) applyChar(p, { cfg: msg.cfg, name: msg.name, done: true }); }
     else if (msg.t === 'hello') sendPhone(c, { t: 'state', s: phoneState(), g: 'rennen' });
   });
   c.on('close', () => {
     const i = pendingPhones.indexOf(c); if (i >= 0) pendingPhones.splice(i, 1);
-    if (!p) p = locals.find((x) => x.conn === c) || null;
-    if (p && p.conn !== c) { if (p.alt) p.alt.delete(c); return; } // nur eine Reserve-Verbindung
-    if (!p) return;
-    const alt = p.alt && [...p.alt].find((x) => x.open);
-    if (alt) { p.alt.delete(alt); p.conn = alt; return; }
-    p.conn = null;
-    if (state === 'race' || state === 'countdown') return; // fährt ohne Hände weiter (Gas weg), wird nach dem Rennen entfernt
-    leaveLocal(p);
+    for (const p of [...c.__ps.values()]) {
+      if (p.conn !== c) continue; // schon durch neue Verbindung ersetzt
+      p.conn = null;
+      if (state !== 'race' && state !== 'countdown') leaveLocal(p); // im Rennen: fährt ohne Hände weiter, wird danach entfernt
+    }
   });
+}
+let fullToastAt = -1e9;
+function addPhonePlayer(c, id) {
+  if (state === 'countdown' || state === 'race') {
+    if (!c.__queued) { c.__queued = true; pendingPhones.push(c); toast('Neue Person erkannt – fährt ab dem nächsten Rennen mit'); sendPhone(c, { t: 'state', s: 'queued', g: 'rennen' }); }
+    return null;
+  }
+  if (locals.length >= MAX_LOCAL) { if (now - fullToastAt > 6) { fullToastAt = now; toast('Maximal 4 Spieler pro TV'); } return null; }
+  const p = joinLocal('phone', c);
+  if (!p) return null;
+  p.pid = c.metadata && c.metadata.pid; p.trackId = id;
+  c.__ps.set(id, p);
+  syncPhone(c);
+  return p;
+}
+// Mehrere Personen vor einer Handy-Kamera
+function onMulti(c, msg) {
+  if (!c.__multi) setPhoneMode(c, true);
+  const seen = new Set();
+  for (const e of msg.ps || []) {
+    if (!e || !Array.isArray(e.k)) continue;
+    seen.add(e.id);
+    const p = c.__ps.get(e.id) || addPhonePlayer(c, e.id);
+    if (!p) continue;
+    p.lostAt = 0;
+    onPose(p, e.k, msg.w, msg.h);
+  }
+  for (const [id, p] of c.__ps) if (!seen.has(id) && !p.lostAt) p.lostAt = now;
+}
+function setPhoneMode(c, multi) {
+  if (c.__multi === multi) return;
+  c.__multi = multi;
+  if (state === 'race' || state === 'countdown') return;
+  for (const p of [...c.__ps.values()]) { c.__ps.delete(p.trackId || 0); leaveLocal(p); }
+  if (!multi) addPhonePlayer(c, 0);
+  syncPhone(c);
+}
+// Name/Charakter ändern (vom Handy oder von der Auswahl am TV)
+function applyChar(p, { cfg, name, done }) {
+  if (cfg) p.cfg = sanitize(cfg);
+  if (name) p.name = cleanName(name, p.name);
+  if (done) p.setupDone = true;
+  p.cockpit.setColors(p.cfg, kartColorOf(p));
+  if (state !== 'race' && state !== 'countdown') { refreshRoster(); placeGrid(); }
+  syncPhone(p.conn);
+}
+// Dem Handy sagen, welche Spieler zu ihm gehören (für die Spieler-Karten und Namensschilder)
+function syncPhone(c) {
+  if (!c || !c.__ps) return;
+  sendPhone(c, { t: 'ps', l: [...c.__ps.entries()].map(([id, p]) => ({ id: c.__multi ? id : null, name: pName(p), color: P_COLORS[p.slot], cfg: p.cfg, slot: p.slot })) });
+}
+// Personen, die nicht mehr im Bild sind, nach kurzer Zeit aus der Startaufstellung nehmen
+function dropLost() {
+  if (state !== 'lobby' && state !== 'ready') return;
+  for (const p of [...locals]) {
+    if (!p.lostAt || now - p.lostAt < 2.5) continue;
+    p.lostAt = 0;
+    if (p.conn && p.conn.__ps) { p.conn.__ps.delete(p.trackId || 0); const c = p.conn; leaveLocal(p); syncPhone(c); }
+    else if (p.source === 'cam') { camPlayers.delete(p.trackId); leaveLocal(p); }
+  }
 }
 function sendPhone(c, msg) { if (c && c.open) { try { c.send(msg); } catch { /* */ } } }
 const phoneState = () => (state === 'race' ? 'play' : state);
@@ -523,7 +588,7 @@ function createHud(p) {
   el.className = 'phud';
   el.innerHTML = `
     <div class="pleft">
-      <div class="ptag" style="--c:${P_COLORS[p.slot]}"><span class="src">${ICON[p.source] || ICON.phone}</span><span class="pname">${pName(p)}</span></div>
+      <div class="ptag" style="--c:${P_COLORS[p.slot]}"><span class="src">${ICON[p.source] || ICON.phone}</span><span class="pname"></span></div>
       <div class="pstats">
         <div><div class="lbl">Platz</div><div class="num ppos"><b>–</b><small>/4</small></div></div>
         <span class="pchange"></span>
@@ -546,19 +611,20 @@ function createHud(p) {
       <div class="aim-head"><div class="aim-title">Auf wen werfen?</div><div class="aim-sub"></div></div>
       <div class="aim-targets"></div>
       <div class="aim-items"></div>
-      <div class="aim-cursor"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10m0-.5V4a1.5 1.5 0 0 1 3 0v6m0-4.5a1.5 1.5 0 0 1 3 0V12m0-4a1.5 1.5 0 0 1 3 0v6.5a7 7 0 0 1-7 7h-1a7 7 0 0 1-5.6-2.8L4 17.3a1.6 1.6 0 0 1 2.5-2L9 17.5V11" fill="#fff" stroke="#3d1418" stroke-width="1.4" stroke-linejoin="round"/></svg></div>
+      <div class="aim-cursor">${HAND_SVG}</div>
     </div>`;
   $('phuds').appendChild(el);
   const q = (sel) => el.querySelector(sel);
   return {
     root: el, pos: q('.ppos b'), posOf: q('.ppos small'), lap: q('.plap b'), speed: q('.speed-num b'), speedo: q('.speedo'),
     bar: q('.speedo .bar'), coins: q('.pcoins b'), coinsBox: q('.pcoins'), turbo: q('.pturbo'), segs: [...el.querySelectorAll('.pturbo .seg i')],
-    change: q('.pchange'), wheel: q('.pwheel'), banner: q('.pbanner'),
+    change: q('.pchange'), wheel: q('.pwheel'), banner: q('.pbanner'), name: q('.pname'),
     items: q('.pitems'), itemHint: q('.pitems .hint'), itemSlots: [...el.querySelectorAll('.pitems .islot')], fx: q('.pfx'), fxIc: q('.pfx .ic'), fxTx: q('.pfx .tx'), fxCr: q('.pfx .cr'),
     hand: q('.phand'), handNum: q('.phand b'),
     aim: q('.paim'), aimTitle: q('.aim-title'), aimSub: q('.aim-sub'), aimTargets: q('.aim-targets'), aimItems: q('.aim-items'), aimCursor: q('.aim-cursor'), aimKey: '',
   };
 }
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function renderSlots() {
   const slots = [];
   for (let i = 0; i < MAX_LOCAL; i++) {
@@ -568,8 +634,9 @@ function renderSlots() {
     if (p.ready) st = 'Bereit!';
     else if (p.source === 'keys') st = `Leertaste = bereit<br>${p.keyMap === 'arrows' ? '← →' : 'A / D'} lenken`;
     else if (!hasControl(p)) st = 'Setz dich vor die Kamera';
+    else if (!p.setupDone) st = 'Wählt den Fahrer …';
     else st = 'Hände ans Lenkrad …';
-    slots.push(`<div class="slot ${p.ready ? 'ready' : ''}"><span class="av" style="--c:${P_COLORS[p.slot]}">${face(p.cfg)}<span class="src">${ICON[p.source] || ICON.phone}</span></span><b>${pName(p)}</b><span class="bar"><i style="width:${fill * 100}%"></i></span><span class="st">${st}</span></div>`);
+    slots.push(`<div class="slot ${p.ready ? 'ready' : ''}"><span class="av" style="--c:${P_COLORS[p.slot]}">${face(p.cfg)}<span class="src">${ICON[p.source] || ICON.phone}</span></span><b>${esc(pName(p))}</b><span class="bar"><i style="width:${fill * 100}%"></i></span><span class="st">${st}</span></div>`);
   }
   const html = slots.join('');
   if (html !== renderSlots.last) { $('slots').innerHTML = html; renderSlots.last = html; }
@@ -662,7 +729,12 @@ function setState(s) {
   if (s === 'ready') {
     // Wartende Handys aufnehmen, getrennte Spieler entfernen
     for (const p of [...locals]) if (p.source === 'phone' && !p.conn) removeLocal(p);
-    while (pendingPhones.length && locals.length < MAX_LOCAL) { const c = pendingPhones.shift(); if (c.open) { const q = createLocal('phone', c); if (q) { q.pid = c.metadata && c.metadata.pid; lastJoinAt = now; } } }
+    while (pendingPhones.length && locals.length < MAX_LOCAL) {
+      const c = pendingPhones.shift(); c.__queued = false;
+      if (!c.open || c.__multi) continue; // Mehrpersonen-Handys melden ihre Leute mit dem nächsten Bild selbst an
+      const q = createLocal('phone', c);
+      if (q) { q.pid = c.metadata && c.metadata.pid; q.trackId = 0; c.__ps.set(0, q); lastJoinAt = now; syncPhone(c); }
+    }
       refreshRoster();
     if (!locals.length) { setState('lobby'); return; }
     resetRace(); audio.engine(true);
@@ -1178,6 +1250,88 @@ function updatePlayerCam(p, dt) {
   cam.updateProjectionMatrix();
 }
 
+
+/* ================================================================
+   Fahrer-Auswahl am TV: neue Person wählt Charakter + Namen per Handzeiger
+   ================================================================ */
+const PICK_DWELL = 0.6, PICK_IDLE = 20;
+const HAND_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10m0-.5V4a1.5 1.5 0 0 1 3 0v6m0-4.5a1.5 1.5 0 0 1 3 0V12m0-4a1.5 1.5 0 0 1 3 0v6.5a7 7 0 0 1-7 7h-1a7 7 0 0 1-5.6-2.8L4 17.3a1.6 1.6 0 0 1 2.5-2L9 17.5V11" fill="#fff" stroke="#3d1418" stroke-width="1.4" stroke-linejoin="round"/></svg>';
+let pick = null;
+const NEUTRAL = ['#f4efe6', '#3b3b45', '#c69c6d'];
+const kartCol = (cfg, slot) => (NEUTRAL.includes(cfg.topColor) ? P_COLORS[slot] : cfg.topColor);
+const samePreset = (a, b) => ['skin', 'hair', 'hairColor', 'topColor', 'hat'].every((k) => a[k] === b[k]);
+function pickLayout(nNames) {
+  return {
+    pres: PRESETS.map((_, i) => ({ x: 0.13 + (0.74 * i) / (PRESETS.length - 1), y: 0.4 })),
+    names: Array.from({ length: nNames }, (_, i) => ({ x: 0.2 + i * 0.2, y: 0.64 })),
+    dice: { x: 0.8, y: 0.64 }, done: { x: 0.5, y: 0.85 },
+  };
+}
+function updatePicker(dt) {
+  const show = state === 'lobby' || state === 'ready';
+  if (pick && (!show || !locals.includes(pick.p) || pick.p.setupDone)) pick = null;
+  if (!pick && show) {
+    const next = locals.find((q) => !q.setupDone && q.source !== 'keys' && hasControl(q));
+    if (next) { pick = { p: next, cx: 0.5, cy: 0.6, hover: '', dwell: 0, names: [next.name, ...freshNames(2, [next.name])], lastAct: now }; renderPicker(true); audio.whoosh(); }
+  }
+  $('picker').classList.toggle('show', !!pick);
+  if (!pick) return;
+  const p = pick.p;
+  if (now - pick.lastAct > PICK_IDLE) { finishPick(); return; } // niemand wählt: so übernehmen
+  const c = hasControl(p) ? p.input.cursor : null;
+  if (c) { pick.cx = lerp(pick.cx, c.x, damp(14, dt)); pick.cy = lerp(pick.cy, c.y, damp(14, dt)); }
+  const L = pickLayout(pick.names.length);
+  let hover = '';
+  if (c) {
+    L.pres.forEach((q, i) => { if (Math.abs(pick.cx - q.x) < 0.047 && Math.abs(pick.cy - q.y) < 0.1) hover = 'p' + i; });
+    L.names.forEach((q, i) => { if (Math.abs(pick.cx - q.x) < 0.09 && Math.abs(pick.cy - q.y) < 0.06) hover = 'n' + i; });
+    if (Math.abs(pick.cx - L.dice.x) < 0.09 && Math.abs(pick.cy - L.dice.y) < 0.06) hover = 'd';
+    if (Math.abs(pick.cx - L.done.x) < 0.13 && Math.abs(pick.cy - L.done.y) < 0.07) hover = 'ok';
+  }
+  pick.dwell = hover && hover === pick.hover ? pick.dwell + dt : 0;
+  if (hover && hover !== pick.hover) audio.tick();
+  pick.hover = hover;
+  if (hover && pick.dwell >= PICK_DWELL) {
+    pick.dwell = -0.6; pick.lastAct = now; // kurze Pause bis zur nächsten Auswahl
+    if (hover[0] === 'p') { applyChar(p, { cfg: { ...PRESETS[+hover.slice(1)].cfg } }); audio.pop(3); }
+    else if (hover[0] === 'n') { applyChar(p, { name: pick.names[+hover.slice(1)] }); audio.pop(5); }
+    else if (hover === 'd') { pick.names = freshNames(3); audio.whoosh(); }
+    else if (hover === 'ok') { finishPick(); return; }
+    renderPicker(true);
+  }
+  renderPicker();
+}
+function finishPick() {
+  if (!pick) return;
+  const p = pick.p; pick = null;
+  $('picker').classList.remove('show');
+  applyChar(p, { done: true });
+  audio.gold();
+  toast(`${pName(p)} ist dabei – jetzt Hände ans Lenkrad!`);
+}
+function renderPicker(full = false) {
+  if (!pick) return;
+  const el = $('picker'), p = pick.p, L = pickLayout(pick.names.length);
+  if (full || !el.firstChild) {
+    el.style.setProperty('--c', P_COLORS[p.slot]);
+    el.innerHTML = `<div class="pk-head"><span class="pk-tag">P${p.slot + 1}</span><div class="pk-title">Wähl deinen Fahrer</div><div class="pk-sub">Hand auf etwas halten und kurz warten · oder am Handy einstellen</div></div>
+      ${PRESETS.map((pr, i) => `<div class="pk-pre ${samePreset(p.cfg, pr.cfg) ? 'sel' : ''}" data-k="p${i}" style="left:${L.pres[i].x * 100}%;top:${L.pres[i].y * 100}%;--k:${kartCol(pr.cfg, p.slot)}"><span class="pk-face">${face(pr.cfg)}</span><span class="pk-kart"></span><i class="pk-ring"></i></div>`).join('')}
+      <div class="pk-label" style="top:${(L.names[0].y - 0.085) * 100}%">Dein Name: <b>${esc(pName(p))}</b></div>
+      ${pick.names.map((n, i) => `<div class="pk-chip ${n === p.name ? 'sel' : ''}" data-k="n${i}" style="left:${L.names[i].x * 100}%;top:${L.names[i].y * 100}%">${esc(n)}<i class="pk-ring"></i></div>`).join('')}
+      <div class="pk-chip dice" data-k="d" style="left:${L.dice.x * 100}%;top:${L.dice.y * 100}%">🎲 Andere Namen<i class="pk-ring"></i></div>
+      <div class="pk-done" data-k="ok" style="left:50%;top:${L.done.y * 100}%">✓ Fertig – so fahre ich<i class="pk-ring"></i></div>
+      <div class="pk-cursor">${HAND_SVG}</div>`;
+  }
+  el.querySelectorAll('[data-k]').forEach((x) => {
+    const on = x.dataset.k === pick.hover;
+    x.classList.toggle('hover', on);
+    x.style.setProperty('--d', on ? clamp(pick.dwell / PICK_DWELL, 0, 1) : 0);
+  });
+  const cur = el.querySelector('.pk-cursor');
+  cur.style.left = pick.cx * 100 + '%'; cur.style.top = pick.cy * 100 + '%';
+  cur.hidden = !(hasControl(p) && p.input.cursor);
+}
+
 /* ================================================================
    Hauptschleife
    ================================================================ */
@@ -1195,7 +1349,7 @@ function tick() {
   } else if (state === 'ready') {
     for (const p of locals) {
       updateLocal(p, dt, false);
-      if (!p.ready && p.source !== 'keys') {
+      if (!p.ready && p.source !== 'keys' && p.setupDone) {
         p.readyT = gripping(p) && Math.abs(p.input.steer) < 0.3 ? p.readyT + realDt : Math.max(0, p.readyT - realDt * 2);
         if (p.readyT >= 1.2) { p.ready = true; audio.tick(); }
       }
@@ -1239,6 +1393,8 @@ function tick() {
       }
     }
   }
+  dropLost();
+  updatePicker(realDt);
   for (const r of racers.values()) {
     placeKart(r, dt);
   }
@@ -1321,6 +1477,7 @@ function tick() {
       const segOn = p.boostT > 0 ? Math.ceil((p.boostT / 3) * 5) : Math.round(p.boost * 5);
       h.segs.forEach((g, k) => g.classList.toggle('on', k < segOn));
       if (h.coins.textContent != p.coinCount) { h.coins.textContent = p.coinCount; h.coinsBox.classList.remove('bump'); void h.coinsBox.offsetWidth; h.coinsBox.classList.add('bump'); }
+      if (h.name.textContent !== pName(p)) h.name.textContent = pName(p);
       const fxk = r.fx ? r.fx.kind : '';
       const hb = p.handback && state === 'race' ? Math.ceil(p.handback - now) : 0;
       h.hand.classList.toggle('show', hb > 0);
@@ -1405,6 +1562,7 @@ window.__race = {
   locals, racers, get state() { return state; }, get code() { return code; }, get roster() { return roster; },
   BOXES, give: (i, k) => { const p = locals[i]; if (p) p.items.push(k); }, hit: (i, k) => locals[i] && applyItem(locals[i].racer, k, 'Test'),
   aim: (i) => locals[i] && locals[i].aim, get now() { return now; },
+  get pick() { return pick; },
   setState, onPose: (i, k, w, h) => locals[i] && onPose(locals[i], k, w, h), addKeysPlayer, T, N, TRACK_LEN,
   finishLocal: (i) => { const p = locals[i]; if (p && p.racer) { p.racer.lap = LAPS; const s = T[N - 20]; p.racer.pos.set(s.p.x, 0, s.p.z); p.racer.idx = N - 20; p.prevIdx = N - 20; p.racer.heading = Math.atan2(s.t.x, s.t.z); p.racer.v = 30; } },
 };
