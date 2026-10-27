@@ -216,7 +216,7 @@ function resetRace() {
     r.heading = Math.atan2(sp.t.x, sp.t.z);
     r.idx = nearestGlobal(r.pos); r.prog = r.idx * SEG - TRACK_LEN;
     r.tgt = { x: r.pos.x, z: r.pos.z, h: r.heading, v: 0 };
-    r.fx = null; r.items = []; r.itemAt = 0;
+    r.fx = null; r.items = []; r.itemAt = 0; r.safeUntil = 0; r.itemLap = -99;
     placeKart(r, 0);
   }
   for (const b of BOXES) b.until = 0;
@@ -640,6 +640,7 @@ function applyStates(list) {
     r.tgt = { x: s.x, z: s.z, h: s.h, v: s.v };
     r.prog = s.p; r.lap = s.lp; r.finished = s.f; r.gotAt = now;
     r.fx = s.e ? { kind: ITEM_KEYS[s.e - 1], t0: now, until: now + 0.6 } : null;
+    r.safeUntil = now + (s.sf || 0);
     if (r.firstSnap !== false) { r.pos.set(s.x, 0, s.z); r.heading = s.h; r.firstSnap = false; }
   }
 }
@@ -650,7 +651,7 @@ function netTick(dt) {
   if (netT <= 0 && (state === 'race' || state === 'countdown' || state === 'results' || state === 'ready')) {
     netT = 1 / 15;
     const own = [...racers.values()].filter((r) => r.kind === 'local' || (role === 'host' && r.kind === 'ai'));
-    const l = own.map((r) => ({ i: r.id, x: +r.pos.x.toFixed(2), z: +r.pos.z.toFixed(2), h: +r.heading.toFixed(3), v: +r.v.toFixed(1), p: +r.prog.toFixed(1), lp: r.lap, f: r.finished, e: r.fx ? ITEM_KEYS.indexOf(r.fx.kind) + 1 : 0 }));
+    const l = own.map((r) => ({ i: r.id, x: +r.pos.x.toFixed(2), z: +r.pos.z.toFixed(2), h: +r.heading.toFixed(3), v: +r.v.toFixed(1), p: +r.prog.toFixed(1), lp: r.lap, f: r.finished, e: r.fx ? ITEM_KEYS.indexOf(r.fx.kind) + 1 : 0, sf: Math.ceil(safeLeft(r)) }));
     if (role === 'host') broadcastTv({ t: 'st', l }); else sendHost({ t: 'st', l });
   }
   if (role === 'client' && readyT <= 0) { readyT = 0.5; sendHost({ t: 'ready', v: state === 'ready' && locals.length > 0 && locals.every((p) => p.ready) }); }
@@ -668,6 +669,7 @@ const ICON = {
   coin: '<svg viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="11" fill="#f2c94c" stroke="#5a1f25" stroke-width="2.5"/><path d="M13 7v12" stroke="#5a1f25" stroke-width="2.5" stroke-linecap="round"/></svg>',
   bolt: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z" fill="#f7e9a6"/></svg>',
 };
+const SHIELD = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4 5.5v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10v-6z" fill="#fff"/><path d="m8.5 12 2.4 2.4 4.6-4.8" fill="none" stroke="#3d1418" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const face = (cfg) => `<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="21" r="14" fill="${cfg.skin}"/><path d="M6 19a14 14 0 0 1 28 0q-14-7-28 0z" fill="${cfg.hairColor}"/><circle cx="15" cy="23" r="2" fill="#2f2420"/><circle cx="25" cy="23" r="2" fill="#2f2420"/><path d="M16.5 28q3.5 2.5 7 0" stroke="#2f2420" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>`;
 const TICKS = [0, 1, 2, 3, 4, 5, 6].map((k) => { const a = (k / 6) * 270 * Math.PI / 180; const r1 = 41, r2 = 36; return `<path d="M${60 + Math.cos(a) * r1} ${60 + Math.sin(a) * r1} L${60 + Math.cos(a) * r2} ${60 + Math.sin(a) * r2}"/>`; }).join('');
 
@@ -707,7 +709,7 @@ function createHud(p) {
     root: el, pos: q('.ppos b'), posOf: q('.ppos small'), lap: q('.plap b'), speed: q('.speed-num b'), speedo: q('.speedo'),
     bar: q('.speedo .bar'), coins: q('.pcoins b'), coinsBox: q('.pcoins'), turbo: q('.pturbo'), segs: [...el.querySelectorAll('.pturbo .seg i')],
     change: q('.pchange'), wheel: q('.pwheel'), banner: q('.pbanner'),
-    items: q('.pitems'), itemSlots: [...el.querySelectorAll('.pitems .islot')], fx: q('.pfx'), fxIc: q('.pfx .ic'), fxTx: q('.pfx .tx'), fxCr: q('.pfx .cr'),
+    items: q('.pitems'), itemHint: q('.pitems .hint'), itemSlots: [...el.querySelectorAll('.pitems .islot')], fx: q('.pfx'), fxIc: q('.pfx .ic'), fxTx: q('.pfx .tx'), fxCr: q('.pfx .cr'),
     hand: q('.phand'), handNum: q('.phand b'),
     aim: q('.paim'), aimTitle: q('.aim-title'), aimSub: q('.aim-sub'), aimTargets: q('.aim-targets'), aimItems: q('.aim-items'), aimCursor: q('.aim-cursor'), aimKey: '',
   };
@@ -956,7 +958,8 @@ function updateLocal(p, dt, driving) {
   // Item-Boxen
   if (driving) for (const b of BOXES) {
     if (now < b.until) continue;
-    if ((b.pos.x - r.pos.x) ** 2 + (b.pos.z - r.pos.z) ** 2 < 2.3 * 2.3) { b.until = now + 4; giveItem(p); }
+    if (r.itemLap === r.lap || p.items.length >= 2) break; // nur 1 Item pro Runde, wieder ab der Ziellinie
+    if ((b.pos.x - r.pos.x) ** 2 + (b.pos.z - r.pos.z) ** 2 < 2.3 * 2.3) { b.until = now + 4; r.itemLap = r.lap; giveItem(p); }
   }
   if (p.offroad && r.v > 8 && Math.random() < dt * 6) audio.skid(0.4);
   r.prog = (r.lap - 1) * TRACK_LEN + r.idx * SEG;
@@ -1001,13 +1004,16 @@ function giveItem(p) {
   audio.combo(3);
   sendPhone(p.conn, { t: 'fx', title: `Item: ${ITEMS[kind].name}`, sub: 'Beide Arme nach unten = Menü öffnen und auf jemanden werfen', ms: 3500 });
 }
+const SAFE = 20;             // nach einem Treffer so viele Sekunden geschützt
+const safeLeft = (r) => Math.max(0, (r.safeUntil || 0) - now);
 const throwTargets = (p) => standings().filter((o) => o !== p.racer && !o.gone && o.finished == null);
 
 function openAim(p) {
   if (!p.items.length || p.aim) return;
   const targets = throwTargets(p);
   if (!targets.length) { pBanner(p, 'Niemand zum Abwerfen'); return; }
-  p.aim = { t0: now, cx: 0.5, cy: 0.85, grabbed: p.items.length === 1 ? 0 : null, hover: -1, dwell: 0, sel: 0, targets };
+  if (targets.every((t) => safeLeft(t) > 0)) { pBanner(p, 'Alle sind gerade geschützt'); return; }
+  p.aim = { t0: now, cx: 0.5, cy: 0.85, grabbed: p.items.length === 1 ? 0 : null, hover: -1, dwell: 0, sel: Math.max(0, targets.findIndex((t) => !safeLeft(t))), targets };
   audio.whoosh();
   p.hud.aim.classList.add('show');
   renderAim(p, true);
@@ -1024,9 +1030,14 @@ function keyItem(p) {
   if (state !== 'race' || !p.racer || p.racer.finished != null) return;
   if (!p.aim) { openAim(p); if (p.aim) p.aim.grabbed = 0; return; }
   const t = p.aim.targets[p.aim.sel];
+  if (t && safeLeft(t) > 0) { pBanner(p, `${t.name} ist geschützt`); return; }
   if (t) throwItem(p, p.aim.grabbed ?? 0, t);
 }
-function aimStep(p, d) { const a = p.aim; if (!a || !a.targets.length) return; a.sel = (a.sel + d + a.targets.length) % a.targets.length; audio.tick(); renderAim(p); }
+function aimStep(p, d) {
+  const a = p.aim; if (!a || !a.targets.length) return;
+  for (let n = 0; n < a.targets.length; n++) { a.sel = (a.sel + d + a.targets.length) % a.targets.length; if (!safeLeft(a.targets[a.sel])) break; }
+  audio.tick(); renderAim(p);
+}
 
 // Positionen im Menü (0..1): Ziele oben im Bogen, eigene Items unten
 function aimLayout(a, nItems) {
@@ -1050,7 +1061,7 @@ function updateAim(p, dt) {
     a.dwell = hover >= 0 && hover === a.hover ? a.dwell + dt : 0;
     if (hover >= 0 && a.dwell >= AIM_GRAB) { a.grabbed = hover; a.dwell = 0; audio.tick(); }
   } else {
-    L.tg.forEach((q, i) => { if (Math.abs(a.cx - q.x) < L.tw / 2 && Math.abs(a.cy - q.y) < 0.16) hover = i; });
+    L.tg.forEach((q, i) => { if (Math.abs(a.cx - q.x) < L.tw / 2 && Math.abs(a.cy - q.y) < 0.16 && !safeLeft(a.targets[i])) hover = i; });
     a.dwell = hover >= 0 && hover === a.hover ? a.dwell + dt : 0;
     if (hover >= 0 && a.dwell >= AIM_DROP) { throwItem(p, a.grabbed, a.targets[hover]); return; }
   }
@@ -1067,13 +1078,16 @@ function renderAim(p, full = false) {
     h.aimKey = key;
     h.aimTargets.innerHTML = a.targets.map((t, i) => {
       const place = standings().indexOf(t) + 1;
-      return `<div class="aim-t" style="left:${L.tg[i].x * 100}%;top:${L.tg[i].y * 100}%;--c:${t.local ? P_COLORS[t.local.slot] : t.color};width:${Math.min(17, L.tw * 100 - 2)}%"><span class="pl">${place}.</span><span class="kd"></span><b>${t.name}</b><i class="ring"></i></div>`;
+      return `<div class="aim-t" style="left:${L.tg[i].x * 100}%;top:${L.tg[i].y * 100}%;--c:${t.local ? P_COLORS[t.local.slot] : t.color};width:${Math.min(17, L.tw * 100 - 2)}%"><span class="pl">${place}.</span><span class="kd"></span><b>${t.name}</b><i class="ring"></i><em class="sf"></em></div>`;
     }).join('');
     h.aimItems.innerHTML = p.items.map((k, i) => `<div class="aim-i" style="left:${L.it[i].x * 100}%;top:${L.it[i].y * 100}%;--c:${ITEMS[k].color}">${itemSvg(k)}<span>${ITEMS[k].name}</span></div>`).join('');
     h.aimSub.textContent = p.source === 'keys' ? `${p.keyMap === 'arrows' ? '← →' : 'A / D'} Ziel wählen · ${p.keyMap === 'arrows' ? '↑' : 'W'} werfen · ${p.keyMap === 'arrows' ? '↓' : 'S'} zurück` : 'Item mit der Hand auf eine Person ziehen und kurz halten · beide Arme runter = zurück';
   }
   [...h.aimTargets.children].forEach((el, i) => {
     el.classList.toggle('hover', i === sel);
+    const sl = Math.ceil(safeLeft(a.targets[i]));
+    el.classList.toggle('safe', sl > 0);
+    const em = el.querySelector('.sf'); const tx = sl > 0 ? `geschützt ${sl} s` : ''; if (em.textContent !== tx) em.textContent = tx;
     el.style.setProperty('--d', i === sel && p.source !== 'keys' && a.grabbed != null ? clamp(a.dwell / AIM_DROP, 0, 1) : 0);
   });
   [...h.aimItems.children].forEach((el, i) => {
@@ -1099,8 +1113,8 @@ function throwItem(p, idx, target) {
 }
 function aiThrow(r) {
   const kind = r.items.shift();
-  const others = standings().filter((o) => o !== r && !o.gone && o.finished == null);
-  if (!others.length) return;
+  const others = standings().filter((o) => o !== r && !o.gone && o.finished == null && !safeLeft(o));
+  if (!others.length) { r.items.unshift(kind); r.itemAt = now + 2; return; }
   // lieber auf Menschen und auf die, die vorne liegen
   const humans = others.filter((o) => o.def.kind === 'human');
   const ahead = (humans.length ? humans : others).filter((o) => o.prog > r.prog);
@@ -1130,6 +1144,13 @@ function deliver(r, kind, fromName) {
 }
 function applyItem(r, kind, fromName = '') {
   if (r.finished != null || r.gone) return;
+  const thrower = locals.find((q) => q.racer && q.racer.name === fromName);
+  if (safeLeft(r) > 0) {
+    // Schon kürzlich getroffen: prallt ab, das Item geht zurück
+    if (thrower) { if (thrower.items.length < 2) thrower.items.push(kind); pBanner(thrower, `${r.name} ist geschützt – Item zurück`); }
+    return;
+  }
+  r.safeUntil = now + SAFE;
   const d = ITEMS[kind];
   r.fx = { kind, t0: now, until: now + d.dur, crank: 0, from: fromName };
   if (kind === 'stop') r.v = 0;
@@ -1142,7 +1163,6 @@ function applyItem(r, kind, fromName = '') {
     sendPhone(p.conn, { t: 'fx', bad: true, title: d.hit, sub: kind === 'engine' ? `Heb ${CRANKS}× beide Arme über den Kopf, um den Motor anzukurbeln!` : `${fromName ? fromName + ' hat dich erwischt. ' : ''}Hält ${Math.round(d.dur)} Sekunden.`, ms: kind === 'engine' ? 6000 : d.dur * 1000 });
   }
   // Wer geworfen hat, sieht den Treffer
-  const thrower = locals.find((q) => q.racer && q.racer.name === fromName);
   if (thrower && thrower !== p) pBanner(thrower, `Treffer! ${r.name}`, true);
 }
 function endFx(r, text = '') {
@@ -1266,8 +1286,8 @@ function updateAI(r, dt, mode) {
   if (mode === 'race' && r.finished == null && r.prog >= LAPS * TRACK_LEN) r.finished = raceT;
   if (mode === 'race' && r.finished == null) {
     for (const b of BOXES) {
-      if (now < b.until || r.items.length) continue;
-      if ((b.pos.x - r.pos.x) ** 2 + (b.pos.z - r.pos.z) ** 2 < 2.3 * 2.3) { b.until = now + 4; if (Math.random() < 0.6) { r.items.push(ITEM_KEYS[Math.floor(Math.random() * ITEM_KEYS.length)]); r.itemAt = now + rand(3, 9); } }
+      if (now < b.until || r.items.length || r.itemLap === r.lap) continue;
+      if ((b.pos.x - r.pos.x) ** 2 + (b.pos.z - r.pos.z) ** 2 < 2.3 * 2.3) { b.until = now + 4; r.itemLap = r.lap; if (Math.random() < 0.6) { r.items.push(ITEM_KEYS[Math.floor(Math.random() * ITEM_KEYS.length)]); r.itemAt = now + rand(3, 9); } }
     }
     if (r.items.length && now > r.itemAt && state === 'race') aiThrow(r);
   }
@@ -1514,9 +1534,17 @@ function tick() {
         h.itemSlots.forEach((sl, n) => { const k = shown[n]; sl.innerHTML = k ? itemSvg(k) : ''; sl.style.setProperty('--c', k ? ITEMS[k].color : ''); sl.classList.toggle('full', !!k); });
         h.items.classList.toggle('has', p.items.length > 0 && p.rollT <= 0);
       }
+      const hint = p.items.length ? 'Arme runter' : r.itemLap === r.lap ? 'Nächstes Item ab Ziellinie' : '1 Item pro Runde';
+      if (h.itemHint.textContent !== hint) h.itemHint.textContent = hint;
       h.items.classList.toggle('show', state === 'race' && r.finished == null);
       // Wirkung eines Treffers
-      h.fx.classList.toggle('show', !!fxk && state === 'race');
+      const safe = Math.ceil(safeLeft(r));
+      h.fx.classList.toggle('show', (!!fxk || safe > 0) && state === 'race' && r.finished == null);
+      h.fx.classList.toggle('safe', !fxk && safe > 0);
+      if (!fxk && safe > 0) {
+        if (h.fx.dataset.k !== 'safe') { h.fx.dataset.k = 'safe'; h.fxIc.innerHTML = SHIELD; h.fx.style.removeProperty('--c'); h.fxCr.innerHTML = ''; }
+        h.fxTx.textContent = `Geschützt · ${safe} s`;
+      }
       if (fxk) {
         const left = Math.max(0, r.fx.until - now);
         if (h.fx.dataset.k !== fxk) { h.fx.dataset.k = fxk; h.fxIc.innerHTML = itemSvg(fxk); h.fx.style.setProperty('--c', ITEMS[fxk].color); }

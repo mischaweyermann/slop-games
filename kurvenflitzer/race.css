@@ -280,3 +280,10 @@ body.split .pfx { top: calc(17 * var(--u)); }
 .phand.tick b { animation: hb .5s cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes hb { 0% { transform: scale(.4); } 100% { transform: scale(1); } }
 .phand span { background: var(--glass); color: #fff; font-weight: 700; font-size: calc(2 * var(--u)); padding: calc(.7 * var(--u)) calc(2 * var(--u)); border-radius: 999px; box-shadow: var(--shadow); white-space: nowrap; }
+
+/* Schutz nach einem Treffer (20 s) */
+.pfx.safe { background: var(--glass); animation: none; transform: translate(-50%, 0) scale(.85); box-shadow: var(--shadow); }
+.pfx.safe .ic { background: var(--green); }
+.aim-t .sf { position: absolute; left: 50%; bottom: calc(-1.2 * var(--u)); transform: translateX(-50%); font-style: normal; font-size: calc(1.3 * var(--u)); font-weight: 700; white-space: nowrap; background: var(--green); color: #1f4a28; border-radius: 999px; padding: calc(.2 * var(--u)) calc(1 * var(--u)); }
+.aim-t .sf:empty { display: none; }
+.aim-t.safe { opacity: .5; filter: grayscale(.6); }

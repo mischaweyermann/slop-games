@@ -26,7 +26,7 @@ Go-Kart-Rennen in der Ich-Perspektive. Du hältst ein **unsichtbares Lenkrad** v
 - **Neues Rennen:** im Ziel beide Hände über den Kopf
 
 ### Items
-Auf der Strecke stehen vier Reihen **?-Boxen**. Wer durchfährt, bekommt ein Item (max. 2, links oben angezeigt).
+Auf der Strecke stehen vier Reihen **?-Boxen**. Wer durchfährt, bekommt ein Item – aber **nur 1 Item pro Runde**; ab der Ziellinie gibt es wieder eins (höchstens 2 auf Vorrat, links oben angezeigt).
 
 1. **Beide Arme nach unten hängen lassen** → das Item-Menü öffnet sich, ein **Autopilot** fährt weiter.
 2. Mit der Hand das Item greifen (bei nur einem Item ist es schon in der Hand) und auf eine Person ziehen – kurz darüber halten, bis der Balken voll ist → Wurf.
@@ -39,7 +39,7 @@ Auf der Strecke stehen vier Reihen **?-Boxen**. Wer durchfährt, bekommt ein Ite
 | ⛔ Vollbremse | sofortiger Stillstand (ca. 2,5 s) |
 | 🔧 Motorausfall | Motor aus, bis die getroffene Person **3× beide Arme über den Kopf** hebt (Tastatur: ← → abwechselnd) |
 
-Über getroffenen Karts schwebt das Symbol, damit alle sehen, wen es erwischt hat. KI-Gegner sammeln und werfen auch. Online funktionieren Würfe zwischen allen TVs.
+Wer getroffen wurde, ist **20 Sekunden geschützt** (im Menü ausgegraut; ein Wurf in dieser Zeit prallt ab und das Item kommt zurück). Über getroffenen Karts schwebt das Symbol, damit alle sehen, wen es erwischt hat. KI-Gegner sammeln und werfen auch. Online funktionieren Würfe zwischen allen TVs.
 
 ### Mehrspieler am gleichen TV (bis 4)
 Jede Person scannt den QR-Code mit ihrem eigenen Handy. Der Bildschirm teilt sich automatisch (2 = nebeneinander, 3–4 = Viertel). Jede/r hat eigenes Cockpit, eigene Münzen und eigene Anzeige; die anderen sieht man als Karts in ihren Charakterfarben. Wer während eines Rennens dazukommt, fährt ab dem nächsten Rennen mit.
