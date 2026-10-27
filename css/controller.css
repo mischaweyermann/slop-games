@@ -124,17 +124,30 @@ button.secondary { font: 500 14px 'Poppins', sans-serif; color: #fff; background
 
 /* Spieler-Karten (eine pro erkannter Person) */
 .players-empty { margin: 0; color: var(--soft); font-size: 14px; line-height: 1.45; }
-.players { display: grid; gap: 10px; }
-.pcard { background: var(--bg); border-radius: 20px; padding: 12px; display: grid; gap: 10px; box-shadow: inset 0 0 0 2px var(--c, var(--line)); }
-.pc-head { display: flex; align-items: center; gap: 10px; }
-.pc-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--c, var(--coral)); flex: none; }
-.pc-slot { font-weight: 700; color: #fff; }
-.pc-name { flex: 1; min-width: 0; font: 600 17px 'Poppins', sans-serif; color: #fff; background: var(--panel-2); border: 2px solid transparent; border-radius: 12px; padding: 8px 12px; outline: none; }
+.players { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+.pcard { background: var(--bg); border-radius: 22px; padding: 12px; display: grid; gap: 10px; box-shadow: inset 0 0 0 2px var(--c, var(--line)); min-width: 0; }
+.pcard > *, .pc-editor { min-width: 0; max-width: 100%; }
+.pcard.ready { box-shadow: inset 0 0 0 3px var(--green); }
+.pc-head { display: flex; align-items: center; gap: 12px; }
+.pc-av { flex: none; width: 72px; height: 72px; border-radius: 50%; background: var(--panel-2); box-shadow: inset 0 0 0 3px var(--c); overflow: hidden; display: grid; place-items: end center; }
+.pc-av svg { width: 100%; height: 100%; display: block; }
+.pc-who { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.pc-slot { font-weight: 700; color: var(--c); font-size: 13px; }
+.pc-name { width: 100%; min-width: 0; font: 600 18px 'Poppins', sans-serif; color: #fff; background: var(--panel-2); border: 2px solid transparent; border-radius: 12px; padding: 8px 12px; outline: none; }
 .pc-name:focus { border-color: var(--coral); }
-.pc-presets { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
-.pc-pre { flex: none; font: 500 13px 'Poppins', sans-serif; color: #fff; background: var(--panel-2); border: 0; border-radius: 999px; padding: 7px 12px; cursor: pointer; }
-.pc-pre:active { background: var(--coral); }
+.pc-presets { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.pc-pre { flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; font: 600 12px 'Poppins', sans-serif; color: #fff; background: var(--panel-2); border: 2px solid transparent; border-radius: 16px; padding: 6px 8px; cursor: pointer; }
+.pc-pre.sel { border-color: var(--cream); }
+.pc-face { width: 44px; height: 44px; border-radius: 50%; background: var(--line); overflow: hidden; display: grid; place-items: end center; }
+.pc-face svg { width: 100%; height: 100%; display: block; }
 .pc-more { width: 100%; }
-.players { grid-template-columns: minmax(0, 1fr); }
-.pcard, .pcard > *, .pc-editor { min-width: 0; max-width: 100%; }
 .pc-editor { overflow-x: hidden; }
+.pc-editor .ce-presets { display: none; } /* Fahrer stehen schon oben */
+.pc-status { display: grid; gap: 6px; font-size: 14px; color: var(--soft); line-height: 1.4; }
+.pcard.ok .pc-status { color: var(--cream); font-weight: 600; }
+.pcard.ready .pc-status { color: var(--green); }
+.pc-bar { height: 8px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+.pc-bar[hidden] { display: none; }
+.pc-bar i { display: block; height: 100%; width: 0; background: var(--green); transition: width .3s; }
+.pc-ok.primary { font-size: 18px; padding: 14px; }
+.pc-ok.secondary { width: 100%; }

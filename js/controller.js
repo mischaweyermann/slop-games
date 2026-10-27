@@ -3,6 +3,7 @@
 
 import { createEditor, loadConfig, saveConfig, sanitize, PRESETS } from './character.js';
 import { MultiTracker, OneEuro } from './tracker.js';
+import { avatarSvg } from './avatar2d.js';
 import { peerOptions as netOptions, deviceId } from './net.js';
 
 const $ = (id) => document.getElementById(id);
@@ -24,7 +25,7 @@ const TXT = {
   far: 'Setz dich so hin, dass Oberkörper und beide Hände im Bild sind.',
   play: ['Rennen läuft! 🏎️', 'Dreh das unsichtbare Lenkrad. Beide Arme runter = Item werfen.'],
   results: ['Im Ziel!', 'Beide Hände über den Kopf für ein neues Rennen.'],
-  ready: ['Bereit!', 'Halte beide Hände vor der Brust, wie an einem Lenkrad.'],
+  ready: ['Fast bereit!', 'Unten bei «Spieler» Name und Fahrer wählen und «Bereit» drücken. Danach am TV die Hände ans Lenkrad.'],
   result: (m) => [m.score === 1 ? '🏆 Sieg!' : `Platz ${m.score}!`, 'Beide Hände über den Kopf für ein neues Rennen.'],
 };
 const ui = {
@@ -347,7 +348,7 @@ function onTv(msg) {
   if (!msg || typeof msg !== 'object') return;
   if (msg.t === 'hit') buzz(msg.gold ? [25, 30, 25] : 22);
   else if (msg.t === 'bad') buzz([90, 50, 90]);
-  else if (msg.t === 'state') { tvState = msg.s; updateMessage(); }
+  else if (msg.t === 'state') { tvState = msg.s; updateMessage(); renderPlayers(players); }
   else if (msg.t === 'fx') { buzz(msg.bad ? [120, 60, 120] : [30, 40, 30]); if (msg.title) { message(msg.title, msg.sub || ''); clearTimeout(fxTimer); fxTimer = setTimeout(updateMessage, (msg.ms || 3000)); } }
   else if (msg.t === 'ps') renderPlayers(msg.l || []);
   else if (msg.t === 'result') {
@@ -421,31 +422,58 @@ function renderPlayers(list) {
     if (!c) {
       const el = document.createElement('div');
       el.className = 'pcard';
-      el.innerHTML = `<div class="pc-head"><span class="pc-dot"></span><b class="pc-slot"></b><input class="pc-name" maxlength="14" autocomplete="off" spellcheck="false" aria-label="Name"></div>
-        <div class="pc-presets">${PRESETS.map((pr, i) => `<button type="button" class="pc-pre" data-i="${i}">${esc(pr.name)}</button>`).join('')}</div>
-        <button type="button" class="secondary pc-more">Charakter genau einstellen</button><div class="pc-editor" hidden></div>`;
+      el.innerHTML = `<div class="pc-head"><span class="pc-av"></span><div class="pc-who"><b class="pc-slot"></b><input class="pc-name" maxlength="14" autocomplete="off" spellcheck="false" aria-label="Name"></div></div>
+        <div class="pc-presets">${PRESETS.map((pr, i) => `<button type="button" class="pc-pre" data-i="${i}"><span class="pc-face">${avatarSvg(sanitize(pr.cfg), { body: false })}</span>${esc(pr.name)}</button>`).join('')}</div>
+        <button type="button" class="secondary pc-more">Charakter genau einstellen</button><div class="pc-editor" hidden></div>
+        <div class="pc-status"><span class="pc-step"></span><span class="pc-bar"><i></i></span></div>
+        <button type="button" class="primary pc-ok">✓ Bereit</button>`;
       box.appendChild(el);
       c = { el, cfg: sanitize(q.cfg), name: q.name };
       const name = el.querySelector('.pc-name');
-      const push = () => { send({ t: 'setp', id: q.id, name: c.name, cfg: c.cfg }); if (!multi) { savedName = c.name; charCfg = c.cfg; try { localStorage.setItem('slop.name', c.name); } catch { /* */ } saveConfig(CHAR_KEY, c.cfg); } buzz(12); };
+      const push = () => { send({ t: 'setp', id: q.id, name: c.name, cfg: c.cfg }); if (!multi) { savedName = c.name; charCfg = c.cfg; try { localStorage.setItem('slop.name', c.name); } catch { /* */ } saveConfig(CHAR_KEY, c.cfg); } drawAvatar(c); buzz(12); };
       let nameT = 0;
       name.addEventListener('input', () => { c.name = name.value.trim(); clearTimeout(nameT); if (c.name) nameT = setTimeout(push, 400); });
-      el.querySelectorAll('.pc-pre').forEach((b) => b.addEventListener('click', () => { c.cfg = sanitize(PRESETS[+b.dataset.i].cfg); if (c.editor) { c.editorEl.innerHTML = ''; c.editor = null; c.editorEl.hidden = true; } push(); }));
+      el.querySelectorAll('.pc-pre').forEach((b) => b.addEventListener('click', () => { c.cfg = sanitize(PRESETS[+b.dataset.i].cfg); if (c.editor) c.editor.set(c.cfg); push(); }));
       c.editorEl = el.querySelector('.pc-editor');
       el.querySelector('.pc-more').addEventListener('click', () => {
         c.editorEl.hidden = !c.editorEl.hidden;
-        if (!c.editorEl.hidden && !c.editor) c.editor = createEditor(c.editorEl, c.cfg, (cfg) => { c.cfg = cfg; push(); }) || true;
+        if (!c.editorEl.hidden && !c.editor) c.editor = createEditor(c.editorEl, c.cfg, (cfg) => { c.cfg = cfg; push(); });
       });
+      el.querySelector('.pc-ok').addEventListener('click', () => { send({ t: 'ok', id: q.id, v: !c.confirmed }); buzz(20); });
       cards.set(key, c);
     }
     const el = c.el;
+    c.color = q.color; c.confirmed = !!q.ok;
     el.style.setProperty('--c', q.color);
     el.querySelector('.pc-slot').textContent = `P${q.slot + 1}`;
     const name = el.querySelector('.pc-name');
     if (document.activeElement !== name) { name.value = q.name; c.name = q.name; }
-    if (!c.editor) c.cfg = sanitize(q.cfg);
+    if (!c.editor || c.editorEl.hidden) c.cfg = sanitize(q.cfg);
+    drawAvatar(c);
+    // Ablauf: 1. einstellen + «Bereit» drücken  2. am TV Hände ans Lenkrad  3. bereit
+    const step = q.ready ? 'Bereit! Gleich geht’s los 🏁' : q.ok ? 'Jetzt am TV: Hände vor die Brust wie an ein Lenkrad und still halten' : 'Name und Fahrer wählen, dann «Bereit» drücken';
+    el.querySelector('.pc-step').textContent = tvState === 'play' || tvState === 'countdown' ? 'Fährt mit 🏎️' : step;
+    el.querySelector('.pc-bar').hidden = !q.ok || q.ready;
+    el.querySelector('.pc-bar i').style.width = Math.round((q.fill || 0) * 100) + '%';
+    const ok = el.querySelector('.pc-ok');
+    ok.textContent = q.ok ? 'Doch noch ändern' : '✓ Bereit';
+    ok.classList.toggle('secondary', !!q.ok); ok.classList.toggle('primary', !q.ok);
+    ok.hidden = tvState === 'play' || tvState === 'countdown';
+    el.classList.toggle('ok', !!q.ok); el.classList.toggle('ready', !!q.ready);
   }
 }
+let avKey = new WeakMap();
+function drawAvatar(c) {
+  const k = JSON.stringify(c.cfg) + c.color;
+  if (avKey.get(c) === k) return;
+  avKey.set(c, k);
+  c.el.querySelector('.pc-av').innerHTML = avatarSvg(c.cfg);
+  c.el.querySelectorAll('.pc-pre').forEach((b) => {
+    const pr = PRESETS[+b.dataset.i].cfg;
+    b.classList.toggle('sel', ['skin', 'hair', 'hairColor', 'topColor', 'hat', 'glasses', 'beard'].every((x) => pr[x] === c.cfg[x]));
+  });
+}
+
 async function switchToLite() {
   try {
     const { FilesetResolver, PoseLandmarker } = await import(VISION);

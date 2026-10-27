@@ -1,4 +1,5 @@
 // Charakter-Daten (Optionen, Presets) und der Editor – wird von TV und Handy gemeinsam genutzt.
+import { avatarSvg } from './avatar2d.js';
 
 export const SKIN = ['#ffdcc6', '#f6c6a4', '#e3a97f', '#c08158', '#8d5b3d', '#5e3b28'];
 export const HAIR_COLORS = ['#2f2420', '#5e3d2b', '#9a6440', '#d39a55', '#ecd08a', '#e2dcd4', '#b8503a', '#6a5aa3'];
@@ -88,7 +89,7 @@ export function createEditor(root, initial, onChange) {
   PRESETS.forEach((p) => {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'ce-preset';
-    b.innerHTML = `<span class="ce-face" style="--skin:${p.cfg.skin};--hair:${p.cfg.hairColor};--top:${p.cfg.topColor}"></span>${p.name}`;
+    b.innerHTML = `<span class="ce-face2">${avatarSvg(sanitize(p.cfg))}</span>${p.name}`;
     b.addEventListener('click', () => update({ ...p.cfg }));
     presets.appendChild(b);
   });

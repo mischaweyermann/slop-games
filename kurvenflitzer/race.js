@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { createAudio } from '../js/audio.js';
 import { loadConfig, sanitize, PRESETS } from '../js/character.js';
-import { avatarSvg } from './avatar2d.js';
+import { avatarSvg } from '../js/avatar2d.js';
 import { MultiTracker } from '../js/tracker.js';
 import { GRASS, WALL, T, N, SEG, TRACK_LEN, sample, nearest, nearestGlobal, lateral, buildWorld, makeKart } from './world.js';
 import { Cockpit } from './cockpit.js';
@@ -150,7 +150,9 @@ function createLocal(source, conn = null) {
   if (source === 'keys') p.keyMap = locals.some((q) => q.keyMap === 'arrows') ? 'ad' : 'arrows';
   if (slot > 0) p.cfg = sanitize({ ...PRESETS[(slot * 3) % PRESETS.length].cfg, topColor: P_COLORS[slot] });
   p.name = freshNames(1)[0] || `P${slot + 1}`;
-  p.setupDone = true;   // Name + Fahrer werden auf dem Handy eingestellt (unter «Spieler»)
+  p.setupDone = true;
+  // Handy-Spieler: erst am Handy einstellen und «Bereit» drücken, dann am TV ausrichten (Hände ans Lenkrad)
+  p.confirmed = source !== 'phone';
   p.hud = createHud(p);
   locals.push(p);
   locals.sort((a, b) => a.slot - b.slot);
@@ -471,6 +473,7 @@ function acceptPhone(c) {
     else if (msg.t === 'mode') setPhoneMode(c, msg.m === 'multi');
     else if (msg.t === 'char') { const p = !c.__multi && c.__ps.get(0); if (p) applyChar(p, { cfg: msg.c }); }
     else if (msg.t === 'setp') { const p = c.__ps.get(msg.id == null ? 0 : msg.id); if (p) applyChar(p, { cfg: msg.cfg, name: msg.name, done: true }); }
+    else if (msg.t === 'ok') { const p = c.__ps.get(msg.id == null ? 0 : msg.id); if (p) { p.confirmed = !!msg.v; if (!p.confirmed) { p.ready = false; p.readyT = 0; } else audio.tick(); syncPhone(c); } }
     else if (msg.t === 'hello') sendPhone(c, { t: 'state', s: phoneState(), g: 'rennen' });
   });
   c.on('close', () => {
@@ -530,7 +533,7 @@ function applyChar(p, { cfg, name, done }) {
 // Dem Handy sagen, welche Spieler zu ihm gehören (für die Spieler-Karten und Namensschilder)
 function syncPhone(c) {
   if (!c || !c.__ps) return;
-  sendPhone(c, { t: 'ps', l: [...c.__ps.entries()].map(([id, p]) => ({ id: c.__multi ? id : null, name: pName(p), color: P_COLORS[p.slot], cfg: p.cfg, slot: p.slot })) });
+  sendPhone(c, { t: 'ps', l: [...c.__ps.entries()].map(([id, p]) => ({ id: c.__multi ? id : null, name: pName(p), color: P_COLORS[p.slot], cfg: p.cfg, slot: p.slot, ok: p.confirmed ? 1 : 0, ready: p.ready ? 1 : 0, fill: +(p.ready ? 1 : clamp(p.readyT / 1.2, 0, 1)).toFixed(2) })) });
 }
 // Personen, die nicht mehr im Bild sind, nach kurzer Zeit aus der Startaufstellung nehmen
 function dropLost() {
@@ -637,6 +640,7 @@ function renderSlots() {
     let st, fill = p.ready ? 1 : clamp(p.readyT / 1.2, 0, 1);
     if (p.ready) st = 'Bereit!';
     else if (p.source === 'keys') st = `Leertaste = bereit<br>${p.keyMap === 'arrows' ? '← →' : 'A / D'} lenken`;
+    else if (!p.confirmed) st = 'Am Handy einstellen<br>und «Bereit» drücken';
     else if (!hasControl(p)) st = 'Setz dich vor die Kamera';
     else st = 'Hände ans Lenkrad …';
     slots.push(`<div class="slot ${p.ready ? 'ready' : ''}"><span class="av" style="--c:${P_COLORS[p.slot]}">${face(p.cfg)}<span class="src">${ICON[p.source] || ICON.phone}</span></span><b>${esc(pName(p))}</b><span class="bar"><i style="width:${fill * 100}%"></i></span><span class="st">${st}</span></div>`);
@@ -779,8 +783,21 @@ function renderResults() {
 function saveStats() {
   try {
     const st = JSON.parse(localStorage.getItem('slope.stats')) || {};
-    st.kurvenflitzer = (st.kurvenflitzer || 0) + Math.round(raceT) * Math.max(1, locals.length);
+    const sec = Math.round(raceT) * Math.max(1, locals.length);
+    st.kurvenflitzer = (st.kurvenflitzer || 0) + sec;
     st.races = (st.races || 0) + 1;
+    const day = new Date().toISOString().slice(0, 10);
+    st.days = st.days || {};
+    st.days[day] = (st.days[day] || 0) + sec;
+    for (const k of Object.keys(st.days).sort().slice(0, -60)) delete st.days[k]; // nur die letzten 60 Tage
+    const ranking = standings();
+    const places = locals.map((p) => ranking.indexOf(p.racer) + 1).filter((x) => x > 0);
+    const place = places.length ? Math.min(...places) : 0;
+    if (place === 1) st.wins = (st.wins || 0) + 1;
+    const times = locals.map((p) => p.racer && p.racer.finished).filter((t) => t != null);
+    const best = times.length ? Math.min(...times) : null;
+    if (best != null && (!st.best || best < st.best)) st.best = +best.toFixed(1);
+    st.history = (st.history || []).concat([{ d: Date.now(), n: locals.length, names: locals.map(pName), place, t: best != null ? +best.toFixed(1) : null }]).slice(-30);
     localStorage.setItem('slope.stats', JSON.stringify(st));
   } catch { /* privat */ }
 }
@@ -1260,7 +1277,7 @@ const HAND_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11V5.5
    Hauptschleife
    ================================================================ */
 const clock = new THREE.Clock();
-let hudT = 0, frameAcc = 0, frameN = 0, qChecks = 0;
+let syncT = 0, hudT = 0, frameAcc = 0, frameN = 0, qChecks = 0;
 
 function tick() {
   const realDt = CAPTURE ? 1 / 30 : Math.min(clock.getDelta(), 0.25);
@@ -1273,9 +1290,9 @@ function tick() {
   } else if (state === 'ready') {
     for (const p of locals) {
       updateLocal(p, dt, false);
-      if (!p.ready && p.source !== 'keys') {
+      if (!p.ready && p.source !== 'keys' && p.confirmed) {
         p.readyT = gripping(p) && Math.abs(p.input.steer) < 0.3 ? p.readyT + realDt : Math.max(0, p.readyT - realDt * 2);
-        if (p.readyT >= 1.2) { p.ready = true; audio.tick(); }
+        if (p.readyT >= 1.2) { p.ready = true; audio.tick(); syncPhone(p.conn); }
       }
     }
     const localReady = locals.length > 0 && locals.every((p) => p.ready);
@@ -1377,7 +1394,10 @@ function tick() {
     hudT = 0.1;
     $('time').textContent = fmt(raceT);
     const st = standings();
-    if (state === 'lobby' || state === 'ready') renderSlots();
+    if (state === 'lobby' || state === 'ready') {
+      renderSlots();
+      if ((syncT -= 0.1) <= 0) { syncT = 0.4; for (const c of new Set(locals.map((q) => q.conn).filter(Boolean))) syncPhone(c); }
+    }
     for (const p of locals) {
       const r = p.racer, h = p.hud;
       if (!r) continue;

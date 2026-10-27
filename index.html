@@ -34,8 +34,8 @@
     .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
     main { display: flex; flex-direction: column; gap: 22px; min-width: 0; min-height: calc(100vh - 2 * clamp(12px, 1.6vw, 22px)); }
-    main > .row:first-of-type { flex: 1.2; }
-    main > .row:nth-of-type(2) { flex: 1; }
+    .view[data-view=start] > .row:first-of-type { flex: 1.2; }
+    .view[data-view=start] > .row:nth-of-type(2) { flex: 1; }
     .hero { height: 100%; }
     .fs { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--wine-700); color: #fff; cursor: pointer; }
     .fs:hover, .fs:focus-visible { background: var(--wine-500); outline: none; }
@@ -69,11 +69,12 @@
 
     /* Spieleliste */
     .list { display: flex; flex-direction: column; gap: 12px; }
-    .list .game { flex: 1; max-height: 160px; }
+    .list .game { flex: 1; max-height: 100px; }
     .game .ico { width: clamp(60px, 6vh, 84px) !important; height: clamp(60px, 6vh, 84px) !important; }
     .game .t b { font-size: clamp(16px, min(1.2vw, 2.1vh), 22px) !important; }
     .game .t span { font-size: clamp(13px, min(.9vw, 1.6vh), 17px) !important; }
-    .stats, .step { justify-content: center; }
+    .stats { justify-content: center; }
+    .step { justify-content: flex-start; }
     .steps { flex: 1; }
     .block { display: flex; flex-direction: column; }
     .list h2, .block h2 { margin: 0 0 2px; font-size: 20px; font-weight: 600; color: #fff; }
@@ -93,6 +94,8 @@
     .step span { font-size: 13px; line-height: 1.55; color: var(--soft); }
     .stats { background: var(--wine-700); border-radius: 28px; padding: 20px 22px; display: flex; flex-direction: column; gap: 12px; }
     .stats-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+    .stats-wrap { display: flex; flex-direction: column; gap: 12px; }
+    .stats-wrap .stats { flex: 1; }
     .stats-head small { font-size: 12px; color: #c99696; }
     .stats-body { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
     .donut { position: relative; width: 132px; height: 132px; flex: none; }
@@ -106,6 +109,67 @@
     .legend span { color: var(--soft); }
     .legend b { color: #fff; font-weight: 600; }
     .empty { font-size: 14px; line-height: 1.5; color: var(--soft); }
+
+    /* Seiten (Start / Spiele / So funktioniert's / Deine Bewegung) */
+    .view { display: none; flex-direction: column; gap: 22px; flex: 1; min-height: 0; }
+    .view.on { display: flex; }
+    .page-title { margin: 6px 0 0; font-size: clamp(30px, 3.4vw, 52px); font-weight: 700; color: #fff; letter-spacing: -.01em; }
+    .page-lead { margin: -8px 0 0; font-size: clamp(15px, 1.15vw, 19px); color: var(--soft); line-height: 1.55; max-width: 46em; }
+    .sec-title { margin: 6px 0 0; font-size: 20px; font-weight: 600; color: #fff; }
+    .card { background: var(--wine-700); border-radius: 28px; padding: clamp(18px, 2vw, 28px); }
+    .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+    .card h3 { margin: 0 0 8px; font-size: 18px; color: #fff; font-weight: 600; }
+    .card p, .card li { font-size: 14.5px; line-height: 1.6; color: var(--soft); }
+    .card p { margin: 0; }
+    .card ul { margin: 6px 0 0; padding-left: 18px; }
+    .card li + li { margin-top: 4px; }
+    .card b { color: #fff; font-weight: 600; }
+    /* Spiele-Seite */
+    .gamecard { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 0; padding: 0; overflow: hidden; }
+    .gamecard .media { position: relative; min-height: 300px; background: var(--wine-800); }
+    .gamecard .media video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .gamecard .info { padding: clamp(20px, 2.4vw, 34px); display: flex; flex-direction: column; gap: 14px; }
+    .gamecard h2 { margin: 0; font-size: clamp(30px, 3vw, 48px); color: #fff; line-height: 1; }
+    .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .fact { background: var(--wine-800); border-radius: 16px; padding: 10px 14px; }
+    .fact small { display: block; font-size: 12px; color: var(--mute); }
+    .fact b { font-size: 15px; color: #fff; font-weight: 600; }
+    .btn { align-self: flex-start; display: inline-flex; align-items: center; gap: 10px; background: #fff; color: var(--wine-600); font-weight: 600; font-size: 16px; padding: 11px 22px 11px 12px; border-radius: 999px; text-decoration: none; }
+    .btn:hover, .btn:focus-visible { background: var(--cream); outline: none; }
+    .item { display: flex; gap: 12px; align-items: flex-start; }
+    .item .ic { flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; }
+    .item .ic svg { width: 58%; height: 58%; }
+    .soon-card { display: flex; gap: 18px; align-items: center; opacity: .85; }
+    .soon-card .ico { width: 72px; height: 72px; border-radius: 22px; background: var(--wine-500); display: grid; place-items: center; flex: none; }
+    /* So funktioniert's */
+    .howto { counter-reset: s; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+    .howto .card { position: relative; padding-top: 64px; }
+    .howto .card::before { counter-increment: s; content: counter(s); position: absolute; left: clamp(18px, 2vw, 28px); top: 18px; width: 36px; height: 36px; border-radius: 50%; background: var(--c, var(--coral)); color: #fff; font-weight: 700; display: grid; place-items: center; }
+    details.card { padding: 16px 22px; }
+    details.card summary { cursor: pointer; font-weight: 600; color: #fff; font-size: 15.5px; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+    details.card summary::after { content: '+'; color: var(--coral); font-size: 22px; line-height: 1; }
+    details.card[open] summary::after { content: '–'; }
+    details.card p { margin-top: 10px; }
+    kbd { font: 600 12.5px 'Poppins', sans-serif; background: var(--wine-800); color: #fff; border-radius: 6px; padding: 2px 7px; }
+    /* Deine Bewegung */
+    .kpi { background: var(--wine-700); border-radius: 24px; padding: 18px 20px; }
+    .kpi small { display: block; font-size: 13px; color: var(--mute); }
+    .kpi b { display: block; margin-top: 4px; font-size: clamp(28px, 2.8vw, 42px); color: #fff; font-weight: 700; line-height: 1.1; }
+    .kpi span { font-size: 13px; color: var(--soft); }
+    .bars { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; align-items: end; height: 190px; margin-top: 14px; }
+    .bar { display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
+    .bar i { width: 100%; max-width: 46px; border-radius: 10px 10px 4px 4px; background: var(--coral); min-height: 4px; }
+    .bar.today i { background: var(--cream); }
+    .bar em { font-style: normal; font-size: 12px; color: var(--soft); }
+    .bar small { font-size: 11px; color: #fff; font-weight: 600; }
+    .hist { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .hist th { text-align: left; font-weight: 500; color: var(--mute); font-size: 12.5px; padding: 0 8px 8px; }
+    .hist td { padding: 10px 8px; border-top: 1px solid var(--wine-500); color: var(--soft); }
+    .hist td b { color: #fff; }
+    .ghost-btn { background: none; border: 1px solid var(--wine-500); color: var(--soft); border-radius: 999px; padding: 8px 16px; font: 500 13px 'Poppins', sans-serif; cursor: pointer; }
+    .ghost-btn:hover { border-color: var(--coral); color: #fff; }
 
     footer { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 13px; color: #c99696; padding: 4px 4px 6px; }
 
@@ -121,17 +185,22 @@
       .rail .tv { margin-top: 0; }
       .steps { grid-template-columns: 1fr; }
       .hero { min-height: 340px; }
+      .grid2, .grid3, .gamecard { grid-template-columns: 1fr; }
+      .grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .gamecard .media { min-height: 220px; }
+      .grid4.items { grid-template-columns: 1fr; }
     }
+    @media (min-width: 721px) and (max-width: 1100px) { .grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid3 { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
-  <div class="shell" id="top">
+  <div class="shell">
     <nav class="rail" aria-label="Hauptnavigation">
       <a class="logo" href="./" aria-label="Slop Games Startseite"><svg width="38" height="38" viewBox="0 0 34 34" aria-hidden="true"><path d="M5 27 L14 14 L19 20 L29 7" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="19" cy="20" r="3.2" fill="#e2574c"/></svg></a>
-      <a class="nav on" href="#top" aria-label="Start"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></a>
-      <a class="nav" href="#spiele" aria-label="Spiele"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="11" rx="5"/><path d="M7 11v3M5.5 12.5h3M16 12h.01M18 14h.01"/></svg></a>
-      <a class="nav" href="#so" aria-label="So funktioniert’s"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17h.01"/></svg></a>
-      <a class="nav" href="#bewegung" aria-label="Deine Bewegung"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9v9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></svg></a>
+      <a class="nav" href="#start" data-v="start" aria-label="Start"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></a>
+      <a class="nav" href="#spiele" data-v="spiele" aria-label="Spiele"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="11" rx="5"/><path d="M7 11v3M5.5 12.5h3M16 12h.01M18 14h.01"/></svg></a>
+      <a class="nav" href="#so" data-v="so" aria-label="So funktioniert’s"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17h.01"/></svg></a>
+      <a class="nav" href="#bewegung" data-v="bewegung" aria-label="Deine Bewegung"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9v9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></svg></a>
       <a class="tv" href="kurvenflitzer/" aria-label="Spiel auf dem TV starten"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
     </nav>
 
@@ -144,60 +213,145 @@
         </div>
       </div>
 
-      <div class="row" id="spiele">
-        <a class="hero" href="kurvenflitzer/">
-          <video class="bgvid" id="heroVid" autoplay muted loop playsinline preload="auto" poster="media/kurvenflitzer.jpg" aria-hidden="true">
-            <source src="media/kurvenflitzer.mp4" type="video/mp4">
-            <source src="media/kurvenflitzer.webm" type="video/webm">
-          </video>
-          <span class="shade" aria-hidden="true"></span>
-          <div class="tags"><span class="tag cream">Neu</span><span class="tag">1–4 Spieler</span><span class="tag">Eigenes Handy</span></div>
-          <h1>Kurvenflitzer</h1>
-          <p>Go-Kart-Rennen mit unsichtbarem Lenkrad. Bis zu vier am gleichen TV, jede Person mit ihrem Handy – mit Items, und ja, man darf sich rammen.</p>
-          <span class="play"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#e2574c"/><path d="M10 8l6 4-6 4z" fill="#ffffff"/></svg>Jetzt spielen</span>
-        </a>
-
-        <section class="list" aria-label="Alle Spiele">
-          <h2>Alle Spiele</h2>
-          <a class="game" href="kurvenflitzer/">
-            <span class="ico" style="background: #f7e9a6;"><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="none" stroke="#5a1f25" stroke-width="3.5"/><path d="M5 17h22M16 18v9" stroke="#5a1f25" stroke-width="3.5" stroke-linecap="round"/></svg></span>
-            <span class="t"><b>Kurvenflitzer</b><span>1–4 Spieler · ein TV · sitzend</span></span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+      <!-- ===== Start ===== -->
+      <div class="view" data-view="start">
+        <div class="row">
+          <a class="hero" href="kurvenflitzer/">
+            <video class="bgvid" autoplay muted loop playsinline preload="auto" poster="media/kurvenflitzer.jpg" aria-hidden="true">
+              <source src="media/kurvenflitzer.mp4" type="video/mp4">
+              <source src="media/kurvenflitzer.webm" type="video/webm">
+            </video>
+            <span class="shade" aria-hidden="true"></span>
+            <div class="tags"><span class="tag cream">Neu</span><span class="tag">1–4 Spieler</span><span class="tag">Eigenes Handy</span></div>
+            <h1>Kurvenflitzer</h1>
+            <p>Go-Kart-Rennen mit unsichtbarem Lenkrad. Bis zu vier am gleichen TV – mit Items, und ja, man darf sich rammen.</p>
+            <span class="play"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#e2574c"/><path d="M10 8l6 4-6 4z" fill="#ffffff"/></svg>Jetzt spielen</span>
           </a>
-          <div class="game soon">
-            <span class="ico" style="background: #7d2a2e;"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#f6e3e1" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 7v10M8 11l4-4 4 4"/></svg></span>
-            <span class="t"><b>Loch in der Wand</b><span>Bald verfügbar</span></span>
+
+          <section class="list" aria-label="Alle Spiele">
+            <h2>Alle Spiele</h2>
+            <a class="game" href="kurvenflitzer/">
+              <span class="ico" style="background: #f7e9a6;"><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="none" stroke="#5a1f25" stroke-width="3.5"/><path d="M5 17h22M16 18v9" stroke="#5a1f25" stroke-width="3.5" stroke-linecap="round"/></svg></span>
+              <span class="t"><b>Kurvenflitzer</b><span>1–4 Spieler · ein TV · sitzend</span></span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+            </a>
+            <div class="game soon">
+              <span class="ico" style="background: #7d2a2e;"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#f6e3e1" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 7v10M8 11l4-4 4 4"/></svg></span>
+              <span class="t"><b>Loch in der Wand</b><span>Bald verfügbar</span></span>
+            </div>
+          </section>
+        </div>
+
+        <div class="row">
+          <section class="block" aria-label="So funktioniert’s">
+            <h2>So funktioniert’s</h2>
+            <div class="steps" style="margin-top: 12px;">
+              <div class="step"><span class="n" style="background: #e2574c;">1</span><b>Spiel auf dem TV öffnen</b><span>Smart-TV, Laptop per HDMI oder Chromecast – Hauptsache gross.</span></div>
+              <div class="step"><span class="n" style="background: #f7e9a6; color: #5a1f25;">2</span><b>QR-Code scannen</b><span>Ein Handy pro Person – oder eines für alle. Keine App nötig.</span></div>
+              <div class="step"><span class="n" style="background: #9b7fd1;">3</span><b>Bewegen!</b><span>Die Körpererkennung läuft auf dem Handy. Das Kamerabild verlässt es nie.</span></div>
+            </div>
+          </section>
+
+          <section class="block stats-wrap" aria-label="Deine Bewegung">
+            <h2>Deine Bewegung</h2>
+            <div class="stats">
+              <div class="stats-head"><small>auf diesem Gerät</small></div>
+              <div class="stats-body" id="statsBody">
+                <div class="donut">
+                  <svg viewBox="0 0 120 120" aria-hidden="true">
+                    <circle cx="60" cy="60" r="48" fill="none" stroke="#5a1f25" stroke-width="16"/>
+                    <circle id="arcK" style="display:none" cx="60" cy="60" r="48" fill="none" stroke="#e2574c" stroke-width="16" stroke-linecap="round" stroke-dasharray="0 302"/>
+                  </svg>
+                  <div class="c"><div><b id="totalMin">0</b><span>Minuten</span></div></div>
+                </div>
+                <div class="legend">
+                  <div><i style="background: #e2574c;"></i><span>Kurvenflitzer</span><b id="minK">0 Min.</b></div>
+                  <div><i style="background: #f7e9a6;"></i><span>Rennen gefahren</span><b id="races">0</b></div>
+                </div>
+              </div>
+              <div class="empty" id="statsEmpty" hidden>Noch keine Runde gespielt – starte ein Spiel, dann siehst du hier, wie viel du dich bewegt hast.</div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- ===== Spiele ===== -->
+      <div class="view" data-view="spiele">
+        <h1 class="page-title">Spiele</h1>
+        <p class="page-lead">Alle Spiele laufen im Browser auf dem Fernseher. Das Handy ist die Kamera, dein Körper der Controller – gratis und ohne App.</p>
+        <section class="card gamecard">
+          <div class="media"><video autoplay muted loop playsinline preload="metadata" poster="media/kurvenflitzer.jpg" aria-hidden="true"><source src="media/kurvenflitzer.mp4" type="video/mp4"><source src="media/kurvenflitzer.webm" type="video/webm"></video></div>
+          <div class="info">
+            <div class="tags"><span class="tag cream">Neu</span><span class="tag">Rennen</span></div>
+            <h2>Kurvenflitzer</h2>
+            <p>Go-Kart-Rennen in der Fahrerperspektive. Du hältst ein unsichtbares Lenkrad vor der Brust und drehst es – Gas gibt das Kart von selbst. Drei Runden, Münzen für Turbo, Rempeln erlaubt.</p>
+            <div class="facts">
+              <div class="fact"><small>Spieler</small><b>1–4 am gleichen TV</b></div>
+              <div class="fact"><small>Dauer</small><b>ca. 3 Minuten</b></div>
+              <div class="fact"><small>Haltung</small><b>sitzend oder stehend</b></div>
+              <div class="fact"><small>Kamera</small><b>pro Person oder eine für alle</b></div>
+            </div>
+            <a class="btn" href="kurvenflitzer/"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#e2574c"/><path d="M10 8l6 4-6 4z" fill="#ffffff"/></svg>Jetzt spielen</a>
           </div>
+        </section>
+        <h2 class="sec-title">Items im Kurvenflitzer</h2>
+        <section class="card">
+          <p style="margin-bottom: 14px;">Fahr durch eine <b>?-Box</b> (1 Item pro Runde). <b>Beide Arme nach unten</b> öffnet das Wurf-Menü – ein Autopilot fährt weiter. Mit der Hand das Item auf eine Person ziehen, danach zählt es 3-2-1 und du lenkst wieder selbst. Wer getroffen wurde, ist 20 Sekunden geschützt.</p>
+          <div class="grid4 items"><div class="item"><span class="ic" style="background:#9b7fd1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h14l-3.5-3.5M20 16H6l3.5 3.5" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><p><b>Spiegel-Lenkung</b><br>Links und rechts sind 7 Sekunden vertauscht.</p></div><div class="item"><span class="ic" style="background:#5aa9c9"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 20V10a4.5 4.5 0 0 1 9 0v5" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/><path d="M13.5 12.5 17 16l3.5-3.5" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><p><b>Rückwärtsgang</b><br>Das Kart dreht sich um – 6 Sekunden Blick nach hinten.</p></div><div class="item"><span class="ic" style="background:#e2574c"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.3 3h7.4L21 8.3v7.4L15.7 21H8.3L3 15.7V8.3z" fill="#fff"/><rect x="6.5" y="10.4" width="11" height="3.2" rx="1.2" fill="#e2574c"/></svg></span><p><b>Vollbremse</b><br>Sofortiger Stillstand für gut 2 Sekunden.</p></div><div class="item"><span class="ic" style="background:#f39a4c"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.8 4.2a4.6 4.6 0 0 0-5.7 5.9L3.6 15.6a1.9 1.9 0 0 0 0 2.7l2.1 2.1a1.9 1.9 0 0 0 2.7 0l5.5-5.5a4.6 4.6 0 0 0 5.9-5.7l-2.9 2.9-2.9-.8-.8-2.9z" fill="#fff"/></svg></span><p><b>Motorausfall</b><br>Motor aus, bis man 3× beide Arme über den Kopf hebt.</p></div></div>
+        </section>
+        <h2 class="sec-title">Bald</h2>
+        <section class="card soon-card">
+          <span class="ico"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#f6e3e1" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 7v10M8 11l4-4 4 4"/></svg></span>
+          <div><h3>Loch in der Wand</h3><p>Eine Wand mit einer Form rast auf dich zu – stell dich so hin, dass du durchpasst. Stehend, für die ganze Familie.</p></div>
         </section>
       </div>
 
-      <div class="row">
-        <section class="block" id="so" aria-label="So funktioniert’s">
-          <h2>So funktioniert’s</h2>
-          <div class="steps" style="margin-top: 12px;">
-            <div class="step"><span class="n" style="background: #e2574c;">1</span><b>Spiel auf dem TV öffnen</b><span>Smart-TV, Laptop per HDMI oder Chromecast – Hauptsache gross.</span></div>
-            <div class="step"><span class="n" style="background: #f7e9a6; color: #5a1f25;">2</span><b>QR-Code scannen</b><span>Jede Person nimmt ihr Handy. Es wird zur Kamera, keine App nötig.</span></div>
-            <div class="step"><span class="n" style="background: #9b7fd1;">3</span><b>Bewegen!</b><span>Die Körpererkennung läuft auf dem Handy. Das Kamerabild verlässt es nie.</span></div>
-          </div>
-        </section>
+      <!-- ===== So funktioniert's ===== -->
+      <div class="view" data-view="so">
+        <h1 class="page-title">So funktioniert’s</h1>
+        <p class="page-lead">In zwei Minuten startklar. Du brauchst einen grossen Bildschirm mit Browser und mindestens ein Handy.</p>
+        <div class="howto">
+          <section class="card" style="--c:#e2574c"><h3>Spiel auf dem TV öffnen</h3><p>Diese Seite auf dem Smart-TV-Browser, am Laptop (per HDMI am TV) oder per Chromecast-Tab öffnen und das Spiel wählen. Mit <b>Vollbild</b> wird es noch grösser.</p></section>
+          <section class="card" style="--c:#d39a55"><h3>QR-Code scannen</h3><p>Mit der Handy-Kamera den QR-Code auf dem TV scannen und in <b>Safari oder Chrome</b> öffnen. Handy und TV am besten im <b>gleichen WLAN</b>.</p></section>
+          <section class="card" style="--c:#9b7fd1"><h3>Kamera hinstellen</h3><p><b>«Nur ich»:</b> jede Person mit eigenem Handy. <b>«Mehrere»:</b> ein Handy filmt bis zu 4 Personen nebeneinander. Handy anlehnen, 2–3 m Abstand, Licht von vorn.</p></section>
+          <section class="card" style="--c:#5aa9c9"><h3>Fahrer wählen & «Bereit»</h3><p>Auf dem Handy unter <b>Spieler</b> Namen eintippen und Fahrer aussuchen, dann <b>✓ Bereit</b> drücken.</p></section>
+          <section class="card" style="--c:#7fd18b"><h3>Hände ans Lenkrad</h3><p>Hände vor die Brust halten wie an einem Lenkrad, bis der Balken am TV voll ist. Sind alle bereit, startet das Rennen.</p></section>
+        </div>
+        <h2 class="sec-title">Steuerung im Kurvenflitzer</h2>
+        <div class="grid3">
+          <section class="card"><h3>🏎️ Lenken</h3><p>Das unsichtbare Lenkrad drehen: rechte Hand tiefer = rechts. Hände weg vom Lenkrad = Gas weg.</p></section>
+          <section class="card"><h3>🎁 Items werfen</h3><p>Beide Arme nach unten → Menü. Item mit der Hand auf eine Person ziehen und kurz halten. Danach 3-2-1, dann wieder lenken.</p></section>
+          <section class="card"><h3>🔧 Motor ankurbeln</h3><p>Motorausfall? 3× beide Arme über den Kopf heben. Im Ziel: beide Hände hoch = neues Rennen.</p></section>
+        </div>
+        <section class="card"><h3>⌨️ Ohne Kamera testen</h3><p>Am Laptop «Tastatur» wählen: <kbd>←</kbd> <kbd>→</kbd> lenken (2. Spieler <kbd>A</kbd> <kbd>D</kbd>), <kbd>Leertaste</kbd> bereit, <kbd>↑</kbd> Item-Menü & werfen, <kbd>↓</kbd> zurück, <kbd>F</kbd> Vollbild, <kbd>M</kbd> Ton.</p></section>
+        <h2 class="sec-title">Häufige Fragen</h2>
+        <details class="card"><summary>Wird mein Kamerabild übertragen?</summary><p>Nein. Die Körpererkennung läuft komplett auf dem Handy. Zum TV gehen nur ein paar Körperpunkte (Schultern, Hände usw.) – kein Bild, kein Ton.</p></details>
+        <details class="card"><summary>Das Handy verbindet sich nicht mit dem TV</summary><p>Handy ins gleiche WLAN wie den TV bringen (nicht Mobilfunk oder Gäste-WLAN) und die Seite neu laden. Den Link nicht im Instagram- oder WhatsApp-Browser öffnen, sondern in Safari oder Chrome. Die Handy-Seite zeigt unten an, wo es hängt.</p></details>
+        <details class="card"><summary>Die Steuerung reagiert nicht richtig</summary><p>Oberkörper und beide Hände müssen gut im Bild sein. Hilfreich: Licht von vorn statt Fenster im Rücken, eng anliegende Ärmel, das Handy auf Brusthöhe. Bei «Mehrere» nebeneinander sitzen, nicht hintereinander.</p></details>
+        <details class="card"><summary>Was kostet das?</summary><p>Nichts. Slop Games ist gratis, ohne Anmeldung und ohne App.</p></details>
+        <details class="card"><summary>Welche Geräte gehen?</summary><p>TV-Seite: aktuelle Browser (Chrome, Edge, Safari, Firefox), am besten am Laptop oder Smart-TV. Handy: iPhone mit Safari oder Android mit Chrome, nicht älter als etwa 5 Jahre.</p></details>
+      </div>
 
-        <section class="stats" id="bewegung" aria-label="Deine Bewegung">
-          <div class="stats-head"><h2 style="margin: 0; font-size: 20px; font-weight: 600; color: #fff;">Deine Bewegung</h2><small>auf diesem Gerät</small></div>
-          <div class="stats-body" id="statsBody">
-            <div class="donut">
-              <svg viewBox="0 0 120 120" aria-hidden="true">
-                <circle cx="60" cy="60" r="48" fill="none" stroke="#5a1f25" stroke-width="16"/>
-                <circle id="arcK" style="display:none" cx="60" cy="60" r="48" fill="none" stroke="#e2574c" stroke-width="16" stroke-linecap="round" stroke-dasharray="0 302"/>
-              </svg>
-              <div class="c"><div><b id="totalMin">0</b><span>Minuten</span></div></div>
-            </div>
-            <div class="legend">
-              <div><i style="background: #e2574c;"></i><span>Kurvenflitzer</span><b id="minK">0 Min.</b></div>
-              <div><i style="background: #f7e9a6;"></i><span>Rennen gefahren</span><b id="races">0</b></div>
-            </div>
-          </div>
-          <div class="empty" id="statsEmpty" hidden>Noch keine Runde gespielt – starte ein Spiel, dann siehst du hier, wie viel du dich bewegt hast.</div>
+      <!-- ===== Deine Bewegung ===== -->
+      <div class="view" data-view="bewegung">
+        <h1 class="page-title">Deine Bewegung</h1>
+        <p class="page-lead">Gespeichert nur auf diesem Gerät – nichts davon verlässt deinen Browser.</p>
+        <div class="grid4">
+          <div class="kpi"><small>Bewegungszeit</small><b id="kMin">0</b><span>Minuten insgesamt</span></div>
+          <div class="kpi"><small>Rennen</small><b id="kRaces">0</b><span>gefahren</span></div>
+          <div class="kpi"><small>Siege</small><b id="kWins">0</b><span>Platz 1 auf diesem TV</span></div>
+          <div class="kpi"><small>Schnellstes Rennen</small><b id="kBest">–</b><span>3 Runden</span></div>
+        </div>
+        <section class="card">
+          <h3>Letzte 7 Tage</h3>
+          <div class="bars" id="bars"></div>
         </section>
+        <section class="card">
+          <h3>Letzte Rennen</h3>
+          <p id="histEmpty">Noch keine Rennen – starte den Kurvenflitzer, dann erscheinen sie hier.</p>
+          <table class="hist" id="hist" hidden><thead><tr><th>Wann</th><th>Fahrer</th><th>Bester Platz</th><th>Zeit</th></tr></thead><tbody></tbody></table>
+        </section>
+        <div><button class="ghost-btn" id="resetStats" type="button">Statistik zurücksetzen</button></div>
       </div>
 
       <footer>
@@ -209,39 +363,64 @@
   </div>
 
   <script>
+    const $ = (id) => document.getElementById(id);
     // Begrüssung nach Tageszeit
     const h = new Date().getHours();
-    document.getElementById('greet').textContent = h < 11 ? 'Guten Morgen' : h < 18 ? 'Guten Tag' : 'Guten Abend';
-    // Spielzeit (von den Spielen lokal gespeichert)
+    $('greet').textContent = h < 11 ? 'Guten Morgen' : h < 18 ? 'Guten Tag' : 'Guten Abend';
+
+    // Seiten wechseln (#start, #spiele, #so, #bewegung)
+    const VIEWS = ['start', 'spiele', 'so', 'bewegung'];
+    function show() {
+      const v = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'start';
+      document.querySelectorAll('.view').forEach((el) => el.classList.toggle('on', el.dataset.view === v));
+      document.querySelectorAll('.rail a.nav').forEach((a) => a.classList.toggle('on', a.dataset.v === v));
+      // nur Videos auf der sichtbaren Seite abspielen
+      document.querySelectorAll('video').forEach((vid) => { if (vid.closest('.view').classList.contains('on') && !reduce) vid.play().catch(() => {}); else vid.pause(); });
+      scrollTo(0, 0);
+      if (typeof renderStats === 'function' && statsReady) renderStats();
+    }
+    let statsReady = false;
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) document.querySelectorAll('video').forEach((v) => v.removeAttribute('autoplay'));
+    addEventListener('hashchange', show);
+    show();
+
+    // Spielzeit (vom Spiel lokal gespeichert)
     let stats = {};
     try { stats = JSON.parse(localStorage.getItem('slope.stats')) || {}; } catch { stats = {}; }
-    const k = Math.round((stats.kurvenflitzer || 0) / 60), races = stats.races || 0;
-    document.getElementById('minK').textContent = k + ' Min.';
-    document.getElementById('races').textContent = races;
-    document.getElementById('totalMin').textContent = k;
-    const C = 2 * Math.PI * 48;
-    if (k > 0 || races > 0) {
-      const arc = document.getElementById('arcK');
-      arc.style.display = '';
+    const fmt = (t) => { const m = Math.floor(t / 60), s = Math.round(t - m * 60); return `${m}:${s < 10 ? '0' : ''}${s}`; };
+    function renderStats() {
+      try { stats = JSON.parse(localStorage.getItem('slope.stats')) || {}; } catch { stats = {}; }
+      const k = Math.round((stats.kurvenflitzer || 0) / 60), races = stats.races || 0;
+      $('minK').textContent = k + ' Min.'; $('races').textContent = races; $('totalMin').textContent = k;
+      const C = 2 * Math.PI * 48, arc = $('arcK');
+      arc.style.display = k > 0 || races > 0 ? '' : 'none';
       arc.setAttribute('stroke-dasharray', `${Math.max(4, C * Math.min(1, k / 60) - 8)} ${C}`);
-    } else {
-      document.getElementById('statsEmpty').hidden = false;
+      $('statsEmpty').hidden = k > 0 || races > 0;
+      // Seite «Deine Bewegung»
+      $('kMin').textContent = k; $('kRaces').textContent = races; $('kWins').textContent = stats.wins || 0;
+      $('kBest').textContent = stats.best ? fmt(stats.best) : '–';
+      const days = stats.days || {};
+      const list = [];
+      for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); const key = d.toISOString().slice(0, 10); list.push({ key, label: i === 0 ? 'Heute' : d.toLocaleDateString('de-CH', { weekday: 'short' }), min: Math.round((days[key] || 0) / 60), today: i === 0 }); }
+      const max = Math.max(5, ...list.map((x) => x.min));
+      $('bars').innerHTML = list.map((x) => `<div class="bar ${x.today ? 'today' : ''}"><small>${x.min || ''}</small><i style="height:${(x.min / max) * 100}%"></i><em>${x.label}</em></div>`).join('');
+      const hist = (stats.history || []).slice(-10).reverse();
+      $('hist').hidden = !hist.length; $('histEmpty').hidden = !!hist.length;
+      $('hist').querySelector('tbody').innerHTML = hist.map((r) => `<tr><td>${new Date(r.d).toLocaleString('de-CH', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}</td><td><b>${(r.names || []).join(', ').replace(/[<>&]/g, '') || r.n + ' Person(en)'}</b></td><td>${r.place ? r.place + '.' : '–'}</td><td>${r.t ? fmt(r.t) : '–'}</td></tr>`).join('');
     }
-    // Hintergrund-Video: bei «weniger Bewegung» anhalten (Standbild bleibt)
-    const vid = document.getElementById('heroVid');
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { vid.removeAttribute('autoplay'); vid.pause(); }
-    else vid.play().catch(() => {});
+    statsReady = true;
+    renderStats();
+    $('resetStats').addEventListener('click', () => {
+      if (!confirm('Statistik auf diesem Gerät wirklich löschen?')) return;
+      try { localStorage.removeItem('slope.stats'); } catch { /* */ }
+      stats = {}; renderStats();
+    });
+
     // Vollbild (z. B. am Fernseher)
-    const fsBtn = document.getElementById('fsBtn');
+    const fsBtn = $('fsBtn');
     if (!document.documentElement.requestFullscreen) fsBtn.hidden = true;
     fsBtn.addEventListener('click', () => { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {}); });
-    // aktiven Menüpunkt beim Scrollen markieren
-    const navs = [...document.querySelectorAll('.rail a.nav')];
-    const secs = navs.map((a) => document.querySelector(a.getAttribute('href')));
-    addEventListener('scroll', () => {
-      let i = 0; secs.forEach((s, j) => { if (s && s.getBoundingClientRect().top < innerHeight * 0.4) i = j; });
-      navs.forEach((a, j) => a.classList.toggle('on', j === i));
-    }, { passive: true });
   </script>
 </body>
 </html>

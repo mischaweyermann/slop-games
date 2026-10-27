@@ -4,7 +4,7 @@ Gratis Bewegungsspiele für den Fernseher. Das Handy ist die Kamera, der Körper
 
 | Pfad | Inhalt |
 |---|---|
-| `/` | Startseite mit allen Spielen |
+| `/` | Startseite: Start, Spiele, So funktioniert’s, Deine Bewegung (Seiten über die Leiste links) |
 | `/kurvenflitzer/` | 🏎️ Kurvenflitzer (1–4 Spieler am gleichen TV) |
 | `/controller.html` | Handy-Seite (Kamera + Körpererkennung) |
 | `js/`, `css/` | Gemeinsamer Code (Sound, Charakter, Handy-Seite, Stile) |
@@ -22,7 +22,7 @@ Go-Kart-Rennen in der Ich-Perspektive. Du hältst ein **unsichtbares Lenkrad** v
 - 3 Runden auf einem 1,1 km Rundkurs, mindestens 4 Karts (fehlende Plätze fahren KI-Gegner)
 - Münzen sammeln: 5 Münzen = 3 Sekunden **Turbo**
 - Wiese bremst, Reifenstapel schubsen zurück, Zusammenstösse kosten Tempo
-- **Start:** Alle halten die Hände ruhig vor der Brust, bis ihr Balken voll ist. Danach läuft «Start in …» (allein 8 s, zu mehreren 3 s), damit weitere Personen noch scannen können – jede neue Person verlängert die Wartezeit.
+- **Start:** Jede Person stellt auf dem Handy Name und Fahrer ein und drückt **✓ Bereit**. Erst dann wird am TV ausgerichtet: Hände ruhig vor der Brust halten, bis der Balken voll ist. Danach läuft «Start in …» (allein 8 s, zu mehreren 3 s), damit weitere Personen noch scannen können – jede neue Person verlängert die Wartezeit.
 - **Neues Rennen:** im Ziel beide Hände über den Kopf
 
 ### Items
