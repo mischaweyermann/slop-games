@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { createAudio } from '../js/audio.js';
 import { loadConfig, sanitize, PRESETS } from '../js/character.js';
+import { avatarSvg } from './avatar2d.js';
 import { MultiTracker } from '../js/tracker.js';
 import { GRASS, WALL, T, N, SEG, TRACK_LEN, sample, nearest, nearestGlobal, lateral, buildWorld, makeKart } from './world.js';
 import { Cockpit } from './cockpit.js';
@@ -41,6 +42,9 @@ const angDiff = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
 const fmt = (t) => { if (t == null || !isFinite(t)) return '–'; const m = Math.floor(t / 60), s = t - m * 60; return `${m}:${s < 10 ? '0' : ''}${s.toFixed(1)}`; };
 const newCode = () => Array.from({ length: 5 }, () => CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]).join('');
 const params = new URLSearchParams(location.search);
+// ?capture: Aufnahme-Modus für das Video auf der Startseite (feste Bildrate, ohne Anzeigen)
+const CAPTURE = params.has('capture');
+if (CAPTURE) document.body.classList.add('capture');
 const audio = createAudio();
 const myTv = newCode() + newCode(); // eindeutige Kennung dieses Geräts
 
@@ -144,9 +148,9 @@ function createLocal(source, conn = null) {
     items: [], aim: null, downT: 0, crankUp: false, noItemCd: 0, rollT: 0, lastKey: '',
   };
   if (source === 'keys') p.keyMap = locals.some((q) => q.keyMap === 'arrows') ? 'ad' : 'arrows';
-  if (slot > 0) p.cfg = sanitize({ ...p.cfg, topColor: P_COLORS[slot] });
+  if (slot > 0) p.cfg = sanitize({ ...PRESETS[(slot * 3) % PRESETS.length].cfg, topColor: P_COLORS[slot] });
   p.name = freshNames(1)[0] || `P${slot + 1}`;
-  p.setupDone = source === 'keys';   // Kamera-Spieler wählen erst Fahrer + Namen
+  p.setupDone = true;   // Name + Fahrer werden auf dem Handy eingestellt (unter «Spieler»)
   p.hud = createHud(p);
   locals.push(p);
   locals.sort((a, b) => a.slot - b.slot);
@@ -580,7 +584,7 @@ const ICON = {
   bolt: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z" fill="#f7e9a6"/></svg>',
 };
 const SHIELD = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4 5.5v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10v-6z" fill="#fff"/><path d="m8.5 12 2.4 2.4 4.6-4.8" fill="none" stroke="#3d1418" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const face = (cfg) => `<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="21" r="14" fill="${cfg.skin}"/><path d="M6 19a14 14 0 0 1 28 0q-14-7-28 0z" fill="${cfg.hairColor}"/><circle cx="15" cy="23" r="2" fill="#2f2420"/><circle cx="25" cy="23" r="2" fill="#2f2420"/><path d="M16.5 28q3.5 2.5 7 0" stroke="#2f2420" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>`;
+const face = (cfg) => avatarSvg(sanitize(cfg), { body: false });
 const TICKS = [0, 1, 2, 3, 4, 5, 6].map((k) => { const a = (k / 6) * 270 * Math.PI / 180; const r1 = 41, r2 = 36; return `<path d="M${60 + Math.cos(a) * r1} ${60 + Math.sin(a) * r1} L${60 + Math.cos(a) * r2} ${60 + Math.sin(a) * r2}"/>`; }).join('');
 
 function createHud(p) {
@@ -634,7 +638,6 @@ function renderSlots() {
     if (p.ready) st = 'Bereit!';
     else if (p.source === 'keys') st = `Leertaste = bereit<br>${p.keyMap === 'arrows' ? '← →' : 'A / D'} lenken`;
     else if (!hasControl(p)) st = 'Setz dich vor die Kamera';
-    else if (!p.setupDone) st = 'Wählt den Fahrer …';
     else st = 'Hände ans Lenkrad …';
     slots.push(`<div class="slot ${p.ready ? 'ready' : ''}"><span class="av" style="--c:${P_COLORS[p.slot]}">${face(p.cfg)}<span class="src">${ICON[p.source] || ICON.phone}</span></span><b>${esc(pName(p))}</b><span class="bar"><i style="width:${fill * 100}%"></i></span><span class="st">${st}</span></div>`);
   }
@@ -1216,7 +1219,7 @@ function updateDemoCam(dt) {
     return;
   }
   demoT += dt;
-  if (demoT > 9) { demoT = 0; demoCar = (demoCar + 1) % list.length; camSnap = true; }
+  if (demoT > (CAPTURE ? 4.2 : 9)) { demoT = 0; demoCar = (demoCar + 1) % list.length; camSnap = true; }
   const k = list[demoCar % list.length].kart;
   const back = new THREE.Vector3(Math.sin(k.rotation.y), 0, Math.cos(k.rotation.y));
   const want = k.position.clone().addScaledVector(back, -9 + Math.sin(demoT * 0.4) * 2).add(new THREE.Vector3(Math.cos(demoT * 0.3) * 4, 4.2, 0));
@@ -1251,86 +1254,7 @@ function updatePlayerCam(p, dt) {
 }
 
 
-/* ================================================================
-   Fahrer-Auswahl am TV: neue Person wählt Charakter + Namen per Handzeiger
-   ================================================================ */
-const PICK_DWELL = 0.6, PICK_IDLE = 20;
 const HAND_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10m0-.5V4a1.5 1.5 0 0 1 3 0v6m0-4.5a1.5 1.5 0 0 1 3 0V12m0-4a1.5 1.5 0 0 1 3 0v6.5a7 7 0 0 1-7 7h-1a7 7 0 0 1-5.6-2.8L4 17.3a1.6 1.6 0 0 1 2.5-2L9 17.5V11" fill="#fff" stroke="#3d1418" stroke-width="1.4" stroke-linejoin="round"/></svg>';
-let pick = null;
-const NEUTRAL = ['#f4efe6', '#3b3b45', '#c69c6d'];
-const kartCol = (cfg, slot) => (NEUTRAL.includes(cfg.topColor) ? P_COLORS[slot] : cfg.topColor);
-const samePreset = (a, b) => ['skin', 'hair', 'hairColor', 'topColor', 'hat'].every((k) => a[k] === b[k]);
-function pickLayout(nNames) {
-  return {
-    pres: PRESETS.map((_, i) => ({ x: 0.13 + (0.74 * i) / (PRESETS.length - 1), y: 0.4 })),
-    names: Array.from({ length: nNames }, (_, i) => ({ x: 0.2 + i * 0.2, y: 0.64 })),
-    dice: { x: 0.8, y: 0.64 }, done: { x: 0.5, y: 0.85 },
-  };
-}
-function updatePicker(dt) {
-  const show = state === 'lobby' || state === 'ready';
-  if (pick && (!show || !locals.includes(pick.p) || pick.p.setupDone)) pick = null;
-  if (!pick && show) {
-    const next = locals.find((q) => !q.setupDone && q.source !== 'keys' && hasControl(q));
-    if (next) { pick = { p: next, cx: 0.5, cy: 0.6, hover: '', dwell: 0, names: [next.name, ...freshNames(2, [next.name])], lastAct: now }; renderPicker(true); audio.whoosh(); }
-  }
-  $('picker').classList.toggle('show', !!pick);
-  if (!pick) return;
-  const p = pick.p;
-  if (now - pick.lastAct > PICK_IDLE) { finishPick(); return; } // niemand wählt: so übernehmen
-  const c = hasControl(p) ? p.input.cursor : null;
-  if (c) { pick.cx = lerp(pick.cx, c.x, damp(14, dt)); pick.cy = lerp(pick.cy, c.y, damp(14, dt)); }
-  const L = pickLayout(pick.names.length);
-  let hover = '';
-  if (c) {
-    L.pres.forEach((q, i) => { if (Math.abs(pick.cx - q.x) < 0.047 && Math.abs(pick.cy - q.y) < 0.1) hover = 'p' + i; });
-    L.names.forEach((q, i) => { if (Math.abs(pick.cx - q.x) < 0.09 && Math.abs(pick.cy - q.y) < 0.06) hover = 'n' + i; });
-    if (Math.abs(pick.cx - L.dice.x) < 0.09 && Math.abs(pick.cy - L.dice.y) < 0.06) hover = 'd';
-    if (Math.abs(pick.cx - L.done.x) < 0.13 && Math.abs(pick.cy - L.done.y) < 0.07) hover = 'ok';
-  }
-  pick.dwell = hover && hover === pick.hover ? pick.dwell + dt : 0;
-  if (hover && hover !== pick.hover) audio.tick();
-  pick.hover = hover;
-  if (hover && pick.dwell >= PICK_DWELL) {
-    pick.dwell = -0.6; pick.lastAct = now; // kurze Pause bis zur nächsten Auswahl
-    if (hover[0] === 'p') { applyChar(p, { cfg: { ...PRESETS[+hover.slice(1)].cfg } }); audio.pop(3); }
-    else if (hover[0] === 'n') { applyChar(p, { name: pick.names[+hover.slice(1)] }); audio.pop(5); }
-    else if (hover === 'd') { pick.names = freshNames(3); audio.whoosh(); }
-    else if (hover === 'ok') { finishPick(); return; }
-    renderPicker(true);
-  }
-  renderPicker();
-}
-function finishPick() {
-  if (!pick) return;
-  const p = pick.p; pick = null;
-  $('picker').classList.remove('show');
-  applyChar(p, { done: true });
-  audio.gold();
-  toast(`${pName(p)} ist dabei – jetzt Hände ans Lenkrad!`);
-}
-function renderPicker(full = false) {
-  if (!pick) return;
-  const el = $('picker'), p = pick.p, L = pickLayout(pick.names.length);
-  if (full || !el.firstChild) {
-    el.style.setProperty('--c', P_COLORS[p.slot]);
-    el.innerHTML = `<div class="pk-head"><span class="pk-tag">P${p.slot + 1}</span><div class="pk-title">Wähl deinen Fahrer</div><div class="pk-sub">Hand auf etwas halten und kurz warten · oder am Handy einstellen</div></div>
-      ${PRESETS.map((pr, i) => `<div class="pk-pre ${samePreset(p.cfg, pr.cfg) ? 'sel' : ''}" data-k="p${i}" style="left:${L.pres[i].x * 100}%;top:${L.pres[i].y * 100}%;--k:${kartCol(pr.cfg, p.slot)}"><span class="pk-face">${face(pr.cfg)}</span><span class="pk-kart"></span><i class="pk-ring"></i></div>`).join('')}
-      <div class="pk-label" style="top:${(L.names[0].y - 0.085) * 100}%">Dein Name: <b>${esc(pName(p))}</b></div>
-      ${pick.names.map((n, i) => `<div class="pk-chip ${n === p.name ? 'sel' : ''}" data-k="n${i}" style="left:${L.names[i].x * 100}%;top:${L.names[i].y * 100}%">${esc(n)}<i class="pk-ring"></i></div>`).join('')}
-      <div class="pk-chip dice" data-k="d" style="left:${L.dice.x * 100}%;top:${L.dice.y * 100}%">🎲 Andere Namen<i class="pk-ring"></i></div>
-      <div class="pk-done" data-k="ok" style="left:50%;top:${L.done.y * 100}%">✓ Fertig – so fahre ich<i class="pk-ring"></i></div>
-      <div class="pk-cursor">${HAND_SVG}</div>`;
-  }
-  el.querySelectorAll('[data-k]').forEach((x) => {
-    const on = x.dataset.k === pick.hover;
-    x.classList.toggle('hover', on);
-    x.style.setProperty('--d', on ? clamp(pick.dwell / PICK_DWELL, 0, 1) : 0);
-  });
-  const cur = el.querySelector('.pk-cursor');
-  cur.style.left = pick.cx * 100 + '%'; cur.style.top = pick.cy * 100 + '%';
-  cur.hidden = !(hasControl(p) && p.input.cursor);
-}
 
 /* ================================================================
    Hauptschleife
@@ -1339,7 +1263,7 @@ const clock = new THREE.Clock();
 let hudT = 0, frameAcc = 0, frameN = 0, qChecks = 0;
 
 function tick() {
-  const realDt = Math.min(clock.getDelta(), 0.25);
+  const realDt = CAPTURE ? 1 / 30 : Math.min(clock.getDelta(), 0.25);
   const dt = Math.min(realDt, 0.05);
   now += realDt; stateT += realDt;
   const simAI = true;
@@ -1349,7 +1273,7 @@ function tick() {
   } else if (state === 'ready') {
     for (const p of locals) {
       updateLocal(p, dt, false);
-      if (!p.ready && p.source !== 'keys' && p.setupDone) {
+      if (!p.ready && p.source !== 'keys') {
         p.readyT = gripping(p) && Math.abs(p.input.steer) < 0.3 ? p.readyT + realDt : Math.max(0, p.readyT - realDt * 2);
         if (p.readyT >= 1.2) { p.ready = true; audio.tick(); }
       }
@@ -1394,7 +1318,6 @@ function tick() {
     }
   }
   dropLost();
-  updatePicker(realDt);
   for (const r of racers.values()) {
     placeKart(r, dt);
   }
@@ -1525,12 +1448,12 @@ function tick() {
 
   // Qualität automatisch anpassen
   frameAcc += realDt; frameN++;
-  if (frameAcc > 2 && qChecks < 3) {
+  if (!CAPTURE && frameAcc > 2 && qChecks < 3) {
     const avg = frameAcc / frameN; frameAcc = 0; frameN = 0; qChecks++;
     if (avg > 0.024 && pixelRatio > 1) { pixelRatio = 1; renderer.setPixelRatio(1); updateLayout(); }
     else if (avg > 0.03 && renderer.shadowMap.enabled) { renderer.shadowMap.enabled = false; scene.traverse((o) => o.material && (o.material.needsUpdate = true)); }
   }
-  requestAnimationFrame(tick);
+  if (!CAPTURE) requestAnimationFrame(tick);
 }
 
 /* ================================================================
@@ -1553,7 +1476,7 @@ document.querySelectorAll('.logo .word').forEach((w, wi) => {
 
 updateLayout();
 setState('lobby');
-startPeer();
+if (!CAPTURE) startPeer();
 if (params.has('keys')) addKeysPlayer();
 tick();
 
@@ -1562,7 +1485,7 @@ window.__race = {
   locals, racers, get state() { return state; }, get code() { return code; }, get roster() { return roster; },
   BOXES, give: (i, k) => { const p = locals[i]; if (p) p.items.push(k); }, hit: (i, k) => locals[i] && applyItem(locals[i].racer, k, 'Test'),
   aim: (i) => locals[i] && locals[i].aim, get now() { return now; },
-  get pick() { return pick; },
+  frame: () => tick(),
   setState, onPose: (i, k, w, h) => locals[i] && onPose(locals[i], k, w, h), addKeysPlayer, T, N, TRACK_LEN,
   finishLocal: (i) => { const p = locals[i]; if (p && p.racer) { p.racer.lap = LAPS; const s = T[N - 20]; p.racer.pos.set(s.p.x, 0, s.p.z); p.racer.idx = N - 20; p.prevIdx = N - 20; p.racer.heading = Math.atan2(s.t.x, s.t.z); p.racer.v = 30; } },
 };

@@ -46,7 +46,7 @@ Zwei Wege, auch gemischt:
 - **Jede Person mit eigenem Handy:** QR-Code scannen, auf dem Handy «Nur ich» wählen.
 - **Mehrere vor einer Kamera:** Ein Handy (oder die Laptop-Kamera über «Kamera dieses Geräts») filmt bis zu 4 Personen nebeneinander. Auf dem Handy «Mehrere» wählen (Standard). Jede erkannte Person bekommt automatisch einen eigenen Platz; wer das Bild verlässt, wird in der Lobby nach ein paar Sekunden wieder entfernt.
 
-**Fahrer & Name:** Für jede neue Person öffnet sich am TV «Wähl deinen Fahrer». Mit der Hand auf einen Charakter oder einen Namensvorschlag zeigen und kurz halten, dann «✓ Fertig». Alternativ oder zusätzlich auf dem Handy unter **Spieler**: Name eintippen, Charakter wählen oder «Charakter genau einstellen». Wer allein spielt, wird beim nächsten Mal mit gespeichertem Namen direkt übernommen.
+**Fahrer & Name:** Jede erkannte Person bekommt einen Namensvorschlag und fährt sofort mit. Ändern auf dem Kamera-Handy unter **Spieler**: pro Person eine Karte mit Namensfeld, Fahrer-Auswahl und «Charakter genau einstellen». Wer allein spielt, wird beim nächsten Mal mit gespeichertem Namen übernommen.
 
 Der Bildschirm teilt sich automatisch (2 = nebeneinander, 3–4 = Viertel). Wer während eines Rennens dazukommt, fährt ab dem nächsten Rennen mit.
 
