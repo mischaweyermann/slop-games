@@ -82,6 +82,5 @@ Am Laptop `http://localhost:8080` öffnen und ein Spiel wählen. Ohne Handy: im 
 
 ## Ideen für später
 
-- Weitere Spiele: «Loch in der Wand», Torwart, Tanz-Posen
 - Eigene 3D-Modelle aus Blender (als `.glb` laden)
 - Eigener PeerJS-Server, falls der Gratis-Server einmal überlastet ist (`?peer=host:port`)
