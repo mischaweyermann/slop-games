@@ -5,7 +5,7 @@ Gratis Bewegungsspiele für den Fernseher. Das Handy ist die Kamera, der Körper
 | Pfad | Inhalt |
 |---|---|
 | `/` | Startseite mit allen Spielen |
-| `/kurvenflitzer/` | 🏎️ Kurvenflitzer (1–4 Spieler am TV + online) |
+| `/kurvenflitzer/` | 🏎️ Kurvenflitzer (1–4 Spieler am gleichen TV) |
 | `/controller.html` | Handy-Seite (Kamera + Körpererkennung) |
 | `js/`, `css/` | Gemeinsamer Code (Sound, Charakter, Handy-Seite, Stile) |
 
@@ -39,41 +39,18 @@ Auf der Strecke stehen vier Reihen **?-Boxen**. Wer durchfährt, bekommt ein Ite
 | ⛔ Vollbremse | sofortiger Stillstand (ca. 2,5 s) |
 | 🔧 Motorausfall | Motor aus, bis die getroffene Person **3× beide Arme über den Kopf** hebt (Tastatur: ← → abwechselnd) |
 
-Wer getroffen wurde, ist **20 Sekunden geschützt** (im Menü ausgegraut; ein Wurf in dieser Zeit prallt ab und das Item kommt zurück). Über getroffenen Karts schwebt das Symbol, damit alle sehen, wen es erwischt hat. KI-Gegner sammeln und werfen auch. Online funktionieren Würfe zwischen allen TVs.
+Wer getroffen wurde, ist **20 Sekunden geschützt** (im Menü ausgegraut; ein Wurf in dieser Zeit prallt ab und das Item kommt zurück). Über getroffenen Karts schwebt das Symbol, damit alle sehen, wen es erwischt hat. KI-Gegner sammeln und werfen auch.
 
 ### Mehrspieler am gleichen TV (bis 4)
 Jede Person scannt den QR-Code mit ihrem eigenen Handy. Der Bildschirm teilt sich automatisch (2 = nebeneinander, 3–4 = Viertel). Jede/r hat eigenes Cockpit, eigene Münzen und eigene Anzeige; die anderen sieht man als Karts in ihren Charakterfarben. Wer während eines Rennens dazukommt, fährt ab dem nächsten Rennen mit.
-
-### Online (mehrere TVs)
-1. TV A: **Online spielen → 🔗 Einladungs-Link teilen** und den Link per WhatsApp o. ä. schicken
-2. Der Freund öffnet den Link auf **seinem TV/Laptop** (nicht auf dem Handy) – sein Bildschirm tritt automatisch bei. Alternativ dort **Online spielen** → Code von TV A eingeben → **Beitreten**
-3. Bis der andere Bildschirm verbunden ist, startet keiner allein (oben steht «Warte auf den eingeladenen Bildschirm …» bzw. «Verbinde mit Raum …»; beide Hände hoch = trotzdem allein fahren). In der Lobby zeigt ein grüner Balken, wer am anderen Bildschirm dabei ist.
-4. Wichtig: Handys scannen immer den QR-Code auf **ihrem eigenen** Bildschirm. Wer den QR-Code von TV A scannt, fährt auf TV A mit.
-5. An jedem TV können zusätzlich 1–4 Handys mitspielen (max. 8 Karts insgesamt)
-
-Der Gastgeber-TV steuert Start und KI-Gegner; alle TVs tauschen 15× pro Sekunde ihre Positionen aus (direkt per WebRTC, kein eigener Server). Der Start erfolgt, wenn an allen TVs alle bereit sind.
 
 ### Weitere Eingaben
 - **Kamera dieses Geräts** – z. B. Laptop-Webcam
 - **Tastatur** zum Testen: Spieler 1 mit ← →, Spieler 2 mit A / D, Leertaste = bereit, ↑ / W = Item-Menü & werfen, ↓ / S = zurück
 
-## Verbindung in jedem Netz
+## Verbindung Handy ↔ TV
 
-Die Geräte versuchen sich zuerst **direkt** zu verbinden (WebRTC, schnellster Weg). Klappt das nach 4 Sekunden nicht – z. B. zwei verschiedene Heimnetze, Mobilfunk, Gäste-WLAN –, läuft die Verbindung automatisch über einen **Umweg**: einen öffentlichen MQTT-Server über eine normale Web-Verbindung (`js/relay.js`, Reihenfolge: broker.emqx.io → broker.hivemq.com → test.mosquitto.org). Kein Konto, kein eigener Server. Übertragen werden nur Spieldaten (Körperpunkte, Positionen), nie ein Kamerabild. Auf dem Handy steht dann «verbunden (über Relay)».
-
-Testen: `?relay=only` erzwingt den Umweg, `?relay=off` schaltet ihn ab, `?mqtt=ws://…` nimmt einen eigenen Broker.
-
-### Optional: TURN-Relay (Metered)
-
-Normalerweise verbinden sich Handy und TV direkt. In Mobilfunk, Gäste-WLAN, Firmennetzen
-oder online zwischen zwei Wohnungen geht das oft nicht – dann braucht es ein **Relay**.
-Das Gratis-Relay von PeerJS ist unzuverlässig, deshalb kann ein eigenes eingetragen werden:
-
-1. Gratis-Konto auf [metered.ca](https://www.metered.ca/stun-turn) erstellen → App anlegen (z. B. `slopegames`).
-2. Im Dashboard unter *TURN Server* den **API Key** kopieren.
-3. In `js/config.js` eintragen: `TURN_APP = 'slopegames'`, `TURN_KEY = '…'` → committen.
-
-Ohne Eintrag läuft alles wie bisher (direkt + Gratis-Fallback). Testen ohne Commit: `?turn=app:key` an die URL hängen.
+Handy und TV verbinden sich direkt (WebRTC). Am zuverlässigsten ist es, wenn beide im **gleichen WLAN** sind.
 
 ## Lokal testen
 

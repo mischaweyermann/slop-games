@@ -3,7 +3,6 @@
 
 import { createEditor, loadConfig, saveConfig } from './character.js';
 import { peerOptions as netOptions, deviceId } from './net.js';
-import { dial, warmRelay } from './relay.js';
 
 const $ = (id) => document.getElementById(id);
 const PEER_PREFIX = 'ballonplatzer-v1-';
@@ -139,7 +138,6 @@ class OneEuro {
   }
   reset() { this.x = null; this.dx = 0; }
 }
-let lastPoseSent = 0;
 const filters = IDX.map(() => [new OneEuro(), new OneEuro()]);
 const r3 = (v) => Math.round(v * 1000) / 1000;
 
@@ -184,8 +182,7 @@ function handle(res) {
       const x = filters[n][0].filter(p.x, t), y = filters[n][1].filter(p.y, t);
       k.push(r3(1 - x), r3(y), Math.round((p.visibility ?? 1) * 100) / 100);
     });
-    // Über den Umweg (Relay) höchstens ~15× pro Sekunde senden, sonst drosseln die Server
-    if (!(conn && conn.via === 'relay' && t - lastPoseSent < 62)) { lastPoseSent = t; send({ t: 'p', k, w: v.videoWidth, h: v.videoHeight }); }
+    send({ t: 'p', k, w: v.videoWidth, h: v.videoHeight });
     if (previewOn) drawSkeleton(lm);
   } else if (performance.now() - lastNoneSent > 300) {
     filters.forEach((f) => { f[0].reset(); f[1].reset(); });
@@ -258,7 +255,7 @@ function openConn() {
   if (!peer || peer.destroyed || peer.disconnected) return;
   if ((conn && conn.open) || pending) return; // schon verbunden bzw. Versuch läuft – keine doppelten Spieler
   tries++;
-  const c = pending = dial(peer, PEER_PREFIX + code, { reliable: true, serialization: 'json', metadata: { type: 'phone', pid: PID } });
+  const c = pending = peer.connect(PEER_PREFIX + code, { reliable: true, serialization: 'json', metadata: { type: 'phone', pid: PID } });
   // Kommt die Verbindung nicht zustande (Netzwerk blockiert), nach 10 s neu versuchen
   clearTimeout(openTimer);
   openTimer = setTimeout(() => {
@@ -271,9 +268,9 @@ function openConn() {
       hint('Der Fernseher antwortet nicht. Stimmt der Code? Ist die Spielseite auf dem TV offen (nicht im Standby)?');
     } else {
       diag('dgTv', 'err', 'kein Weg zum TV');
-      hint('Weder direkt noch über den Umweg kommt eine Verbindung zustande. Internet am Handy prüfen und die Seite neu laden. Hilft das nicht: Handy ins gleiche WLAN wie der TV.');
+      hint('Handy und TV finden keinen Weg zueinander. Fast immer hilft: Handy ins <b>gleiche WLAN</b> wie der TV (nicht Mobilfunk, nicht Gäste-WLAN). Danach Seite neu laden.');
     }
-    message('Verbindung zum TV klappt nicht', tries >= 2 ? 'Internet prüfen und Seite neu laden – es wird automatisch weiter versucht.' : 'Neuer Versuch …');
+    message('Verbindung zum TV klappt nicht', tries >= 2 ? 'Am besten Handy und TV im gleichen WLAN – Mobilfunk oder Gäste-WLAN blockieren oft.' : 'Neuer Versuch …');
     retry();
   }, 16000);
   diag('dgTv', 'wait', 'verbinde …');
@@ -286,13 +283,13 @@ function openConn() {
       const st = pc.iceConnectionState;
       if (st !== 'new') c.__ice = true;
       if (st === 'checking') diag('dgTv', 'wait', 'suche Weg …');
-      if (st === 'failed' && !c.open) diag('dgTv', 'wait', 'direkt blockiert – nehme Umweg …');
+      if (st === 'failed' && !c.open) { diag('dgTv', 'err', 'blockiert'); hint('Das Netzwerk blockiert die Verbindung zum TV. Handy ins <b>gleiche WLAN</b> wie der TV bringen (nicht Mobilfunk, nicht Gäste-WLAN) und Seite neu laden.'); }
     });
   };
   watchIce();
   c.on('open', () => {
     clearTimeout(openTimer); pending = null; tries = 0;
-    diag('dgTv', 'ok', c.via === 'relay' ? 'verbunden (über Relay)' : 'verbunden'); hint('');
+    diag('dgTv', 'ok', 'verbunden'); hint('');
     conn = c;
     setChip('ok', 'Mit TV verbunden');
     check('chkTv', true);

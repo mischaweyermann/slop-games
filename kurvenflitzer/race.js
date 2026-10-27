@@ -9,7 +9,6 @@ import { loadConfig, sanitize } from '../js/character.js';
 import { GRASS, WALL, T, N, SEG, TRACK_LEN, sample, nearest, nearestGlobal, lateral, buildWorld, makeKart } from './world.js';
 import { Cockpit } from './cockpit.js';
 import { peerOptions as netOptions } from '../js/net.js';
-import { dial, relayListen, warmRelay } from '../js/relay.js';
 import { ITEMS, ITEM_KEYS, CRANKS, itemSvg, buildItemBoxes, animateBoxes, makeFxSprite, makeProjectile, itemTexture } from './items.js';
 
 /* ================================================================
@@ -42,7 +41,7 @@ const fmt = (t) => { if (t == null || !isFinite(t)) return '–'; const m = Math
 const newCode = () => Array.from({ length: 5 }, () => CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]).join('');
 const params = new URLSearchParams(location.search);
 const audio = createAudio();
-const myTv = newCode() + newCode(); // eindeutige Kennung dieses Geräts (für Online)
+const myTv = newCode() + newCode(); // eindeutige Kennung dieses Geräts
 
 /* ================================================================
    Renderer, Szene, Licht, Welt
@@ -112,7 +111,7 @@ const kartColorOf = (p) => (['#f4efe6', '#3b3b45', '#c69c6d'].includes(p.cfg.top
 function createRacer(def) {
   const r = {
     id: def.id, def, name: def.name, color: def.color, helmet: def.helmet,
-    kind: def.kind === 'ai' ? (role === 'client' ? 'remote' : 'ai') : (def.tv === myTv ? 'local' : 'remote'),
+    kind: def.kind === 'ai' ? 'ai' : 'local',
     kart: makeKart(scene, def.color, def.helmet, def.skin),
     pos: new THREE.Vector3(), heading: 0, v: 0, idx: 0, lap: 0, prog: -10, finished: null,
     s: 0, off: 0, offT: 0, laneT: 0, vmax: def.vmax || 32,
@@ -161,23 +160,7 @@ const humanDef = (p) => ({ id: p.id, kind: 'human', tv: myTv, name: pName(p), co
 
 /* ---------- Startaufstellung zusammenstellen ---------- */
 function buildRoster() {
-  if (role === 'client' && hostRoster) {
-    // Vorläufig: eigene Spieler sofort einsetzen, der Gastgeber schickt gleich die endgültige Liste
-    const others = hostRoster.filter((d) => d.tv !== myTv);
-    const mine = hostRoster.filter((d) => d.tv === myTv && locals.some((p) => p.id === d.id));
-    const missing = locals.filter((p) => !mine.some((d) => d.id === p.id)).map(humanDef);
-    return [...others, ...mine, ...missing];
-  }
-  let humans = locals.map(humanDef);
-  if (role === 'host') {
-    humans = humans.map((d) => ({ ...d, name: `TV1 · ${d.name}` }));
-    let k = 2;
-    for (const t of tvConns.values()) {
-      humans = humans.concat(t.players.map((d, i) => ({ ...d, name: `TV${k} · P${i + 1}` })));
-      k++;
-    }
-  }
-  humans = humans.slice(0, MAX_FIELD);
+  const humans = locals.map(humanDef);
   const nAI = Math.max(0, MIN_FIELD - humans.length);
   const ai = AI_DEF.slice(0, nAI).map((d, i) => ({ ...d, id: 'ai' + i, kind: 'ai' }));
   return [...ai, ...humans];
@@ -188,7 +171,7 @@ function applyRoster(list) {
   for (const r of [...racers.values()]) if (!ids.has(r.id)) removeRacer(r);
   list.forEach((d, slot) => {
     let r = racers.get(d.id);
-    const kind = d.kind === 'ai' ? (role === 'client' ? 'remote' : 'ai') : (d.tv === myTv ? 'local' : 'remote');
+    const kind = d.kind === 'ai' ? 'ai' : 'local';
     if (r && (r.color !== d.color || r.helmet !== d.helmet || r.kind !== kind)) { removeRacer(r); r = null; }
     if (!r) { r = createRacer(d); racers.set(d.id, r); }
     r.def = d; r.name = d.name; r.slot = slot; r.kind = kind;
@@ -200,7 +183,6 @@ function applyRoster(list) {
   }
   for (const r of racers.values()) if (!r.local) setLayer(r.kart, 0);
   updateLayout();
-  if (role === 'host') broadcastTv({ t: 'roster', list, s: state });
 }
 function refreshRoster() { applyRoster(buildRoster()); }
 
@@ -329,7 +311,6 @@ function joinLocal(source, conn = null) {
   audio.unlock(); updateSoundBtn(); audio.whoosh();
   toast(`${pName(p)} ist dabei!`);
   p.hud.root.classList.toggle('show', state !== 'lobby'); p.cockpit.visible = state !== 'lobby';
-  sendPlayersToHost();
   refreshRoster();
   if (state === 'lobby') setState('ready'); else if (state === 'ready') resetRace();
   updateStatus();
@@ -337,7 +318,6 @@ function joinLocal(source, conn = null) {
 }
 function leaveLocal(p) {
   removeLocal(p);
-  sendPlayersToHost();
   if (state === 'ready' || state === 'lobby' || state === 'results') {
     refreshRoster();
     if (!locals.length) setState('lobby'); else if (state === 'ready') resetRace();
@@ -421,25 +401,17 @@ $('camBtn').addEventListener('click', (e) => { e.stopPropagation(); useLocalCame
    Netzwerk: Handys (wie beim Ballon-Platzer) + andere TVs (Online)
    ================================================================ */
 let peer = null, code = '', retries = 0;
-let role = 'solo';             // 'solo' | 'host' | 'client'
-const tvConns = new Map();     // nur Gastgeber: tv-id -> { conn, players, ready }
-let hostConn = null, hostRoster = null, hostState = 'lobby', hostCode = '';
 
 const peerOptions = () => netOptions(params);
 function setStatus(kind, text) { $('status').className = 'status ' + kind; $('statusText').textContent = text; }
 function updateStatus() {
   const n = locals.length;
   let t = n ? `${n} Spieler an diesem TV` : (peer && peer.open ? 'Warte auf Spieler …' : 'Verbinde …');
-  if (role === 'host') t += ` · Online-Gastgeber (${tvConns.size} TV${tvConns.size === 1 ? '' : 's'} verbunden)`;
-  if (role === 'client') t += ` · Online mit Raum ${hostCode}`;
   setStatus(peer && peer.open ? 'ok' : 'wait', t);
-  const mo = role === 'host' ? `🌍 Raum ${code} · ${tvConns.size} weitere TV${tvConns.size === 1 ? '' : 's'}` : role === 'client' ? `🌍 Online im Raum ${hostCode}` : '';
-  $('miniOnline').textContent = mo;
 }
 
-let relayCode = '';
 function onIncoming(c) {
-  if (c.metadata && c.metadata.type === 'tv') return acceptTv(c);
+  if (c.metadata && c.metadata.type === 'tv') { c.on('open', () => setTimeout(() => c.close(), 200)); return; } // Online zwischen Bildschirmen gibt es nicht mehr
   acceptPhone(c);
 }
 function startPeer() {
@@ -451,15 +423,11 @@ function startPeer() {
     retries = 0;
     try { sessionStorage.setItem('kurvenflitzer.code', code); } catch { /* */ }
     renderJoin(); updateStatus();
-    // Ausweichweg über das Relay: Handys und andere Bildschirme erreichen diesen TV auch aus fremden Netzen
-    if (relayCode !== code) { relayCode = code; relayListen(PEER_PREFIX + code, onIncoming); }
-    if (params.get('room') && !autoJoined) { autoJoined = true; setTimeout(() => autoJoin(params.get('room'), 0), 1500); }
   });
   peer.on('connection', onIncoming);
   peer.on('disconnected', () => setTimeout(() => peer && !peer.destroyed && peer.reconnect(), 1500));
   peer.on('error', (e) => {
     if (e.type === 'unavailable-id') { peer.destroy(); if (++retries > 2) { try { sessionStorage.removeItem('kurvenflitzer.code'); } catch { /* */ } } setTimeout(startPeer, 1500); }
-    else if (e.type === 'peer-unavailable') { if (role !== 'client' && joining) { joining = false; onlineInfo('Kein TV mit diesem Code gefunden. Stimmt der Code, und ist die Kurvenflitzer-Seite auf dem anderen TV offen?'); } }
     else if (['network', 'server-error', 'socket-error', 'socket-closed'].includes(e.type)) { setStatus('err', 'Keine Verbindung zum Server – neuer Versuch …'); setTimeout(() => { peer && peer.destroy(); startPeer(); }, 4000); }
   });
 }
@@ -490,7 +458,7 @@ function acceptPhone(c) {
     if (!msg || typeof msg !== 'object') return;
     if (!p) { const q = locals.find((x) => x.conn === c); if (q) p = q; }
     if (msg.t === 'p') { if (p && msg.k) onPose(p, msg.k, msg.w, msg.h); }
-    else if (msg.t === 'char') { if (p) { p.cfg = sanitize(msg.c); p.cockpit.setColors(p.cfg, kartColorOf(p)); if (state !== 'race' && state !== 'countdown') { sendPlayersToHost(); refreshRoster(); if (state === 'ready') resetRace(); } } }
+    else if (msg.t === 'char') { if (p) { p.cfg = sanitize(msg.c); p.cockpit.setColors(p.cfg, kartColorOf(p)); if (state !== 'race' && state !== 'countdown') { refreshRoster(); if (state === 'ready') resetRace(); } } }
     else if (msg.t === 'hello') sendPhone(c, { t: 'state', s: phoneState(), g: 'rennen' });
   });
   c.on('close', () => {
@@ -532,193 +500,6 @@ function renderJoin() {
   $('joinUrl').textContent = url.replace(/^https?:\/\//, '').replace(/\?.*$/, '');
   const svg = qrSvg(url);
   if (svg) { $('qr').innerHTML = svg; $('miniQr').innerHTML = svg; }
-}
-
-const tvPlayers = () => (role === 'host' ? [...tvConns.values()].reduce((n, t) => n + t.players.length, 0) : role === 'client' && hostRoster ? hostRoster.filter((d) => d.kind === 'human' && d.tv !== myTv).length : 0);
-
-/* ---------- Online: Raum erstellen / beitreten ---------- */
-let joining = false, autoJoined = false;
-let wantRoom = '', joinFailed = false; // Gast: soll in diesen Raum (nicht allein losfahren)
-let awaitGuestUntil = 0;               // Gastgeber: hat eingeladen, wartet auf den anderen Bildschirm
-function autoJoin(c, n) {
-  wantRoom = c.toUpperCase(); joinFailed = false;
-  $('onlinePanel').hidden = false; $('roomInput').value = c.toUpperCase();
-  if (n === 0) toast(matchMedia('(pointer: coarse)').matches && innerWidth < 900
-    ? 'Tipp: Den Einladungs-Link am besten auf dem TV oder Laptop öffnen – die Handys scannen dann dort den QR-Code'
-    : `Einladung: trete Raum ${c.toUpperCase()} bei …`, 8000);
-  joinRoom(c);
-  // Falls es nicht klappt (z. B. Gastgeber noch nicht bereit): noch zweimal versuchen
-  setTimeout(() => {
-    if (role === 'client' || joining || !wantRoom) return;
-    if (n < 3) autoJoin(c, n + 1); else { joinFailed = true; onlineInfo(`Raum <b>${wantRoom}</b> ist nicht erreichbar. Läuft der Kurvenflitzer auf dem anderen Bildschirm? Ist das Internet an beiden Orten an?`); }
-  }, 21000);
-}
-function onlineInfo(html) { $('onlineInfo').innerHTML = html; }
-$('onlineBtn').addEventListener('click', (e) => { e.stopPropagation(); $('onlinePanel').hidden = !$('onlinePanel').hidden; });
-$('roomInput').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5); });
-$('joinBtn').addEventListener('click', (e) => { e.stopPropagation(); if ($('roomInput').value.length === 5) autoJoin($('roomInput').value, 0); else joinRoom($('roomInput').value); });
-// Einladungs-Link für einen anderen Bildschirm (öffnet dort den Kurvenflitzer und tritt automatisch bei)
-function inviteUrl() {
-  const u = new URL(location.href); u.search = ''; u.hash = '';
-  u.searchParams.set('room', code);
-  if (params.get('peer')) u.searchParams.set('peer', params.get('peer'));
-  return u.toString();
-}
-$('inviteBtn').addEventListener('click', async (e) => {
-  e.stopPropagation();
-  if (!code) return;
-  const url = inviteUrl();
-  awaitGuestUntil = now + 150; startAt = null;
-  $('inviteUrl').textContent = url.replace(/^https?:\/\//, '');
-  const text = 'Komm Kurvenflitzer fahren! Öffne den Link auf deinem TV oder Laptop (nicht auf dem Handy):';
-  try {
-    if (navigator.share && matchMedia('(pointer: coarse)').matches) { await navigator.share({ title: 'Kurvenflitzer', text, url }); return; }
-    await navigator.clipboard.writeText(`${text} ${url}`);
-    toast('Link kopiert – per WhatsApp o. ä. schicken');
-  } catch { toast('Link: ' + url.replace(/^https?:\/\//, ''), 8000); }
-});
-
-function hostRoom(auto = false) {
-  if (!peer || !peer.open) { onlineInfo('Noch keine Verbindung zum Server – bitte kurz warten.'); return; }
-  if (role === 'client') leaveRoom();
-  role = 'host';
-  $('onlinePanel').hidden = false;
-  if (auto) toast('Online-Raum geöffnet – ein anderer TV tritt bei');
-  onlineInfo(`Online-Raum offen – ein anderer Bildschirm ist dabei. Handys scannen immer den QR-Code auf ihrem eigenen Bildschirm.`);
-  refreshRoster(); updateStatus();
-}
-function joinRoom(c) {
-  c = (c || '').toUpperCase().trim();
-  if (c.length !== 5) { onlineInfo('Bitte den 5-stelligen Code des Gastgeber-TVs eingeben.'); return; }
-  if (c === code) { onlineInfo('Das ist der Code dieses TVs – gib den Code des <b>anderen</b> TVs ein.'); return; }
-  if (!peer || !peer.open) { onlineInfo('Noch keine Verbindung zum Server – bitte kurz warten.'); return; }
-  if (role === 'host') { for (const t of tvConns.values()) t.conn.close(); tvConns.clear(); }
-  joining = true;
-  onlineInfo('Verbinde mit Raum ' + c + ' …');
-  const conn = dial(peer, PEER_PREFIX + c, { reliable: true, serialization: 'json', metadata: { type: 'tv', tv: myTv } });
-  const timer = setTimeout(() => {
-    if (conn.open || !joining) return;
-    joining = false; try { conn.close(); } catch { /* */ }
-    onlineInfo('Die Verbindung kam nicht zustande – neuer Versuch läuft. Ist der andere Bildschirm auf der Kurvenflitzer-Seite?');
-  }, 20000);
-  conn.on('error', () => { if (joining) { joining = false; clearTimeout(timer); onlineInfo('Verbindung fehlgeschlagen – bitte nochmals versuchen.'); } });
-  conn.on('open', () => {
-    clearTimeout(timer);
-    joining = false; role = 'client'; hostConn = conn; hostCode = c;
-    onlineInfo(`Verbunden mit Raum <b>${c}</b>. Jetzt scannt jede Person den QR-Code <b>auf diesem Bildschirm</b>. Der Gastgeber startet, sobald alle die Hände am Lenkrad haben.`);
-    toast(`Online im Raum ${c}! Handys: QR-Code auf DIESEM Bildschirm scannen`, 6000);
-    sendPlayersToHost(); updateStatus();
-  });
-  conn.on('data', onHostMessage);
-  conn.on('close', () => {
-    if (hostConn !== conn) return;
-    hostConn = null; hostRoster = null; role = 'solo';
-    toast('Verbindung zum Online-Raum beendet');
-    if (wantRoom && state !== 'race' && state !== 'countdown') setTimeout(() => role === 'solo' && wantRoom && autoJoin(wantRoom, 0), 2000);
-    onlineInfo('Die Verbindung zum Raum wurde beendet.');
-    if (state !== 'race' && state !== 'countdown') { refreshRoster(); if (state === 'ready') resetRace(); }
-    updateStatus();
-  });
-}
-function leaveRoom() { if (hostConn) { const c = hostConn; hostConn = null; c.close(); } role = 'solo'; hostRoster = null; }
-
-function acceptTv(c) {
-  // Ein anderer TV tritt bei: dieser TV wird automatisch Gastgeber (kein «Raum erstellen» nötig)
-  if (role === 'client') { c.on('open', () => { try { c.send({ t: 'nohost', why: 'client' }); } catch { /* */ } setTimeout(() => c.close(), 300); }); return; }
-  if (role !== 'host') hostRoom(true);
-  const tv = c.metadata.tv;
-  c.on('open', () => {
-    const ex = tvConns.get(tv);
-    // Derselbe Bildschirm kann kurz zwei Wege haben (direkt + Relay): den neuen nehmen, den alten als Reserve behalten
-    if (ex) { ex.alt.add(ex.conn); ex.conn = c; return; }
-    tvConns.set(tv, { conn: c, players: [], ready: false, alt: new Set() });
-    toast('Ein weiterer TV ist dem Raum beigetreten');
-    updateStatus();
-    try { c.send({ t: 'roster', list: roster, s: state }); } catch { /* */ }
-  });
-  c.on('data', (msg) => onClientMessage(tv, msg));
-  c.on('close', () => {
-    const ex = tvConns.get(tv);
-    if (!ex) return;
-    if (ex.conn !== c) { ex.alt.delete(c); return; }
-    const alt = [...ex.alt].find((x) => x.open);
-    if (alt) { ex.alt.delete(alt); ex.conn = alt; return; } // auf den anderen Weg wechseln
-    tvConns.delete(tv);
-    toast('Ein TV hat den Raum verlassen');
-    if (state !== 'race' && state !== 'countdown') { refreshRoster(); if (state === 'ready') resetRace(); }
-    else for (const r of racers.values()) if (r.def.tv === tv) r.gone = true;
-    updateStatus();
-  });
-}
-function broadcastTv(msg, except = null) { for (const [id, t] of tvConns) if (id !== except && t.conn.open) { try { t.conn.send(msg); } catch { /* */ } } }
-function sendHost(msg) { if (hostConn && hostConn.open) { try { hostConn.send(msg); } catch { /* */ } } }
-// Lobby-Status der eigenen Spieler (für die Anzeige an den anderen Bildschirmen)
-const localStatus = () => locals.map((p) => ({ i: p.id, r: p.ready ? 1 : 0, f: +(p.ready ? 1 : clamp(p.readyT / 1.2, 0, 1)).toFixed(2), c: hasControl(p) ? 1 : 0, s: p.source, k: p.conn && p.conn.via === 'relay' ? 1 : 0, sk: p.cfg.skin, hc: p.cfg.hairColor }));
-const remoteStatus = new Map(); // Spieler-ID -> Status (von anderen Bildschirmen)
-function sendPlayersToHost() { if (role === 'client') sendHost({ t: 'players', list: locals.map(humanDef) }); }
-
-// Gastgeber empfängt von einem Gast-TV
-function onClientMessage(tv, msg) {
-  const t = tvConns.get(tv); if (!t || !msg) return;
-  if (msg.t === 'players') {
-    t.players = (msg.list || []).slice(0, MAX_LOCAL).map((d) => ({ ...d, tv, kind: 'human' }));
-    if (state !== 'race' && state !== 'countdown') { refreshRoster(); if (state === 'ready' || state === 'lobby') resetRace(); }
-  } else if (msg.t === 'ready') t.ready = !!msg.v;
-  else if (msg.t === 'lst') { for (const st of msg.l || []) remoteStatus.set(st.i, { ...st, at: now }); }
-  else if (msg.t === 'st') { applyStates(msg.l); broadcastTv(msg, tv); }
-  else if (msg.t === 'again') { if (state === 'results' || state === 'ready') doRestart(); }
-  else if (msg.t === 'bump') { const r = racers.get(msg.i); if (r && r.local) applyBump(msg); else if (r && r.kind === 'ai') bumpAI(r, msg.nx, msg.nz, msg.k); else broadcastTv(msg, tv); }
-  else if (msg.t === 'item') onItemMsg(msg, tv);
-}
-// Gast empfängt vom Gastgeber
-function onHostMessage(msg) {
-  if (!msg || typeof msg !== 'object') return;
-  if (msg.t === 'roster') {
-    hostState = msg.s || hostState;
-    if (state === 'race' || state === 'countdown') { pendingRoster = msg.list; return; }
-    hostRoster = msg.list; applyRoster(hostRoster);
-    if (state === 'ready' || state === 'lobby') resetRace();
-    updateStatus();
-  } else if (msg.t === 'st') applyStates(msg.l);
-  else if (msg.t === 'go') { if (state === 'ready') setState('countdown'); }
-  else if (msg.t === 'reset') { if (pendingRoster) { hostRoster = pendingRoster; pendingRoster = null; } if (msg.list) hostRoster = msg.list; applyRoster(hostRoster || buildRoster()); setState(locals.length ? 'ready' : 'lobby'); }
-  else if (msg.t === 'hstate') hostState = msg.s;
-  else if (msg.t === 'lst') { for (const st of msg.l || []) if (!locals.some((p) => p.id === st.i)) remoteStatus.set(st.i, { ...st, at: now }); }
-  else if (msg.t === 'bump') applyBump(msg);
-  else if (msg.t === 'item') onItemMsg(msg);
-  else if (msg.t === 'nohost') { onlineInfo('Dieser TV ist selbst schon Gast in einem anderen Raum. Gib den Code des Gastgeber-TVs ein.'); }
-}
-let pendingRoster = null;
-
-// Positionen anderer TVs übernehmen
-function applyStates(list) {
-  if (!Array.isArray(list)) return;
-  for (const s of list) {
-    const r = racers.get(s.i);
-    if (!r || r.kind !== 'remote') continue;
-    r.tgt = { x: s.x, z: s.z, h: s.h, v: s.v };
-    r.prog = s.p; r.lap = s.lp; r.finished = s.f; r.gotAt = now;
-    r.fx = s.e ? { kind: ITEM_KEYS[s.e - 1], t0: now, until: now + 0.6 } : null;
-    r.safeUntil = now + (s.sf || 0);
-    if (r.firstSnap !== false) { r.pos.set(s.x, 0, s.z); r.heading = s.h; r.firstSnap = false; }
-  }
-}
-let netT = 0, readyT = 0, lstT = 0;
-function netTick(dt) {
-  if (role === 'solo') return;
-  netT -= dt; readyT -= dt;
-  if (netT <= 0 && (state === 'race' || state === 'countdown' || state === 'results' || state === 'ready')) {
-    netT = 1 / 15;
-    const own = [...racers.values()].filter((r) => r.kind === 'local' || (role === 'host' && r.kind === 'ai'));
-    const l = own.map((r) => ({ i: r.id, x: +r.pos.x.toFixed(2), z: +r.pos.z.toFixed(2), h: +r.heading.toFixed(3), v: +r.v.toFixed(1), p: +r.prog.toFixed(1), lp: r.lap, f: r.finished, e: r.fx ? ITEM_KEYS.indexOf(r.fx.kind) + 1 : 0, sf: Math.ceil(safeLeft(r)) }));
-    if (role === 'host') broadcastTv({ t: 'st', l }); else sendHost({ t: 'st', l });
-  }
-  if (role === 'client' && readyT <= 0) { readyT = 0.5; sendHost({ t: 'ready', v: state === 'ready' && locals.length > 0 && locals.every((p) => p.ready) }); sendHost({ t: 'lst', l: localStatus() }); }
-  if (role === 'host' && (lstT -= dt) <= 0) {
-    lstT = 0.5;
-    const all = localStatus().concat([...remoteStatus.values()].filter((st) => now - st.at < 3));
-    broadcastTv({ t: 'lst', l: all });
-  }
 }
 
 /* ================================================================
@@ -788,43 +569,10 @@ function renderSlots() {
     else if (p.source === 'keys') st = `Leertaste = bereit<br>${p.keyMap === 'arrows' ? '← →' : 'A / D'} lenken`;
     else if (!hasControl(p)) st = 'Setz dich vor die Kamera';
     else st = 'Hände ans Lenkrad …';
-    if (p.conn && p.conn.via === 'relay') st += '<br><small>über Umweg verbunden</small>';
     slots.push(`<div class="slot ${p.ready ? 'ready' : ''}"><span class="av" style="--c:${P_COLORS[p.slot]}">${face(p.cfg)}<span class="src">${ICON[p.source] || ICON.phone}</span></span><b>${pName(p)}</b><span class="bar"><i style="width:${fill * 100}%"></i></span><span class="st">${st}</span></div>`);
   }
   const html = slots.join('');
   if (html !== renderSlots.last) { $('slots').innerHTML = html; renderSlots.last = html; }
-  renderNetbar();
-}
-// Lobby: Online-Zustand gut sichtbar + wer an den anderen Bildschirmen mitfährt
-function renderNetbar() {
-  let cls = '', head = '', people = [];
-  if (role === 'client') {
-    cls = 'ok'; head = `🌍 Online im Raum ${hostCode}`;
-    people = (hostRoster || []).filter((d) => d.kind === 'human' && d.tv !== myTv);
-  } else if (role === 'host') {
-    cls = 'ok'; head = `🌍 Online-Raum ${code} · ${tvConns.size + 1} Bildschirme`;
-    for (const t of tvConns.values()) people = people.concat(t.players.map((d, i) => ({ ...d, name: d.name || `P${i + 1}` })));
-  } else if (wantRoom) {
-    cls = joinFailed ? 'err' : 'wait'; head = joinFailed ? `⚠️ Raum ${wantRoom} nicht erreichbar` : `⏳ Verbinde mit Raum ${wantRoom} …`;
-  } else if (awaitGuestUntil > now) {
-    cls = 'wait'; head = `⏳ Warte auf den eingeladenen Bildschirm (Code ${code})`;
-  }
-  const bar = $('netbar');
-  if (!head) { bar.hidden = true; renderNetbar.last = ''; return; }
-  // Spieler der anderen Bildschirme als Karten mit Status
-  const others = role === 'host' ? [...tvConns.values()].flatMap((t, k) => t.players.map((d, i) => ({ ...d, name: `TV${k + 2} · P${i + 1}` })))
-    : role === 'client' ? people : [];
-  const card = (d) => {
-    const st = remoteStatus.get(d.id);
-    const fresh = st && now - st.at < 3;
-    const txt = !fresh ? 'verbinde …' : st.r ? 'Bereit!' : st.s === 'keys' ? 'Leertaste = bereit' : !st.c ? 'nicht vor der Kamera' : 'Hände ans Lenkrad …';
-    const cfg = { skin: (st && st.sk) || '#f6c6a4', hairColor: (st && st.hc) || '#3d1418' };
-    return `<div class="rcard ${fresh && st.r ? 'ready' : ''}" style="--c:${d.pc || d.color}"><span class="av">${face(cfg)}<span class="src">${ICON[(st && st.s) || 'phone'] || ICON.phone}</span></span><span class="rt"><b>${d.name}</b><span class="bar"><i style="width:${(fresh ? st.f : 0) * 100}%"></i></span><span class="st">${txt}</span></span></div>`;
-  };
-  const empty = role === 'host' && !others.length ? '<span class="np empty">Am anderen Bildschirm noch niemand – dort den QR-Code scannen</span>'
-    : role === 'client' && !others.length ? '<span class="np empty">Beim Gastgeber noch niemand</span>' : '';
-  const html = `<b>${head}</b>${others.length || empty ? `<div class="rcards">${others.map(card).join('')}${empty}</div>` : ''}`;
-  if (html !== renderNetbar.last) { bar.innerHTML = html; bar.className = 'netbar ' + cls; bar.hidden = false; renderNetbar.last = html; }
 }
 function pBanner(p, text, bang = false) { const b = p.hud.banner; b.textContent = text; b.classList.toggle('bang', bang); b.classList.toggle('quick', bang); b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
 function banner(text) { const b = $('banner'); b.textContent = text; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
@@ -882,7 +630,7 @@ let mmTf;
 function drawMinimap() {
   mmCtx.clearRect(0, 0, mm.width, mm.height); mmCtx.drawImage(mmBase, 0, 0);
   const dot = (x, z, c, r) => { const [px, py] = mmTf(x, z); mmCtx.fillStyle = '#fff'; mmCtx.beginPath(); mmCtx.arc(px, py, r + 4, 0, 7); mmCtx.fill(); mmCtx.fillStyle = c; mmCtx.beginPath(); mmCtx.arc(px, py, r, 0, 7); mmCtx.fill(); };
-  for (const r of racers.values()) if (!r.local && !r.gone) dot(r.pos.x, r.pos.z, r.color, r.kind === 'remote' && r.def.kind === 'human' ? 11 : 8);
+  for (const r of racers.values()) if (!r.local && !r.gone) dot(r.pos.x, r.pos.z, r.color, 8);
   for (const p of locals) if (p.racer) dot(p.racer.pos.x, p.racer.pos.z, P_COLORS[p.slot], 13);
 }
 
@@ -915,8 +663,7 @@ function setState(s) {
     // Wartende Handys aufnehmen, getrennte Spieler entfernen
     for (const p of [...locals]) if (p.source === 'phone' && !p.conn) removeLocal(p);
     while (pendingPhones.length && locals.length < MAX_LOCAL) { const c = pendingPhones.shift(); if (c.open) { const q = createLocal('phone', c); if (q) { q.pid = c.metadata && c.metadata.pid; lastJoinAt = now; } } }
-    sendPlayersToHost();
-    refreshRoster();
+      refreshRoster();
     if (!locals.length) { setState('lobby'); return; }
     resetRace(); audio.engine(true);
   }
@@ -928,7 +675,6 @@ function setState(s) {
   if (s === 'results') saveStats();
   updateLayout();
   phonesState();
-  if (role === 'host') broadcastTv({ t: 'hstate', s });
 }
 
 function showResults() {
@@ -946,14 +692,13 @@ function renderResults() {
   $('resultsTitle').textContent = locals.length > 1
     ? `🏁 ${pName(locals.find((p) => st.indexOf(p.racer) + 1 === best) || locals[0])} ist am schnellsten!`
     : best === 1 ? '🏆 Sieg!' : best === 2 ? '🥈 Zweiter Platz!' : best === 3 ? '🥉 Dritter Platz!' : 'Ziel erreicht!';
-  if (role === 'host' || role === 'client') $('resultsTitle').textContent = best === 1 ? '🏆 Sieg für dieses TV!' : `🏁 Bestes Ergebnis hier: Platz ${best}`;
   $('podium').innerHTML = st.map((r, i) => {
     const me = !!r.local;
     const c = me ? P_COLORS[r.local.slot] : r.color;
     const who = r.kind === 'ai' || r.def.kind === 'ai' ? 'KI' : me ? (r.local.coinCount + ' 🪙') : 'online';
     return `<div class="${me ? 'me' : ''}" style="--c:${c}"><span class="place">${i + 1}.</span><span class="dot" style="--c:${r.color}"></span>${r.name}<span class="who">${who}</span><span class="t">${r.finished != null ? fmt(r.finished) : 'fährt noch …'}</span></div>`;
   }).join('');
-  $('resultsHint').textContent = role === 'client' ? 'Beide Hände hoch über den Kopf – der Gastgeber startet dann ein neues Rennen' : 'Beide Hände hoch über den Kopf für ein neues Rennen';
+  $('resultsHint').textContent = 'Beide Hände hoch über den Kopf für ein neues Rennen';
 }
 // Spielzeit lokal speichern (die Startseite zeigt sie unter «Deine Bewegung»)
 function saveStats() {
@@ -964,10 +709,9 @@ function saveStats() {
     localStorage.setItem('slope.stats', JSON.stringify(st));
   } catch { /* privat */ }
 }
-function requestRestart() { if (role === 'client') sendHost({ t: 'again' }); else doRestart(); }
+function requestRestart() { doRestart(); }
 function doRestart() {
   setState('ready');
-  if (role === 'host') broadcastTv({ t: 'reset', list: roster });
 }
 
 /* ---------- Fahrphysik (lokale Spieler) ---------- */
@@ -1039,7 +783,6 @@ function updateLocal(p, dt, driving) {
       bumpLocal(p, n.x, n.z, k);
       if (o.local) bumpLocal(o.local, -n.x, -n.z, k);
       else if (o.kind === 'ai') bumpAI(o, -n.x, -n.z, k);
-      else sendBump(o.id, -n.x, -n.z, k);
     }
   }
   // Münzen
@@ -1236,8 +979,7 @@ function updateShots(dt) {
   }
 }
 function deliver(r, kind, fromName) {
-  if (r.local || (r.kind === 'ai' && role !== 'client')) applyItem(r, kind, fromName);
-  else sendItem(r.id, kind, fromName);
+  applyItem(r, kind, fromName);
 }
 function applyItem(r, kind, fromName = '') {
   if (r.finished != null || r.gone) return;
@@ -1300,16 +1042,6 @@ function updateItems(p, dt) {
     }
   } else p.downT = 0;
 }
-function sendItem(id, kind, from) {
-  const msg = { t: 'item', i: id, k: kind, f: from };
-  if (role === 'host') broadcastTv(msg); else sendHost(msg);
-}
-function onItemMsg(msg, fromTv = null) {
-  const r = racers.get(msg.i);
-  if (!r || !ITEMS[msg.k]) { if (fromTv && role === 'host') broadcastTv(msg, fromTv); return; }
-  if (r.local || (r.kind === 'ai' && role !== 'client')) applyItem(r, msg.k, msg.f);
-  else if (role === 'host') broadcastTv(msg, fromTv);
-}
 
 /* ---------- Rempler ---------- */
 const KART_R = 1.45; // halbe Kart-Breite für Zusammenstösse
@@ -1338,15 +1070,6 @@ function bumpAI(o, nx, nz, k) {
   o.v = Math.max(4, o.v * (1 - 0.3 * k) + along * 6 * k);
   o.heading += (Math.random() - 0.5) * 0.4 * k;
 }
-function sendBump(id, nx, nz, k) {
-  const msg = { t: 'bump', i: id, nx: +nx.toFixed(3), nz: +nz.toFixed(3), k: +k.toFixed(2) };
-  if (role === 'host') broadcastTv(msg); else sendHost(msg);
-}
-function applyBump(msg) {
-  const r = racers.get(msg.i);
-  if (r && r.local) bumpLocal(r.local, msg.nx, msg.nz, msg.k);
-}
-
 /* ---------- KI (nur solo / Gastgeber) ---------- */
 function updateAI(r, dt, mode) {
   const i = Math.floor((((r.s / SEG) % N) + N) % N);
@@ -1388,15 +1111,6 @@ function updateAI(r, dt, mode) {
     }
     if (r.items.length && now > r.itemAt && state === 'race') aiThrow(r);
   }
-}
-function updateRemote(r, dt) {
-  // Weiche Bewegung zwischen den Netz-Updates (plus Vorausrechnen)
-  const t = r.tgt;
-  fwd.set(Math.sin(t.h), 0, Math.cos(t.h));
-  t.x += fwd.x * t.v * dt; t.z += fwd.z * t.v * dt;
-  r.pos.x = lerp(r.pos.x, t.x, damp(10, dt)); r.pos.z = lerp(r.pos.z, t.z, damp(10, dt));
-  r.heading += angDiff(r.heading, t.h) * damp(10, dt);
-  r.v = t.v;
 }
 function placeKart(r, dt) {
   r.kart.position.copy(r.pos);
@@ -1474,7 +1188,7 @@ function tick() {
   const realDt = Math.min(clock.getDelta(), 0.25);
   const dt = Math.min(realDt, 0.05);
   now += realDt; stateT += realDt;
-  const simAI = role !== 'client';
+  const simAI = true;
 
   if (state === 'lobby') {
     for (const r of racers.values()) if (r.kind === 'ai') updateAI(r, dt, 'demo');
@@ -1492,28 +1206,10 @@ function tick() {
     const keysNow = locals.some((p) => p.source === 'keys' && p.startNow);
     let waitLeft = 0;
     if (localReady) {
-      if (startAt == null) startAt = Math.max(now + (locals.length + tvPlayers() >= 2 ? 3 : 8), lastJoinAt + 4);
+      if (startAt == null) startAt = Math.max(now + (locals.length >= 2 ? 3 : 8), lastJoinAt + 4);
       waitLeft = keysNow ? 0 : Math.max(0, startAt - now);
     } else startAt = null;
-    // Eingeladen, aber (noch) nicht im Raum: nicht allein losfahren
-    const goAlone = locals.some((p) => p.source === 'keys' && p.startNow) || locals.some((p) => p.aloneT > 1);
-    if (wantRoom && role !== 'client' && goAlone) { wantRoom = ''; toast('Ok – du fährst allein'); }
-    for (const p of locals) p.aloneT = p.input.handsUp && hasControl(p) && (wantRoom && role !== 'client' || awaitGuestUntil > now) ? (p.aloneT || 0) + realDt : 0;
-    if (wantRoom && role !== 'client') {
-      startAt = null;
-      setPrompt(true, joinFailed ? `Raum ${wantRoom} nicht erreichbar` : `Verbinde mit Raum ${wantRoom} …`, joinFailed ? 'Anderen Bildschirm prüfen · beide Hände hoch = allein fahren' : 'Bitte warten – ihr fahrt gleich zusammen', joinFailed ? '⚠️' : '🌍', joinFailed ? 0 : (now % 1.5) / 1.5);
-    } else if (role !== 'client' && awaitGuestUntil > now && tvConns.size === 0 && localReady) {
-      if (goAlone) { awaitGuestUntil = 0; } else { startAt = null; setPrompt(true, 'Warte auf den eingeladenen Bildschirm …', `Link geschickt? Noch ${Math.ceil(awaitGuestUntil - now)} s · beide Hände hoch = ohne warten starten`, '🌍', 1 - (awaitGuestUntil - now) / 150); }
-    } else if (role === 'client') {
-      setPrompt(localReady, 'Warte auf die anderen …', hostState === 'race' ? 'Beim Gastgeber läuft noch ein Rennen' : 'Der Gastgeber startet, sobald alle bereit sind', '🌍', 1);
-    } else if (role === 'host') {
-      const others = [...tvConns.values()].filter((t) => t.players.length);
-      const nReady = others.filter((t) => t.ready).length;
-      if (localReady && nReady === others.length && waitLeft <= 0) { broadcastTv({ t: 'go' }); setState('countdown'); }
-      else if (localReady && nReady < others.length) setPrompt(true, 'Warte auf die anderen TVs …', `${nReady} von ${others.length} bereit`, '🌍', others.length ? nReady / others.length : 0);
-      else if (localReady) setPrompt(true, `Start in ${Math.ceil(waitLeft)} …`, 'Noch jemand? Jetzt QR-Code scannen', '🏁', 1 - waitLeft / 8);
-      else setPrompt(false);
-    } else if (localReady) {
+    if (localReady) {
       if (waitLeft <= 0) setState('countdown');
       else setPrompt(true, `Start in ${Math.ceil(waitLeft)} …`, locals.some((p) => p.source === 'keys') ? 'Noch jemand? QR scannen – oder Leertaste = sofort' : 'Noch jemand? Jetzt QR-Code scannen', '🏁', 1 - waitLeft / 8);
     } else setPrompt(false);
@@ -1544,10 +1240,8 @@ function tick() {
     }
   }
   for (const r of racers.values()) {
-    if (r.kind === 'remote') updateRemote(r, dt);
     placeKart(r, dt);
   }
-  netTick(realDt);
   animateBoxes(BOXES, now, dt);
 
   // Cockpits, Münzen, Kameras
@@ -1702,16 +1396,15 @@ document.querySelectorAll('.logo .word').forEach((w, wi) => {
 
 updateLayout();
 setState('lobby');
-warmRelay();
 startPeer();
 if (params.has('keys')) addKeysPlayer();
 tick();
 
 // Test-Hilfe (Konsole)
 window.__race = {
-  locals, racers, get state() { return state; }, get role() { return role; }, get code() { return code; }, get roster() { return roster; },
+  locals, racers, get state() { return state; }, get code() { return code; }, get roster() { return roster; },
   BOXES, give: (i, k) => { const p = locals[i]; if (p) p.items.push(k); }, hit: (i, k) => locals[i] && applyItem(locals[i].racer, k, 'Test'),
   aim: (i) => locals[i] && locals[i].aim, get now() { return now; },
-  setState, onPose: (i, k, w, h) => locals[i] && onPose(locals[i], k, w, h), addKeysPlayer, hostRoom, joinRoom, T, N, TRACK_LEN,
+  setState, onPose: (i, k, w, h) => locals[i] && onPose(locals[i], k, w, h), addKeysPlayer, T, N, TRACK_LEN,
   finishLocal: (i) => { const p = locals[i]; if (p && p.racer) { p.racer.lap = LAPS; const s = T[N - 20]; p.racer.pos.set(s.p.x, 0, s.p.z); p.racer.idx = N - 20; p.prevIdx = N - 20; p.racer.heading = Math.atan2(s.t.x, s.t.z); p.racer.v = 30; } },
 };

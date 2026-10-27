@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kurvenflitzer</title>
-  <meta name="description" content="Gratis Rennspiel: Du lenkst mit den Händen ein unsichtbares Lenkrad. Allein, bis zu viert am gleichen TV oder online gegen Freunde.">
+  <meta name="description" content="Gratis Rennspiel: Du lenkst mit den Händen ein unsichtbares Lenkrad. Allein oder bis zu viert am gleichen TV – jede Person mit ihrem eigenen Handy.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='24' fill='none' stroke='%23e8574f' stroke-width='8'/%3E%3Cpath d='M10 36h44M32 36v20' stroke='%23e8574f' stroke-width='7'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -32,33 +32,15 @@
         <h1 class="logo" aria-label="Kurvenflitzer"><span class="word" data-word="Kurven"></span><span class="word" data-word="flitzer"></span></h1>
         <p class="tagline">Halte die Hände vor die Brust wie an einem Lenkrad und dreh es. Gas gibt das Kart von selbst.</p>
         <div class="slots" id="slots" aria-label="Spielerplätze"></div>
-        <div class="netbar" id="netbar" hidden></div>
         <div class="kf-actions">
-          <button class="ghost" id="onlineBtn" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg>Online spielen</button>
           <button class="ghost" id="camBtn" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="13" rx="2"/><path d="M8 22h8M12 18v4"/></svg>Kamera dieses Geräts</button>
           <button class="ghost" id="keysBtn" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>Tastatur</button>
-        </div>
-        <div class="online" id="onlinePanel" hidden>
-          <div class="online-step">
-            <b>Freund mit eigenem Bildschirm einladen</b>
-            <span>Schick diesen Link. Dein Freund öffnet ihn auf <u>seinem</u> TV oder Laptop – nicht auf dem Handy.</span>
-            <div class="online-row"><button class="ghost" id="inviteBtn" type="button">🔗 Einladungs-Link teilen</button><code class="invite-url" id="inviteUrl"></code></div>
-          </div>
-          <div class="online-step">
-            <b>Du wurdest eingeladen?</b>
-            <span>Code des anderen Bildschirms eingeben:</span>
-            <div class="online-row">
-              <input id="roomInput" maxlength="5" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Raum-Code">
-              <button class="ghost" id="joinBtn" type="button">Beitreten</button>
-            </div>
-          </div>
-          <div class="online-info" id="onlineInfo">Danach scannt jede Person den QR-Code auf <b>ihrem eigenen</b> Bildschirm.</div>
         </div>
       </div>
 
       <aside class="join">
         <div class="join-title">Mitspielen</div>
-        <div class="join-sub">Nur für Handys <b>vor diesem Bildschirm</b></div>
+        <div class="join-sub">Jede Person scannt mit ihrem Handy</div>
         <div class="qr" id="qr"><div class="spinner"></div></div>
         <div class="code-label">oder Code auf dem Handy eingeben</div>
         <div class="code" id="code">· · · · ·</div>
@@ -80,7 +62,6 @@
       <div>
         <div class="mini-title">Mitspielen? QR scannen</div>
         <div class="mini-code">Code <b id="miniCode">·····</b></div>
-        <div class="mini-online" id="miniOnline"></div>
       </div>
     </div>
 
