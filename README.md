@@ -73,6 +73,18 @@ Der Gastgeber-TV steuert Start und KI-Gegner; alle TVs tauschen 15× pro Sekunde
 - **Kamera dieses Geräts** – z. B. Laptop-Webcam
 - **Tastatur** zum Testen: Spieler 1 mit ← →, Spieler 2 mit A / D, Leertaste = bereit
 
+## Verbindung in jedem Netz (TURN-Relay)
+
+Normalerweise verbinden sich Handy und TV direkt. In Mobilfunk, Gäste-WLAN, Firmennetzen
+oder online zwischen zwei Wohnungen geht das oft nicht – dann braucht es ein **Relay**.
+Das Gratis-Relay von PeerJS ist unzuverlässig, deshalb kann ein eigenes eingetragen werden:
+
+1. Gratis-Konto auf [metered.ca](https://www.metered.ca/stun-turn) erstellen → App anlegen (z. B. `slopegames`).
+2. Im Dashboard unter *TURN Server* den **API Key** kopieren.
+3. In `js/config.js` eintragen: `TURN_APP = 'slopegames'`, `TURN_KEY = '…'` → committen.
+
+Ohne Eintrag läuft alles wie bisher (direkt + Gratis-Fallback). Testen ohne Commit: `?turn=app:key` an die URL hängen.
+
 ## Lokal testen
 
 ```bash
