@@ -124,15 +124,24 @@ export function dial(peer, target, opts = {}) {
     send(m) { if (this.cur && this.cur.open) this.cur.send(m); },
     close() { this.closed = true; clearTimeout(this.relayT); for (const c of this.all) { try { c.close(); } catch { /* */ } } if (this.open) { this.open = false; this.emit('close'); } },
     get peerConnection() { return this.rtc && this.rtc.peerConnection; },
+    get relayed() { return this.via === 'relay'; },
     all: [],
   };
   const attach = (c, via) => {
     d.all.push(c);
     c.on('open', () => {
       if (d.closed) { try { c.close(); } catch { /* */ } return; }
+      if (d.cur && via === 'rtc' && d.via === 'relay') {
+        // Direkter Weg klappt doch noch: wechseln (schneller, ruckelfrei), Umweg schliessen
+        const old = d.cur; d.cur = c; d.via = 'rtc';
+        try { old.close(); } catch { /* */ }
+        console.info('[net] Wechsel auf direkte Verbindung');
+        return;
+      }
       if (d.cur) { if (c !== d.cur) { try { c.close(); } catch { /* */ } } return; }
       d.cur = c; d.via = via; d.open = true; clearTimeout(d.relayT);
-      for (const o of d.all) if (o !== c) { try { o.close(); } catch { /* */ } }
+      // Beim Umweg die direkte Verbindung weiterversuchen lassen (Wechsel, sobald sie steht)
+      for (const o of d.all) if (o !== c && !(via === 'relay' && o === d.rtc)) { try { o.close(); } catch { /* */ } }
       console.info('[net] verbunden über', via === 'relay' ? 'Relay' : 'direkt');
       d.emit('open');
     });

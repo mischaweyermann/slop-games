@@ -277,7 +277,7 @@ function onPose(p, k, w = 640, h = 480) {
   if (Math.abs(ang) < 0.05) ang = 0; else ang -= Math.sign(ang) * 0.05;
   inp.steer = clamp(ang / 1.0, -1, 1);
 }
-const hasControl = (p) => p.source === 'keys' || now - p.input.lastAt < 0.6;
+const hasControl = (p) => p.source === 'keys' || now - p.input.lastAt < 1.0; // etwas Toleranz für kurze Netz-Aussetzer
 const gripping = (p) => p.source === 'keys' || (hasControl(p) && p.input.onWheel);
 
 const KEYS = { arrows: { l: ['arrowleft'], r: ['arrowright'], u: ['arrowup'], d: ['arrowdown'] }, ad: { l: ['a'], r: ['d'], u: ['w'], d: ['s'] } };
@@ -652,6 +652,9 @@ function acceptTv(c) {
 }
 function broadcastTv(msg, except = null) { for (const [id, t] of tvConns) if (id !== except && t.conn.open) { try { t.conn.send(msg); } catch { /* */ } } }
 function sendHost(msg) { if (hostConn && hostConn.open) { try { hostConn.send(msg); } catch { /* */ } } }
+// Lobby-Status der eigenen Spieler (für die Anzeige an den anderen Bildschirmen)
+const localStatus = () => locals.map((p) => ({ i: p.id, r: p.ready ? 1 : 0, f: +(p.ready ? 1 : clamp(p.readyT / 1.2, 0, 1)).toFixed(2), c: hasControl(p) ? 1 : 0, s: p.source, k: p.conn && p.conn.via === 'relay' ? 1 : 0, sk: p.cfg.skin, hc: p.cfg.hairColor }));
+const remoteStatus = new Map(); // Spieler-ID -> Status (von anderen Bildschirmen)
 function sendPlayersToHost() { if (role === 'client') sendHost({ t: 'players', list: locals.map(humanDef) }); }
 
 // Gastgeber empfängt von einem Gast-TV
@@ -661,6 +664,7 @@ function onClientMessage(tv, msg) {
     t.players = (msg.list || []).slice(0, MAX_LOCAL).map((d) => ({ ...d, tv, kind: 'human' }));
     if (state !== 'race' && state !== 'countdown') { refreshRoster(); if (state === 'ready' || state === 'lobby') resetRace(); }
   } else if (msg.t === 'ready') t.ready = !!msg.v;
+  else if (msg.t === 'lst') { for (const st of msg.l || []) remoteStatus.set(st.i, { ...st, at: now }); }
   else if (msg.t === 'st') { applyStates(msg.l); broadcastTv(msg, tv); }
   else if (msg.t === 'again') { if (state === 'results' || state === 'ready') doRestart(); }
   else if (msg.t === 'bump') { const r = racers.get(msg.i); if (r && r.local) applyBump(msg); else if (r && r.kind === 'ai') bumpAI(r, msg.nx, msg.nz, msg.k); else broadcastTv(msg, tv); }
@@ -679,6 +683,7 @@ function onHostMessage(msg) {
   else if (msg.t === 'go') { if (state === 'ready') setState('countdown'); }
   else if (msg.t === 'reset') { if (pendingRoster) { hostRoster = pendingRoster; pendingRoster = null; } if (msg.list) hostRoster = msg.list; applyRoster(hostRoster || buildRoster()); setState(locals.length ? 'ready' : 'lobby'); }
   else if (msg.t === 'hstate') hostState = msg.s;
+  else if (msg.t === 'lst') { for (const st of msg.l || []) if (!locals.some((p) => p.id === st.i)) remoteStatus.set(st.i, { ...st, at: now }); }
   else if (msg.t === 'bump') applyBump(msg);
   else if (msg.t === 'item') onItemMsg(msg);
   else if (msg.t === 'nohost') { onlineInfo('Dieser TV ist selbst schon Gast in einem anderen Raum. Gib den Code des Gastgeber-TVs ein.'); }
@@ -698,7 +703,7 @@ function applyStates(list) {
     if (r.firstSnap !== false) { r.pos.set(s.x, 0, s.z); r.heading = s.h; r.firstSnap = false; }
   }
 }
-let netT = 0, readyT = 0;
+let netT = 0, readyT = 0, lstT = 0;
 function netTick(dt) {
   if (role === 'solo') return;
   netT -= dt; readyT -= dt;
@@ -708,7 +713,12 @@ function netTick(dt) {
     const l = own.map((r) => ({ i: r.id, x: +r.pos.x.toFixed(2), z: +r.pos.z.toFixed(2), h: +r.heading.toFixed(3), v: +r.v.toFixed(1), p: +r.prog.toFixed(1), lp: r.lap, f: r.finished, e: r.fx ? ITEM_KEYS.indexOf(r.fx.kind) + 1 : 0, sf: Math.ceil(safeLeft(r)) }));
     if (role === 'host') broadcastTv({ t: 'st', l }); else sendHost({ t: 'st', l });
   }
-  if (role === 'client' && readyT <= 0) { readyT = 0.5; sendHost({ t: 'ready', v: state === 'ready' && locals.length > 0 && locals.every((p) => p.ready) }); }
+  if (role === 'client' && readyT <= 0) { readyT = 0.5; sendHost({ t: 'ready', v: state === 'ready' && locals.length > 0 && locals.every((p) => p.ready) }); sendHost({ t: 'lst', l: localStatus() }); }
+  if (role === 'host' && (lstT -= dt) <= 0) {
+    lstT = 0.5;
+    const all = localStatus().concat([...remoteStatus.values()].filter((st) => now - st.at < 3));
+    broadcastTv({ t: 'lst', l: all });
+  }
 }
 
 /* ================================================================
@@ -778,6 +788,7 @@ function renderSlots() {
     else if (p.source === 'keys') st = `Leertaste = bereit<br>${p.keyMap === 'arrows' ? '← →' : 'A / D'} lenken`;
     else if (!hasControl(p)) st = 'Setz dich vor die Kamera';
     else st = 'Hände ans Lenkrad …';
+    if (p.conn && p.conn.via === 'relay') st += '<br><small>über Umweg verbunden</small>';
     slots.push(`<div class="slot ${p.ready ? 'ready' : ''}"><span class="av" style="--c:${P_COLORS[p.slot]}">${face(p.cfg)}<span class="src">${ICON[p.source] || ICON.phone}</span></span><b>${pName(p)}</b><span class="bar"><i style="width:${fill * 100}%"></i></span><span class="st">${st}</span></div>`);
   }
   const html = slots.join('');
@@ -800,9 +811,19 @@ function renderNetbar() {
   }
   const bar = $('netbar');
   if (!head) { bar.hidden = true; renderNetbar.last = ''; return; }
-  const list = role === 'host' ? [...tvConns.values()].map((t, k) => t.players.map((d, i) => `<span class="np" style="--c:${d.pc || d.color}">TV${k + 2} · P${i + 1}</span>`).join('') || `<span class="np empty">TV${k + 2}: noch niemand – QR-Code dort scannen</span>`).join('')
-    : people.map((d) => `<span class="np" style="--c:${d.pc || d.color}">${d.name}</span>`).join('') || (role === 'client' ? '<span class="np empty">Beim Gastgeber noch niemand bereit</span>' : '');
-  const html = `<b>${head}</b>${list ? `<span class="nl">Am anderen Bildschirm: ${list}</span>` : ''}`;
+  // Spieler der anderen Bildschirme als Karten mit Status
+  const others = role === 'host' ? [...tvConns.values()].flatMap((t, k) => t.players.map((d, i) => ({ ...d, name: `TV${k + 2} · P${i + 1}` })))
+    : role === 'client' ? people : [];
+  const card = (d) => {
+    const st = remoteStatus.get(d.id);
+    const fresh = st && now - st.at < 3;
+    const txt = !fresh ? 'verbinde …' : st.r ? 'Bereit!' : st.s === 'keys' ? 'Leertaste = bereit' : !st.c ? 'nicht vor der Kamera' : 'Hände ans Lenkrad …';
+    const cfg = { skin: (st && st.sk) || '#f6c6a4', hairColor: (st && st.hc) || '#3d1418' };
+    return `<div class="rcard ${fresh && st.r ? 'ready' : ''}" style="--c:${d.pc || d.color}"><span class="av">${face(cfg)}<span class="src">${ICON[(st && st.s) || 'phone'] || ICON.phone}</span></span><span class="rt"><b>${d.name}</b><span class="bar"><i style="width:${(fresh ? st.f : 0) * 100}%"></i></span><span class="st">${txt}</span></span></div>`;
+  };
+  const empty = role === 'host' && !others.length ? '<span class="np empty">Am anderen Bildschirm noch niemand – dort den QR-Code scannen</span>'
+    : role === 'client' && !others.length ? '<span class="np empty">Beim Gastgeber noch niemand</span>' : '';
+  const html = `<b>${head}</b>${others.length || empty ? `<div class="rcards">${others.map(card).join('')}${empty}</div>` : ''}`;
   if (html !== renderNetbar.last) { bar.innerHTML = html; bar.className = 'netbar ' + cls; bar.hidden = false; renderNetbar.last = html; }
 }
 function pBanner(p, text, bang = false) { const b = p.hud.banner; b.textContent = text; b.classList.toggle('bang', bang); b.classList.toggle('quick', bang); b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }

@@ -139,6 +139,7 @@ class OneEuro {
   }
   reset() { this.x = null; this.dx = 0; }
 }
+let lastPoseSent = 0;
 const filters = IDX.map(() => [new OneEuro(), new OneEuro()]);
 const r3 = (v) => Math.round(v * 1000) / 1000;
 
@@ -183,7 +184,8 @@ function handle(res) {
       const x = filters[n][0].filter(p.x, t), y = filters[n][1].filter(p.y, t);
       k.push(r3(1 - x), r3(y), Math.round((p.visibility ?? 1) * 100) / 100);
     });
-    send({ t: 'p', k, w: v.videoWidth, h: v.videoHeight });
+    // Über den Umweg (Relay) höchstens ~15× pro Sekunde senden, sonst drosseln die Server
+    if (!(conn && conn.via === 'relay' && t - lastPoseSent < 62)) { lastPoseSent = t; send({ t: 'p', k, w: v.videoWidth, h: v.videoHeight }); }
     if (previewOn) drawSkeleton(lm);
   } else if (performance.now() - lastNoneSent > 300) {
     filters.forEach((f) => { f[0].reset(); f[1].reset(); });
