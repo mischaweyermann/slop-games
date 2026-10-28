@@ -1,5 +1,6 @@
 // Empfängt Nachrichten von Stripe. Nur Nachrichten mit gültiger Signatur werden verarbeitet.
-// Bei bezahlter Checkout-Seite wird der Kauf gutgeschrieben (Spiel, Pass oder Juwelen).
+// Bei bezahlter Checkout-Seite wird der Kauf gutgeschrieben (Spiel, Pass oder Juwelen),
+// bei einer vollen Rückerstattung wieder entfernt.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const enc = new TextEncoder();
@@ -63,6 +64,19 @@ Deno.serve(async (req) => {
       return new Response('retry', { status: 500 }); // Stripe versucht es später nochmals
     }
     console.log('Kauf', s.id, product, data);
+  }
+
+  // Rückerstattung (nur ganz zurückerstattete Zahlungen): Freischaltung bzw. Juwelen wieder entfernen
+  if (type === 'charge.refunded' && s?.refunded === true && typeof s.payment_intent === 'string') {
+    const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const { data, error } = await admin.rpc('revoke_purchase', { p_payment_intent: s.payment_intent });
+    if (error) {
+      console.error('Rückerstattung fehlgeschlagen', s.payment_intent, error.message);
+      return new Response('retry', { status: 500 });
+    }
+    console.log('Rückerstattung', s.payment_intent, data);
+  } else if (type === 'charge.refunded') {
+    console.log('Teilrückerstattung, Freischaltung bleibt', s?.payment_intent);
   }
   return new Response('ok');
 });

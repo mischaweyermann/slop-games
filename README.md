@@ -109,12 +109,13 @@ Vier am Start, eine Piste (ca. 1,2 km) mit Steilkurven, Wellen und drei Schanzen
 | Sperre für nicht gekaufte Spiele | `js/gate.js` → `has_access(game)`, sonst `kaufen.html?p=<spiel>` |
 | Bezahlseite | `kaufen.html` → Edge Function `create-checkout` → Stripe Checkout (TWINT, Karte, Apple/Google Pay) |
 | Gutschrift | Stripe → Edge Function `stripe-webhook` (Signatur geprüft) → `grant_purchase()` |
+| Rückerstattung | In Stripe ganz zurückerstatten → Webhook (`charge.refunded`) → `revoke_purchase()` entfernt Freischaltung bzw. Juwelen. Teilrückerstattungen ändern nichts. |
 | Münzen | automatisch pro gespeicherter Runde (Trigger `award_coins`): 1 pro 30 s, max. 20 pro Runde, +10 Sieg, +5 Podest, max. 200 pro Tag |
 | Münzen und Juwelen anzeigen | Profil → «Münzen und Juwelen» |
 
 Datenbank-Änderungen liegen in `supabase/migrations/`, die Funktionen in `supabase/functions/`.
 
-**Einrichten (einmalig):** In Supabase unter *Edge Functions → Secrets* `STRIPE_SECRET_KEY` und `STRIPE_WEBHOOK_SECRET` setzen. In Stripe einen Webhook auf `https://viqonxeoaaffqigpwami.supabase.co/functions/v1/stripe-webhook` mit den Ereignissen `checkout.session.completed` und `checkout.session.async_payment_succeeded` anlegen und TWINT aktivieren.
+**Einrichten (einmalig):** In Supabase unter *Edge Functions → Secrets* `STRIPE_SECRET_KEY` und `STRIPE_WEBHOOK_SECRET` setzen. In Stripe einen Webhook auf `https://viqonxeoaaffqigpwami.supabase.co/functions/v1/stripe-webhook` mit den Ereignissen `checkout.session.completed`, `checkout.session.async_payment_succeeded` und `charge.refunded` anlegen und TWINT aktivieren.
 
 ## Verbindung Handy ↔ TV
 
