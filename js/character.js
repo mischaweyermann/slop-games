@@ -9,12 +9,38 @@ export const SHOES = ['#f4efe6', '#3b3b45', '#e8574f', '#f39a4c', '#5aa9c9', '#7
 
 export const OPTIONS = {
   hair: [['short', 'Kurz'], ['bun', 'Dutt'], ['curly', 'Locken'], ['long', 'Lang'], ['spiky', 'Wuschel'], ['side', 'Opa'], ['none', 'Glatze']],
-  hat: [['none', 'Keine'], ['cap', 'Cap'], ['beanie', 'Mütze'], ['bucket', 'Fischerhut'], ['party', 'Partyhut'], ['crown', 'Krone']],
-  glasses: [['none', 'Keine'], ['round', 'Rund'], ['sun', 'Sonnenbrille']],
+  hat: [['none', 'Keine'], ['cap', 'Cap'], ['beanie', 'Mütze'], ['bucket', 'Fischerhut'], ['party', 'Partyhut'], ['crown', 'Krone'],
+    ['cat', 'Katzenohren'], ['cowboy', 'Cowboyhut'], ['viking', 'Wikingerhelm'], ['astro', 'Astronautenhelm']],
+  glasses: [['none', 'Keine'], ['round', 'Rund'], ['sun', 'Sonnenbrille'], ['heart', 'Herzbrille'], ['star', 'Sternbrille']],
   beard: [['none', 'Keiner'], ['beard', 'Vollbart'], ['mustache', 'Schnauz']],
-  top: [['tshirt', 'T-Shirt'], ['longsleeve', 'Pulli'], ['hoodie', 'Hoodie'], ['jacket', 'Jacke']],
+  top: [['tshirt', 'T-Shirt'], ['longsleeve', 'Pulli'], ['hoodie', 'Hoodie'], ['jacket', 'Jacke'], ['tracksuit', 'Trainingsjacke']],
   bottom: [['long', 'Lange Hose'], ['shorts', 'Shorts']],
+  back: [['none', 'Nichts'], ['cape', 'Umhang'], ['wings', 'Flügel']],
 };
+
+// Teile aus der Garderobe (kaufbar mit Münzen oder Juwelen). Gleiche IDs wie in der Tabelle `skins`.
+// Alle anderen Teile sind gratis.
+export const SHOP = {
+  'hat-cat': { key: 'hat', value: 'cat' },
+  'glasses-heart': { key: 'glasses', value: 'heart' },
+  'glasses-star': { key: 'glasses', value: 'star' },
+  'hat-cowboy': { key: 'hat', value: 'cowboy' },
+  'top-tracksuit': { key: 'top', value: 'tracksuit' },
+  'hat-viking': { key: 'hat', value: 'viking' },
+  'back-cape': { key: 'back', value: 'cape' },
+  'hat-astro': { key: 'hat', value: 'astro' },
+  'back-wings': { key: 'back', value: 'wings' },
+};
+// Grundausstattung, wenn ein Teil nicht (mehr) gehört
+export const BASE = { hat: 'none', glasses: 'none', top: 'tshirt', back: 'none' };
+export const shopIdOf = (key, value) => Object.keys(SHOP).find((id) => SHOP[id].key === key && SHOP[id].value === value) || null;
+export const isShopItem = (key, value) => !!shopIdOf(key, value);
+// Nicht gekaufte Teile durch die Grundausstattung ersetzen (owned = Set mit Skin-IDs)
+export function stripUnowned(cfg, owned) {
+  const out = { ...cfg };
+  for (const [id, it] of Object.entries(SHOP)) if (out[it.key] === it.value && !(owned && owned.has(id))) out[it.key] = BASE[it.key];
+  return out;
+}
 
 export const PRESETS = [
   { name: 'Mia', cfg: { skin: SKIN[0], hair: 'bun', hairColor: HAIR_COLORS[2], hat: 'none', hatColor: CLOTH[0], glasses: 'none', beard: 'none', top: 'tshirt', topColor: CLOTH[0], innerColor: CLOTH[9], bottom: 'long', bottomColor: PANTS[1], shoes: SHOES[0] } },
@@ -26,7 +52,7 @@ export const PRESETS = [
   { name: 'Ben', cfg: { skin: SKIN[3], hair: 'short', hairColor: HAIR_COLORS[1], hat: 'beanie', hatColor: CLOTH[0], glasses: 'round', beard: 'mustache', top: 'hoodie', topColor: CLOTH[10], innerColor: CLOTH[9], bottom: 'long', bottomColor: PANTS[1], shoes: SHOES[0] } },
   { name: 'Königin Lu', cfg: { skin: SKIN[5], hair: 'long', hairColor: HAIR_COLORS[0], hat: 'crown', hatColor: CLOTH[2], glasses: 'none', beard: 'none', top: 'jacket', topColor: CLOTH[7], innerColor: CLOTH[2], bottom: 'long', bottomColor: PANTS[2], shoes: SHOES[6] } },
 ];
-export const DEFAULT_CONFIG = PRESETS[0].cfg;
+export const DEFAULT_CONFIG = { back: 'none', ...PRESETS[0].cfg };
 
 const COLOR_KEYS = { skin: SKIN, hairColor: HAIR_COLORS, hatColor: CLOTH, topColor: CLOTH, innerColor: CLOTH, bottomColor: PANTS, shoes: SHOES };
 
@@ -42,11 +68,12 @@ export function sanitize(c) {
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 export function randomConfig() {
   const c = {};
-  for (const [k, list] of Object.entries(OPTIONS)) c[k] = pick(list)[0];
+  for (const [k, list] of Object.entries(OPTIONS)) c[k] = pick(list.filter(([v]) => !isShopItem(k, v)))[0];
   for (const [k, list] of Object.entries(COLOR_KEYS)) c[k] = pick(list);
   if (Math.random() < 0.6) c.hat = 'none';
   if (Math.random() < 0.6) c.beard = 'none';
   if (Math.random() < 0.5) c.glasses = 'none';
+  if (Math.random() < 0.8) c.back = 'none';
   return sanitize(c);
 }
 
@@ -62,14 +89,15 @@ const TABS = [
     ['Frisur', 'hair', 'option'],
     ['Haarfarbe', 'hairColor', 'color'],
     ['Kopfbedeckung', 'hat', 'option'],
-    ['Farbe Kopfbedeckung', 'hatColor', 'color', (c) => c.hat !== 'none' && c.hat !== 'crown'],
+    ['Farbe Kopfbedeckung', 'hatColor', 'color', (c) => !['none', 'crown', 'viking', 'astro'].includes(c.hat)],
     ['Brille', 'glasses', 'option'],
     ['Bart', 'beard', 'option'],
   ]],
   ['Oberteil', [
     ['Art', 'top', 'option'],
     ['Farbe', 'topColor', 'color'],
-    ['Farbe innen', 'innerColor', 'color', (c) => c.top === 'jacket'],
+    ['Farbe innen', 'innerColor', 'color', (c) => c.top === 'jacket' || c.top === 'tracksuit'],
+    ['Rücken', 'back', 'option'],
   ]],
   ['Hose & Schuhe', [
     ['Hose', 'bottom', 'option'],
@@ -78,7 +106,11 @@ const TABS = [
   ]],
 ];
 
-export function createEditor(root, initial, onChange) {
+// opts.owned: Set mit gekauften Skin-IDs (null = noch unbekannt, alles aus der Garderobe gesperrt)
+// opts.onLocked(id): Klick auf ein gesperrtes Teil, z. B. um die Garderobe zu öffnen
+export function createEditor(root, initial, onChange, opts = {}) {
+  const opts_ = opts;
+  let owned = opts.owned || null;
   let cfg = sanitize(initial);
   let tab = 0;
   root.classList.add('ce');
@@ -89,7 +121,7 @@ export function createEditor(root, initial, onChange) {
   PRESETS.forEach((p) => {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'ce-preset';
-    b.innerHTML = `<span class="ce-face2">${avatarSvg(sanitize(p.cfg))}</span>${p.name}`;
+    b.innerHTML = `<span class="ce-face2">${avatarSvg(sanitize(p.cfg), { body: false })}</span>${p.name}`;
     b.addEventListener('click', () => update({ ...p.cfg }));
     presets.appendChild(b);
   });
@@ -132,9 +164,14 @@ export function createEditor(root, initial, onChange) {
         });
       } else {
         OPTIONS[key].forEach(([v, name]) => {
+          const id = shopIdOf(key, v);
+          const locked = id && !(owned && owned.has(id));
+          if (locked && opts_.hideLocked) return;
           const b = document.createElement('button');
-          b.type = 'button'; b.className = 'ce-chip' + (cfg[key] === v ? ' active' : ''); b.textContent = name;
-          b.addEventListener('click', () => update({ ...cfg, [key]: v }));
+          b.type = 'button'; b.className = 'ce-chip' + (cfg[key] === v ? ' active' : '') + (locked ? ' locked' : '');
+          b.textContent = locked ? '🔒 ' + name : name;
+          if (locked) b.title = 'In der Garderobe erhältlich';
+          b.addEventListener('click', () => (locked ? opts_.onLocked && opts_.onLocked(id) : update({ ...cfg, [key]: v })));
           opts.appendChild(b);
         });
       }
@@ -145,5 +182,6 @@ export function createEditor(root, initial, onChange) {
   return {
     get config() { return cfg; },
     set(next) { cfg = sanitize(next); render(); },
+    setOwned(set) { owned = set; render(); },
   };
 }

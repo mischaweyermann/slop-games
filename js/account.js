@@ -185,6 +185,25 @@ export async function startCheckout(product) {
   }
   location.href = data.url;
 }
+/* ---------------- Garderobe ---------------- */
+export async function loadSkins() {
+  const { data, error } = await sb.from('skins').select('id, slot, value, name, price_coins, price_gems').eq('active', true).order('sort');
+  if (error) throw error;
+  return data || [];
+}
+export async function loadOwnedSkins() {
+  if (!(await currentUser())) return new Set();
+  const { data, error } = await sb.from('owned_skins').select('skin_id');
+  if (error) throw error;
+  return new Set((data || []).map((r) => r.skin_id));
+}
+// Kauft ein Teil mit 'coins' oder 'gems'; gibt das neue Guthaben zurück
+export async function buySkin(skin, currency) {
+  const { data, error } = await sb.rpc('buy_skin', { p_skin: skin, p_currency: currency });
+  if (error) { const e = new Error(error.message); e.code = error.message; throw e; }
+  return data;
+}
+
 export const chf = (rappen) => (rappen / 100).toFixed(2).replace(/\.00$/, '.–');
 
 /* ---------------- Spiele und Admin ---------------- */

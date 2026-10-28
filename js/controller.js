@@ -441,6 +441,8 @@ const CHAR_KEY = 'ballonplatzer.character';
 let charCfg = loadConfig(CHAR_KEY);
 let savedName = (() => { try { return localStorage.getItem('slop.name') || ''; } catch { return ''; } })();
 let players = [];             // vom TV: [{ id, name, color, cfg, slot }]
+let ownedSkins = new Set();   // gekaufte Teile aus der Garderobe (nur mit Konto)
+const lockedHint = () => acctNote(acctUser ? 'Dieses Teil gibt es in der Garderobe auf slopgames.ch.' : 'Melde dich an – dann kannst du in der Garderobe neue Teile holen.');
 const cards = new Map();      // id -> { el, editor }
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function renderPlayers(list) {
@@ -470,7 +472,7 @@ function renderPlayers(list) {
       c.editorEl = el.querySelector('.pc-editor');
       el.querySelector('.pc-more').addEventListener('click', () => {
         c.editorEl.hidden = !c.editorEl.hidden;
-        if (!c.editorEl.hidden && !c.editor) c.editor = createEditor(c.editorEl, c.cfg, (cfg) => { c.cfg = cfg; push(); });
+        if (!c.editorEl.hidden && !c.editor) c.editor = createEditor(c.editorEl, c.cfg, (cfg) => { c.cfg = cfg; push(); }, { owned: ownedSkins, onLocked: lockedHint });
       });
       el.querySelector('.pc-ok').addEventListener('click', () => { send({ t: 'ok', id: q.id, v: !c.confirmed }); buzz(20); });
       cards.set(key, c);
@@ -556,6 +558,7 @@ async function renderAcct() {
     if (p && (p.nickname || p.character)) {
       if (p.nickname) savedName = p.nickname.slice(0, 14);
       if (p.character) charCfg = sanitize(p.character);
+      try { ownedSkins = await acct.loadOwnedSkins(); for (const c of cards.values()) if (c.editor) c.editor.setOwned(ownedSkins); } catch { /* */ }
       if (!multi && conn && conn.open && savedName) send({ t: 'setp', id: null, name: savedName, cfg: charCfg });
     }
   } catch { /* */ }

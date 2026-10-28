@@ -1,6 +1,6 @@
 // Startseite mit Konto: Willkommensschritt (Name + Figur), Profil-Ansicht und Statistik aus dem Konto.
 import * as A from './account.js';
-import { createEditor, sanitize, DEFAULT_CONFIG } from './character.js';
+import { createEditor, sanitize, DEFAULT_CONFIG, SHOP, BASE } from './character.js';
 import { avatarSvg } from './avatar2d.js';
 
 const $ = (id) => document.getElementById(id);
@@ -8,13 +8,14 @@ const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const GAMES = Object.entries(A.GAMES).map(([id, g]) => ({ id, ...g }));
 
 let profile = { nickname: null, character: null };
+let ownedSkins = new Set();
 let plays = [];
 let user = null;
 
 /* ---------------- Profil anzeigen ---------------- */
 function showAvatar(cfg) {
   const c = sanitize(cfg || DEFAULT_CONFIG);
-  $('profAv').innerHTML = avatarSvg(c);
+  $('profAv').innerHTML = avatarSvg(c, { body: false });
   const nav = $('railProfil');
   if (nav) nav.innerHTML = `<span class="rail-av">${avatarSvg(c, { body: false })}</span>`;
 }
@@ -29,7 +30,7 @@ let editor = null, draft = null;
 function setupProfileEditor() {
   draft = sanitize(profile.character || DEFAULT_CONFIG);
   $('profNick').value = profile.nickname || '';
-  if (!editor) editor = createEditor($('profEditor'), draft, (cfg) => { draft = cfg; $('profAv').innerHTML = avatarSvg(cfg); $('profMsg').textContent = ''; });
+  if (!editor) editor = createEditor($('profEditor'), draft, (cfg) => { draft = cfg; $('profAv').innerHTML = avatarSvg(cfg, { body: false }); $('profMsg').textContent = ''; }, { owned: ownedSkins, onLocked: () => { location.hash = '#garderobe'; } });
   else editor.set(draft);
 }
 function note(el, text, kind) { el.textContent = text || ''; el.className = 'note' + (kind ? ' ' + kind : ''); }
@@ -72,8 +73,8 @@ function welcome() {
     $('wStep1').hidden = n !== 1; $('wStep2').hidden = n !== 2;
     if (n === 1) $('wNick').focus();
     if (n === 2) {
-      $('wAv').innerHTML = avatarSvg(cfg);
-      if (!wEditor) wEditor = createEditor($('wEditor'), cfg, (c) => { cfg = c; $('wAv').innerHTML = avatarSvg(c); });
+      $('wAv').innerHTML = avatarSvg(cfg, { body: false });
+      if (!wEditor) wEditor = createEditor($('wEditor'), cfg, (c) => { cfg = c; $('wAv').innerHTML = avatarSvg(c, { body: false }); }, { owned: ownedSkins, hideLocked: true });
     }
   };
   $('wNext').onclick = () => {
@@ -162,18 +163,111 @@ async function init() {
     noAdmin(); addEventListener('hashchange', noAdmin);
   }
   applyShop(admin).catch(() => {});
+  initWardrobe().catch(() => {});
   try { await A.importLocalStats(); } catch { /* */ }
   try { plays = await A.loadPlays(); } catch { plays = []; }
   renderStats();
 }
 
+/* ---------------- Garderobe ---------------- */
+let skins = [], wallet = { coins: 0, gems: 0 }, pick = null, shopOn = false;
+const ERR = {
+  not_enough: 'Dafür reicht dein Guthaben noch nicht.',
+  owned: 'Das hast du schon.',
+  gems_only: 'Dieses Teil gibt es nur mit Juwelen.',
+  login: 'Bitte melde dich nochmals an.',
+};
+const myCfg = () => sanitize(profile.character || DEFAULT_CONFIG);
+const withItem = (s) => ({ ...myCfg(), [s.slot]: s.value });
+const fmtN = (n) => Number(n || 0).toLocaleString('de-CH');
+function priceHtml(s) {
+  return `<span class="wd-price">${s.price_coins ? `<span><i class="coin"></i>${fmtN(s.price_coins)}</span>` : ''}<span><i class="gem"></i>${fmtN(s.price_gems)}</span></span>`;
+}
+function renderWallet() {
+  $('gdCoins').textContent = fmtN(wallet.coins); $('gdGems').textContent = fmtN(wallet.gems);
+  $('wCoins').textContent = fmtN(wallet.coins); $('wGems').textContent = fmtN(wallet.gems);
+}
+function renderWardrobe() {
+  const cfg = myCfg();
+  $('gdItems').innerHTML = skins.map((s) => {
+    const own = ownedSkins.has(s.id), worn = own && cfg[s.slot] === s.value;
+    const badge = worn ? '<span class="wd-badge on">Angezogen</span>' : own ? '<span class="wd-badge">Gekauft</span>' : !s.price_coins ? '<span class="wd-badge excl">Exklusiv</span>' : '';
+    return `<button type="button" class="wd-item${pick === s.id ? ' sel' : ''}" data-id="${s.id}" aria-pressed="${pick === s.id}"><span class="pic">${avatarSvg(withItem(s), { body: s.slot === 'back' || s.slot === 'top' })}</span>${badge}<b>${esc(s.name)}</b>${own ? '<span class="wd-price">Gehört dir</span>' : priceHtml(s)}</button>`;
+  }).join('');
+  renderStage();
+}
+function renderStage() {
+  const s = skins.find((x) => x.id === pick);
+  const cfg = s ? withItem(s) : myCfg();
+  $('gdFig').innerHTML = avatarSvg(cfg, { body: true });
+  const act = $('gdActions'); act.innerHTML = '';
+  if (!s) { $('gdName').textContent = 'Deine Figur'; $('gdInfo').textContent = skins.length ? 'Wähle ein Teil zum Anprobieren.' : ''; return; }
+  $('gdName').textContent = s.name;
+  const own = ownedSkins.has(s.id), worn = own && myCfg()[s.slot] === s.value;
+  const btn = (html, cls, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'pill' + (cls ? ' ' + cls : ''); b.innerHTML = html; b.onclick = () => fn(b); act.appendChild(b); return b; };
+  if (worn) {
+    $('gdInfo').textContent = 'Trägst du gerade.';
+    btn('Ausziehen', 'dark', (b) => equip(s, false, b));
+  } else if (own) {
+    $('gdInfo').textContent = 'Gehört dir.';
+    btn('Anziehen', '', (b) => equip(s, true, b));
+  } else {
+    $('gdInfo').innerHTML = s.price_coins ? `Kostet ${fmtN(s.price_coins)} Münzen oder ${fmtN(s.price_gems)} Juwelen.` : `Exklusiv: nur mit Juwelen, ${fmtN(s.price_gems)} Stück.`;
+    if (s.price_coins) btn(`<i class="coin"></i>Für ${fmtN(s.price_coins)} Münzen`, wallet.coins >= s.price_coins ? '' : 'dark', (b) => buy(s, 'coins', b));
+    btn(`<i class="gem"></i>Für ${fmtN(s.price_gems)} Juwelen`, wallet.gems >= s.price_gems && !s.price_coins ? '' : 'dark', (b) => buy(s, 'gems', b));
+  }
+}
+function wdNote(t, kind) { const el = $('gdMsg'); el.textContent = t || ''; el.className = 'note' + (kind ? ' ' + kind : ''); }
+async function buy(s, currency, b) {
+  const price = currency === 'coins' ? s.price_coins : s.price_gems;
+  const have = currency === 'coins' ? wallet.coins : wallet.gems;
+  const unit = currency === 'coins' ? 'Münzen' : 'Juwelen';
+  if (have < price) {
+    if (currency === 'coins') return wdNote(`Dir fehlen noch ${fmtN(price - have)} Münzen – weiterspielen lohnt sich!`, 'err');
+    wdNote(`Dir fehlen noch ${fmtN(price - have)} Juwelen.`, 'err');
+    if (shopOn) { const a = document.createElement('a'); a.className = 'pill dark'; a.href = 'kaufen.html?p=juwelen-500'; a.innerHTML = '<i class="gem"></i>Juwelen holen'; $('gdActions').appendChild(a); }
+    return;
+  }
+  if (!confirm(`${s.name} für ${fmtN(price)} ${unit} kaufen?`)) return;
+  b.disabled = true; wdNote('');
+  try {
+    wallet = await A.buySkin(s.id, currency);
+    ownedSkins.add(s.id);
+    if (editor) editor.setOwned(ownedSkins);
+    renderWallet();
+    await equip(s, true, null);
+    wdNote(`${s.name} gehört jetzt dir und ist angezogen.`, 'ok');
+  } catch (e) { wdNote(ERR[e.code] || A.niceError(e), 'err'); b.disabled = false; }
+}
+async function equip(s, on, b) {
+  if (b) b.disabled = true;
+  const cfg = { ...myCfg(), [s.slot]: on ? s.value : BASE[s.slot] };
+  try {
+    await A.saveProfile({ character: cfg });
+    profile = { ...profile, character: cfg };
+    showProfile(); setupProfileEditor();
+    if (b) wdNote(on ? `${s.name} angezogen – gilt in allen Spielen.` : `${s.name} ausgezogen.`, 'ok');
+    renderWardrobe();
+  } catch (e) { wdNote(A.niceError(e), 'err'); if (b) b.disabled = false; }
+}
+$('gdItems').addEventListener('click', (e) => {
+  const b = e.target.closest('.wd-item'); if (!b) return;
+  pick = pick === b.dataset.id ? null : b.dataset.id; wdNote(''); renderWardrobe();
+});
+async function initWardrobe() {
+  try { [skins, ownedSkins] = await Promise.all([A.loadSkins(), A.loadOwnedSkins()]); } catch { skins = []; }
+  skins = skins.filter((s) => SHOP[s.id]); // nur Teile, die diese Version zeichnen kann
+  if (editor) editor.setOwned(ownedSkins);
+  renderWardrobe();
+}
+
 /* ---------------- Preise, Käufe, Münzen und Juwelen ---------------- */
 async function applyShop(admin) {
-  const [on, products, owned, wallet] = await Promise.all([
+  const [on, products, owned, w] = await Promise.all([
     A.paymentsEnabled().catch(() => false), A.loadProducts().catch(() => []), A.loadOwned().catch(() => new Set()), A.loadWallet().catch(() => ({ coins: 0, gems: 0 })),
   ]);
-  $('wCoins').textContent = wallet.coins.toLocaleString('de-CH');
-  $('wGems').textContent = wallet.gems.toLocaleString('de-CH');
+  wallet = w; shopOn = on || admin;
+  renderWallet();
   const names = [...owned].map((i) => (i === 'pass' ? 'Early-Supporter-Pass' : (A.GAMES[i] || {}).name)).filter(Boolean);
   $('wOwned').textContent = names.length ? `Gekauft: ${names.join(', ')}` : '';
   $('wBuy').hidden = !(on || admin);

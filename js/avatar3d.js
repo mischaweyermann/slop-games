@@ -46,6 +46,17 @@ export class Avatar {
       cheek: new THREE.MeshBasicMaterial({ color: '#ff8f8f', transparent: true, opacity: 0.28, depthWrite: false }),
       lens: new THREE.MeshPhysicalMaterial({ color: '#1d1b26', roughness: 0.08, metalness: 0.3, clearcoat: 1 }),
       frame: clay('#3b3b45', { roughness: 0.4 }),
+      // Garderobe
+      metal: new THREE.MeshPhysicalMaterial({ color: '#a9b4bf', metalness: 0.7, roughness: 0.32, clearcoat: 0.6 }),
+      horn: clay('#f4efe6', { roughness: 0.5 }),
+      pink: clay('#f3a6b8'),
+      heart: new THREE.MeshPhysicalMaterial({ color: '#e8574f', roughness: 0.2, clearcoat: 1 }),
+      star: new THREE.MeshPhysicalMaterial({ color: '#f2c94c', roughness: 0.25, metalness: 0.3, clearcoat: 1 }),
+      glass: new THREE.MeshPhysicalMaterial({ color: '#cfeeff', transparent: true, opacity: 0.2, roughness: 0.05, clearcoat: 1, depthWrite: false, side: THREE.DoubleSide }),
+      suit: clay('#eef5fa', { roughness: 0.55 }),
+      stripe: fabric('#ffffff'),
+      cape: Object.assign(fabric('#d9443c'), { side: THREE.DoubleSide }),
+      feather: clay('#ffffff', { roughness: 0.7 }),
     };
     this.m.skinHand.l = this.m.skin.clone();
     this.m.skinHand.r = this.m.skin.clone();
@@ -78,6 +89,7 @@ export class Avatar {
     this.torso = mk(TORSO, this.m.top, this.torsoFrame);
     this.torso.scale.set(0.42, D.torso * 1.12, 0.35);
     this.topExtras = new THREE.Group(); this.torsoFrame.add(this.topExtras);
+    this.backG = new THREE.Group(); this.torsoFrame.add(this.backG);
 
     // Kopf
     this.head = new THREE.Group(); this.root.add(this.head);
@@ -131,7 +143,7 @@ export class Avatar {
       upperR: short ? 0.1 : 0.12, foreR: short ? 0.095 : 0.11, sleeveLen: short ? 0.55 : 1, sleeveR: short ? 0.135 : 0.125,
       thighR: 0.15, shinR: c.bottom === 'shorts' ? 0.1 : 0.135, shorts: c.bottom === 'shorts',
     };
-    this.buildTopExtras(c); this.buildHair(c); this.buildHat(c); this.buildGlasses(c); this.buildBeard(c);
+    this.buildTopExtras(c); this.buildBack(c); this.buildHair(c); this.buildHat(c); this.buildGlasses(c); this.buildBeard(c);
     this.mouth.visible = c.beard !== 'beard';
   }
 
@@ -150,13 +162,37 @@ export class Avatar {
       this.add(g, SPH, m.inner, [0, 0.02, 0.28], [0.13, 0.36, 0.08]);
       for (const s of [-1, 1]) this.add(g, SPH_LO, m.top, [0.14 * s, 0.33, 0.21], [0.12, 0.05, 0.1], [0.5, 0, -0.5 * s]);
       this.add(g, SPH_LO, m.frame, [0.16, -0.08, 0.31], [0.022, 0.022, 0.02]);
+    } else if (c.top === 'tracksuit') {
+      this.add(g, CYL, m.top, [0, 0.42, 0.01], [0.2, 0.12, 0.17]); // Stehkragen
+      this.add(g, new THREE.TorusGeometry(0.2, 0.025, 10, 28), m.stripe, [0, 0.48, 0.01], [1, 1, 0.85], [Math.PI / 2, 0, 0]);
+      this.add(g, CYL, m.inner, [0, 0.03, 0.345], [0.014, 0.78, 0.014]); // Reissverschluss
+      for (const s of [-1, 1]) this.add(g, CYL, m.stripe, [0.37 * s, 0.02, 0.1], [0.022, 0.72, 0.022], [0.05, 0, 0.12 * s]);
     } else {
       this.add(g, new THREE.TorusGeometry(0.19, 0.03, 10, 28), m.top, [0, 0.39, 0.02], [1, 1, 1], [Math.PI / 2, 0, 0]);
     }
   }
 
+  // Umhang oder Flügel auf dem Rücken
+  buildBack(c) {
+    const g = this.backG; this.clear(g); const m = this.m;
+    if (c.back === 'cape') {
+      this.add(g, new THREE.CylinderGeometry(0.42, 0.8, 1.2, 32, 1, true, Math.PI / 2 + 0.1, Math.PI - 0.2), m.cape, [0, -0.16, -0.04], [1, 1, 0.95]);
+      for (const s of [-1, 1]) this.add(g, SPH_LO, m.gold, [0.2 * s, 0.4, 0.24], [0.05, 0.05, 0.04]);
+    } else if (c.back === 'wings') {
+      const shape = new THREE.Shape();
+      shape.moveTo(0, 0);
+      shape.bezierCurveTo(0.25, 0.35, 0.65, 0.62, 1.0, 0.6);
+      shape.bezierCurveTo(0.85, 0.42, 0.9, 0.3, 0.82, 0.22);
+      shape.bezierCurveTo(0.72, 0.18, 0.7, 0.05, 0.6, 0.0);
+      shape.bezierCurveTo(0.5, -0.05, 0.45, -0.2, 0.32, -0.22);
+      shape.bezierCurveTo(0.2, -0.24, 0.1, -0.15, 0, 0);
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.04, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 2, curveSegments: 16 });
+      for (const s of [-1, 1]) this.add(g, geo, m.feather, [0.1 * s, 0.12, -0.3], [1.45 * s, 1.45, 1], [0, -0.45 * s, 0]);
+    }
+  }
+
   buildHair(c) {
-    const g = this.hairG; this.clear(g); const m = this.m.hair; const hatOn = c.hat !== 'none';
+    const g = this.hairG; this.clear(g); const m = this.m.hair; const hatOn = c.hat !== 'none' && c.hat !== 'cat';
     const cap = () => this.add(g, HAIRCAP, m, [0, 0.03, -0.03], [0.915, 0.865, 0.845], [-0.62, 0, 0]);
     const fringe = () => [-0.36, -0.05, 0.3].forEach((x, i) => this.add(g, SPH, m, [x, 0.5 - Math.abs(x) * 0.22, 0.56 - Math.abs(x) * 0.18], [0.3, 0.17, 0.2], [0.75, 0, (i - 1) * -0.45]));
     switch (c.hair) {
@@ -225,6 +261,36 @@ export class Avatar {
         this.add(g, SPH_LO, new THREE.MeshPhysicalMaterial({ color: '#e8574f', roughness: 0.1, clearcoat: 1 }), [0, 0.82, 0.38], [0.06, 0.06, 0.04]);
         break;
       }
+      // Garderobe
+      case 'cat':
+        this.add(g, new THREE.TorusGeometry(0.84, 0.045, 10, 48, Math.PI), m, [0, 0.12, -0.06], [1, 1, 1], [-0.3, 0, 0]);
+        for (const s of [-1, 1]) {
+          this.add(g, new THREE.ConeGeometry(0.3, 0.55, 4), m, [0.5 * s, 1.0, -0.06], [1, 1, 0.5], [0, Math.PI / 4, -0.38 * s]);
+          this.add(g, new THREE.ConeGeometry(0.18, 0.36, 4), this.m.pink, [0.49 * s, 0.97, 0.04], [1, 1, 0.3], [0, Math.PI / 4, -0.38 * s]);
+        }
+        break;
+      case 'cowboy':
+        this.add(g, new THREE.CylinderGeometry(0.62, 0.7, 0.62, 32), m, [0, 0.78, -0.04], [1, 1, 0.9], [-0.1, 0, 0]);
+        this.add(g, new THREE.SphereGeometry(0.62, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2), m, [0, 1.08, -0.07], [1, 0.32, 0.9], [-0.1, 0, 0]);
+        this.add(g, new THREE.CylinderGeometry(0.71, 0.71, 0.1, 32, 1, true), this.m.dark, [0, 0.55, -0.02], [1, 1, 0.9], [-0.1, 0, 0]);
+        { const brim = this.add(g, new THREE.TorusGeometry(1.0, 0.33, 10, 48), m, [0, 0.46, -0.02], [1, 1, 0.09], [Math.PI / 2 - 0.1, 0, 0]); brim.scale.set(1, 0.95, 0.12); }
+        break;
+      case 'viking':
+        this.add(g, DOME, this.m.metal, [0, 0.18, -0.02], [0.96, 0.86, 0.92], [-0.1, 0, 0]);
+        this.add(g, new THREE.TorusGeometry(0.89, 0.07, 12, 48), this.m.metal, [0, 0.2, -0.02], [1, 1, 0.94], [Math.PI / 2 - 0.1, 0, 0]);
+        this.add(g, new THREE.BoxGeometry(0.1, 0.9, 0.1), this.m.metal, [0, 0.62, 0.43], [1, 1, 1], [-0.62, 0, 0]);
+        for (const s of [-1, 1]) {
+          const horn = new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.45 * s, 0.05, 0), new THREE.Vector3(0.55 * s, 0.55, -0.05)), 16, 0.09, 12, false);
+          const h = this.add(g, horn, this.m.horn, [0.72 * s, 0.42, -0.05]);
+          const tip = this.add(g, new THREE.ConeGeometry(0.09, 0.22, 12), this.m.horn, [0.72 * s + 0.56 * s, 0.42 + 0.64, -0.1], [1, 1, 1], [0, 0, -0.2 * s]);
+          h.castShadow = tip.castShadow = true;
+        }
+        break;
+      case 'astro':
+        this.add(g, SPH, this.m.glass, [0, 0.02, 0], [1.18, 1.12, 1.1]);
+        this.add(g, new THREE.TorusGeometry(0.62, 0.12, 14, 40), this.m.suit, [0, -0.92, -0.02], [1, 1, 0.9], [Math.PI / 2, 0, 0]);
+        this.add(g, SPH_LO, this.m.heart, [0.9, -0.55, 0.3], [0.06, 0.06, 0.06]);
+        break;
       default: break;
     }
   }
@@ -237,6 +303,18 @@ export class Avatar {
     } else if (c.glasses === 'sun') {
       for (const s of [-1, 1]) this.add(g, SPH, this.m.lens, [0.27 * s, -0.04, 0.78], [0.19, 0.13, 0.05]);
       this.add(g, CYL, this.m.frame, [0, 0, 0.82], [0.018, 0.2, 0.018], [0, 0, Math.PI / 2]);
+    } else if (c.glasses === 'heart' || c.glasses === 'star') {
+      const sh = new THREE.Shape();
+      if (c.glasses === 'heart') {
+        sh.moveTo(0, -0.15); sh.bezierCurveTo(-0.2, -0.02, -0.17, 0.15, 0, 0.07); sh.bezierCurveTo(0.17, 0.15, 0.2, -0.02, 0, -0.15);
+      } else {
+        for (let i = 0; i < 10; i++) { const r = i % 2 ? 0.075 : 0.17, a = Math.PI / 2 + (i * Math.PI) / 5; const x = Math.cos(a) * r, y = Math.sin(a) * r; if (i) sh.lineTo(x, y); else sh.moveTo(x, y); }
+        sh.closePath();
+      }
+      const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.03, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012, bevelSegments: 2 });
+      const mat = c.glasses === 'heart' ? this.m.heart : this.m.star;
+      for (const s of [-1, 1]) this.add(g, geo, mat, [0.27 * s, -0.04, 0.77]);
+      this.add(g, CYL, mat, [0, -0.01, 0.8], [0.016, 0.2, 0.016], [0, 0, Math.PI / 2]);
     }
   }
 
