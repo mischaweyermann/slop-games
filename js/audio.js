@@ -134,6 +134,25 @@ export function createAudio() {
       e.lp.frequency.setTargetAtTime(380 + speed01 * 900 + (boost ? 500 : 0), t, 0.08);
       e.g.gain.setTargetAtTime(0.045 + speed01 * 0.045, t, 0.1);
     },
+    // Fahrtwind (Ski): Rauschen, das mit dem Tempo lauter und heller wird
+    wind(on) {
+      if (!on) {
+        if (this._wind) { const w = this._wind; w.g.gain.setTargetAtTime(0, ctx.currentTime, 0.3); setTimeout(() => w.src.stop(), 1200); this._wind = null; }
+        return;
+      }
+      if (this._wind || !ensure()) return;
+      const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 500; bp.Q.value = 0.7;
+      const g = ctx.createGain(); g.gain.value = 0;
+      src.connect(bp).connect(g).connect(sfx); src.start();
+      this._wind = { src, bp, g };
+    },
+    windSet(speed01) {
+      const w = this._wind; if (!w) return;
+      const t = ctx.currentTime;
+      w.bp.frequency.setTargetAtTime(350 + speed01 * 1600, t, 0.1);
+      w.g.gain.setTargetAtTime(0.02 + speed01 * 0.16, t, 0.15);
+    },
     skid(amount) {
       if (!ensure() || amount < 0.1) return;
       noise({ dur: 0.12, vol: 0.06 * amount, type: 'bandpass', freq: 2600, q: 3 });

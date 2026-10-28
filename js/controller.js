@@ -42,6 +42,15 @@ const GAMES = {
     results: ['Kampf vorbei!', 'Beide Fäuste hoch über den Kopf für einen neuen Kampf.'],
     result: (m) => [m.score === 1 ? '🏆 Gewonnen!' : 'Knapp verloren!', 'Beide Fäuste hoch über den Kopf für einen neuen Kampf.'],
   },
+  ski: {
+    title: 'Skicross', intro: 'Das Handy wird zur Kamera. Stell es 2–3 m vor dich (zu mehreren: nebeneinander), sodass es dich vom Kopf bis zu den Knien sieht.',
+    far: 'Stell dich so hin, dass dich die Kamera vom Kopf bis mindestens zu den Knien sieht.',
+    pose: 'In die Hocke gehen (Abfahrtshocke) und kurz halten',
+    play: ['Rennen läuft! ⛷️', 'Zur Seite lehnen = lenken · Hocke = schneller · schnell hochkommen = springen · am Start Arme runter schwingen = anschieben.'],
+    queued: 'Das Rennen läuft noch – du fährst beim nächsten mit.',
+    results: ['Im Ziel!', 'Beide Hände über den Kopf für ein neues Rennen.'],
+    result: (m) => [m.score === 1 ? '🏆 Sieg!' : `Platz ${m.score}!`, 'Beide Hände über den Kopf für ein neues Rennen.'],
+  },
 };
 const GAME_ID = GAMES[params.get('g')] ? params.get('g') : 'rennen';
 const G = GAMES[GAME_ID];

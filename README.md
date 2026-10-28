@@ -7,6 +7,7 @@ Gratis Bewegungsspiele für den Fernseher. Das Handy ist die Kamera, der Körper
 | `/` | Startseite: Start, Spiele, So funktioniert’s, Deine Bewegung (Seiten über die Leiste links) |
 | `/kurvenflitzer/` | 🏎️ Kurvenflitzer – Go-Kart-Rennen (1–4 Spieler am gleichen TV) |
 | `/boxring/` | 🥊 Boxring – Boxen & Kickboxen (1–2 Spieler, allein gegen die KI) |
+| `/skicross/` | ⛷️ Skicross – Ski-Rennen mit Schanzen (1–4 Spieler, KI füllt auf 4 auf) |
 | `/controller.html?g=…` | Handy-Seite für **alle** Spiele (Kamera, Körpererkennung, Spieler-Karten) |
 | `js/`, `css/` | Gemeinsamer Plattform-Code (siehe unten) |
 
@@ -84,6 +85,20 @@ Kampf im Ring. Die Figur folgt deinem Körper; was du Richtung Kamera machst, ge
 - **Treffer-Spuren:** blaue Flecken, Kratzer, Pflaster und blaues Auge je nach Energie (pro Runde neu), Comic-Blutstropfen mit Flecken auf dem Ringboden.
 - **Start:** am Handy «Bereit», dann Fäuste vors Gesicht halten · **Neuer Kampf:** beide Fäuste über den Kopf
 - **Tastatur:** P1 `Q`/`E` Gerade, `Z` Haken, `C` Uppercut, `W` Deckung, `A`/`D` ausweichen, `S` Tritt, Pfeile laufen · P2 `U`/`O`, `H`, `N`, `I`, `J`/`L`, `K`, `8`/`4`/`5`/`6` laufen · `Leertaste` bereit · `B`/`X` Boxen/Kickboxen · `V` Ansicht
+
+## ⛷️ Skicross – `skicross/`
+
+Vier am Start, eine Piste (ca. 1,2 km) mit Steilkurven, Wellen und drei Schanzen. Kamera hinter der eigenen Figur; zu zweit geteilter Bildschirm, zu dritt/viert in Vierteln. Leere Startplätze fährt die KI.
+
+- **Lenken:** Oberkörper zur Seite lehnen (Schultern gegenüber der Hüfte + Schulterlinie schräg). Unten zeigt eine Anzeige, wie stark man lehnt.
+- **Hocke:** Schultern tiefer als im Stehen → weniger Luftwiderstand (schneller), aber träger in Kurven. Die Höhe im Stehen misst das Spiel laufend selbst.
+- **Springen:** schnell hochkommen/hochspringen. An der Schanze = Big Air; harte Landungen (flacher Hang, viel Höhe) kosten Tempo.
+- **Start:** Gatter öffnet nach 3-2-1; beide Arme schnell nach unten schwingen = mit den Stöcken anschieben (bis 30 m).
+- **Skicross-Elemente:** Rempeln (wer hinten ist, verliert Tempo), Windschatten knapp hinter jemandem, Bande kostet Tempo.
+- **Start-Pose:** Hocke halten · **Neues Rennen:** beide Hände über den Kopf
+- Wird jemand kurz nicht erkannt, fährt ein Autopilot (langsam) weiter.
+- **Tastatur:** P1 `←`/`→` lenken, `↓` Hocke, `↑` springen/anschieben · P2 `A`/`D`, `S`, `W` · `Leertaste` bereit
+- Statistik: `skicross` (Sekunden), `skiRaces`, `skiWins`, `skiBest`, Verlauf mit `g: 'ski'`
 
 ## Verbindung Handy ↔ TV
 

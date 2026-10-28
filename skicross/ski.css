@@ -1,0 +1,63 @@
+/* Skicross – spiel-eigene Stile (ergänzt css/tv.css + css/game.css) */
+
+.slot.ai { border-style: dashed; }
+.slot.ai .av { font-size: calc(4 * var(--u)); background: var(--wine-600); border: 0; }
+.slot .st small { font-size: .85em; color: var(--text-mute); }
+
+/* ---------- Gemeinsame Anzeige: Zeit + Fortschritt ---------- */
+.hud { top: 0; bottom: 0; display: block; pointer-events: none; }
+.hud .time { position: absolute; left: 50%; top: calc(2.4 * var(--u)); transform: translateX(-50%); min-width: 0; padding: calc(.8 * var(--u)) calc(2.4 * var(--u)); border-radius: 999px; }
+.hud .time .value { font-size: calc(3 * var(--u)); font-weight: 700; font-variant-numeric: tabular-nums; }
+.course-bar { position: absolute; left: 50%; top: calc(9.4 * var(--u)); transform: translateX(-50%); width: calc(44 * var(--u)); height: calc(3.4 * var(--u)); background: var(--glass); border-radius: 999px; box-shadow: var(--shadow); }
+.course-bar .track { position: absolute; left: calc(2 * var(--u)); right: calc(4.6 * var(--u)); top: 50%; height: calc(.5 * var(--u)); transform: translateY(-50%); background: var(--wine-500); border-radius: 999px; }
+.course-bar .dots { position: absolute; left: calc(2 * var(--u)); right: calc(4.6 * var(--u)); top: 0; bottom: 0; }
+.course-bar .dots i { position: absolute; top: 50%; width: calc(1.6 * var(--u)); height: calc(1.6 * var(--u)); border-radius: 50%; background: var(--c); transform: translate(-50%, -50%); box-shadow: 0 0 0 2px var(--wine-800); transition: left .1s linear; }
+.course-bar .dots i.me { width: calc(2.2 * var(--u)); height: calc(2.2 * var(--u)); box-shadow: 0 0 0 2px #fff; z-index: 1; }
+.course-bar .flag { position: absolute; right: calc(1 * var(--u)); top: 50%; transform: translateY(-50%); font-size: calc(2 * var(--u)); }
+body.split .hud .time { top: 50%; transform: translate(-50%, -50%); }
+body.split .course-bar { top: calc(1.4 * var(--u)); }
+body.quad .hud .time { top: 50%; }
+body.quad .course-bar { top: calc(50% + 3.4 * var(--u)); transform: translate(-50%, 0); }
+
+/* ---------- Anzeige pro Person ---------- */
+#phuds { position: absolute; inset: 0; pointer-events: none; }
+.phud { position: absolute; overflow: hidden; opacity: 0; transition: opacity .4s; }
+.phud.show { opacity: 1; }
+body.split .phud { box-shadow: inset 0 0 0 calc(.3 * var(--u)) var(--wine-800); }
+.ptop { position: absolute; left: calc(2.4 * var(--u)); top: calc(2.4 * var(--u)); display: flex; flex-direction: column; gap: calc(1.2 * var(--u)); align-items: flex-start; }
+.ptag {
+  display: inline-flex; align-items: center; gap: calc(1 * var(--u));
+  font-weight: 700; font-size: calc(2.2 * var(--u)); color: #fff;
+  background: var(--c); border-radius: 999px; padding: calc(.4 * var(--u)) calc(2 * var(--u)) calc(.4 * var(--u)) calc(.4 * var(--u));
+  box-shadow: 0 6px 16px rgba(42, 14, 17, .35);
+}
+.ptag .pface { width: calc(4 * var(--u)); height: calc(4 * var(--u)); border-radius: 50%; background: var(--wine-800); display: grid; place-items: end center; overflow: hidden; }
+.ptag .pface svg { width: 100%; height: 100%; }
+.pstat { background: var(--glass); border-radius: calc(2.8 * var(--u)); padding: calc(1.2 * var(--u)) calc(2.2 * var(--u)); box-shadow: var(--shadow); }
+.pstat .lbl { font-size: calc(1.3 * var(--u)); color: var(--text-mute); }
+.pstat .num { font-size: calc(5.4 * var(--u)); font-weight: 800; line-height: 1; color: #fff; }
+.pstat .num small { font-size: .4em; color: var(--text-mute); font-weight: 600; margin-left: .15em; }
+.pspeed { position: absolute; right: calc(2.4 * var(--u)); bottom: calc(2.4 * var(--u)); background: var(--glass); border-radius: calc(2.8 * var(--u)); box-shadow: var(--shadow); padding: calc(1 * var(--u)) calc(2.2 * var(--u)); text-align: center; line-height: 1; }
+.pspeed b { display: block; font-weight: 800; font-size: calc(5 * var(--u)); color: #fff; font-variant-numeric: tabular-nums; }
+.pspeed small { font-size: calc(1.4 * var(--u)); color: var(--text-mute); }
+
+/* Lehnen + Hocke sichtbar machen (hilft beim Steuern mit dem Körper) */
+.pmeter { position: absolute; left: 50%; bottom: calc(2.4 * var(--u)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: calc(.8 * var(--u)); }
+.pmeter .lean { display: flex; align-items: center; gap: calc(1 * var(--u)); background: var(--glass); border-radius: 999px; padding: calc(.8 * var(--u)) calc(1.6 * var(--u)); box-shadow: var(--shadow); color: var(--text-mute); font-size: calc(1.4 * var(--u)); }
+.pmeter .track { position: relative; width: calc(26 * var(--u)); height: calc(.8 * var(--u)); border-radius: 999px; background: linear-gradient(90deg, var(--coral) 0%, var(--wine-500) 40%, var(--wine-500) 60%, var(--coral) 100%); }
+.pmeter .dot { position: absolute; top: 50%; left: 50%; width: calc(2.4 * var(--u)); height: calc(2.4 * var(--u)); border-radius: 50%; background: #fff; transform: translate(-50%, -50%); box-shadow: 0 0 0 3px var(--wine-800); transition: left .08s linear; }
+.pmeter .chips { display: flex; gap: calc(.6 * var(--u)); }
+.pmeter .chips span { font-size: calc(1.4 * var(--u)); font-weight: 700; padding: calc(.4 * var(--u)) calc(1.2 * var(--u)); border-radius: 999px; background: var(--glass); color: var(--text-mute); transition: background .15s, color .15s; }
+.pmeter .chips span.on { background: var(--cream); color: var(--wine-600); }
+.pmeter .chips .chip-draft.on { background: var(--blue, #5aa9c9); color: #fff; }
+.pmeter .chips .chip-air.on { background: var(--coral); color: #fff; }
+
+.pauto { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: calc(.8 * var(--u)); opacity: 0; transition: opacity .2s; }
+.pauto.show { opacity: 1; }
+.pauto b { background: var(--cream); color: var(--wine-600); font-size: calc(3 * var(--u)); font-weight: 800; padding: calc(.6 * var(--u)) calc(2.4 * var(--u)); border-radius: 999px; box-shadow: 0 calc(.6 * var(--u)) 0 var(--coral-dark); }
+.pauto span { background: var(--glass); color: #fff; font-weight: 600; font-size: calc(1.8 * var(--u)); padding: calc(.6 * var(--u)) calc(1.8 * var(--u)); border-radius: 999px; }
+
+.phud .pbanner { top: 34%; }
+
+body.st-race .corner, body.st-race .status, body.st-countdown .corner, body.st-countdown .status { opacity: 0; pointer-events: none; }
+body.capture #ui { display: none !important; }
