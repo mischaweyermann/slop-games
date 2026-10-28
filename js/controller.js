@@ -545,7 +545,7 @@ async function renderAcct() {
   if (!acctUser) {
     $('acctTitle').textContent = 'Runden speichern?';
     $('acctSub').textContent = 'Melde dich an, dann landen deine Minuten und Plätze in «Mein Bereich».';
-    btn.textContent = 'Anmelden'; btn.href = 'konto.html?next=' + encodeURIComponent(back); btn.hidden = false;
+    btn.textContent = 'Anmelden'; btn.href = 'login.html?next=' + encodeURIComponent(back); btn.hidden = false;
     return;
   }
   let nick = '';

@@ -24,19 +24,25 @@ export function onAuth(fn) {
   return () => data.subscription.unsubscribe();
 }
 
-// Schritt 1: Code per E-Mail anfordern (die E-Mail enthält auch einen Link)
-export async function requestCode(email, redirectTo) {
-  const { error } = await sb.auth.signInWithOtp({
-    email: email.trim(),
-    options: { shouldCreateUser: true, emailRedirectTo: redirectTo || location.origin + '/konto.html' },
-  });
-  if (error) throw error;
-}
-// Schritt 2: sechsstelligen Code bestätigen
-export async function verifyCode(email, code) {
-  const { data, error } = await sb.auth.verifyOtp({ email: email.trim(), token: code.replace(/\s/g, ''), type: 'email' });
+// Anmelden mit E-Mail und Passwort
+export async function signIn(email, password) {
+  const { data, error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
   if (error) throw error;
   return data.user;
+}
+// Konto erstellen; mit E-Mail-Bestätigung kommt erst nach dem Klick auf den Link eine Sitzung
+export async function signUp(email, password, redirectTo) {
+  const { data, error } = await sb.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: redirectTo } });
+  if (error) throw error;
+  return { user: data.user, needsConfirm: !data.session };
+}
+export async function resetPassword(email, redirectTo) {
+  const { error } = await sb.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+  if (error) throw error;
+}
+export async function updatePassword(password) {
+  const { error } = await sb.auth.updateUser({ password });
+  if (error) throw error;
 }
 export async function signOut() { await sb.auth.signOut(); }
 
@@ -109,9 +115,19 @@ export async function deleteAccount() {
 
 export function niceError(e) {
   const m = String((e && e.message) || e || '');
+  if (/invalid login credentials/i.test(m)) return 'E-Mail oder Passwort stimmt nicht.';
+  if (/email not confirmed/i.test(m)) return 'Bitte bestätige zuerst deine E-Mail-Adresse – tipp auf den Link in der E-Mail.';
+  if (/already registered|already exists/i.test(m)) return 'Für diese E-Mail gibt es schon ein Konto. Melde dich an.';
+  if (/password/i.test(m) && /(least|short|weak|characters)/i.test(m)) return 'Das Passwort ist zu kurz oder zu einfach (mindestens 8 Zeichen).';
+  if (/same.*password|different from the old/i.test(m)) return 'Das neue Passwort muss anders sein als das alte.';
   if (/rate limit|too many|seconds/i.test(m)) return 'Zu viele Versuche. Bitte warte einen Moment und versuch es dann nochmals.';
-  if (/email/i.test(m) && /valid/i.test(m) && !/token|otp/i.test(m)) return 'Diese E-Mail-Adresse sieht nicht richtig aus.';
-  if (/expired|invalid/i.test(m)) return 'Der Code ist falsch oder abgelaufen. Fordere einen neuen an.';
+  if (/email/i.test(m) && /valid/i.test(m)) return 'Diese E-Mail-Adresse sieht nicht richtig aus.';
   if (/fetch|network/i.test(m)) return 'Keine Verbindung. Prüf dein Internet.';
   return 'Das hat nicht geklappt. Versuch es nochmals.';
+}
+
+// Erlaubte Rücksprungziele nach dem Login (nur Seiten von Slop Games)
+export function safeNext(n) {
+  n = String(n || '').split('#')[0];
+  return /^(?:index\.html|konto\.html|controller\.html|kurvenflitzer\/|boxring\/|skicross\/)?(?:\?[\w=&%.:-]*)?$/.test(n) ? n : '';
 }

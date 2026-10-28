@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>try{if(!localStorage.getItem('slop.auth')){var r=new URL('./',location.href).href;location.replace(r+'login.html?next='+encodeURIComponent(location.href.slice(r.length).split('#')[0]))}}catch(e){}</script>
+  <script type="module" src="./js/gate.js"></script>
   <title>Mein Bereich · Slop Games</title>
   <meta name="description" content="Dein Slop-Games-Konto: Bewegungsminuten, Runden und Bestzeiten.">
   <meta name="theme-color" content="#5a1f25">
@@ -76,29 +78,6 @@
 
     <main id="loading"><p class="muted">Lädt …</p></main>
 
-    <!-- Anmelden -->
-    <main id="loginView" class="hidden">
-      <h1>Mein Bereich</h1>
-      <p class="lead" style="margin: 8px 0 18px">Melde dich mit deiner E-Mail an, dann werden deine Runden gespeichert: Bewegungsminuten, Plätze und Bestzeiten. Ohne Passwort – du bekommst einen Code per E-Mail.</p>
-      <section class="card login" id="stepEmail">
-        <form id="emailForm" class="login" novalidate>
-          <label class="field"><span>E-Mail-Adresse</span><input id="email" type="email" autocomplete="email" inputmode="email" required placeholder="du@beispiel.ch"></label>
-          <button class="btn btn-primary" id="sendBtn" type="submit">Code senden</button>
-          <p class="msg err" id="emailMsg" role="alert" hidden></p>
-          <p class="msg muted">Wir speichern nur deine E-Mail-Adresse, einen Spitznamen und deine Runden. Mehr dazu im <a href="datenschutz.html">Datenschutz</a>.</p>
-        </form>
-      </section>
-      <section class="card login hidden" id="stepCode">
-        <form id="codeForm" class="login" novalidate>
-          <p class="msg ok" id="sentTo"></p>
-          <label class="field"><span>Code aus der E-Mail</span><input id="code" class="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" required placeholder="······"></label>
-          <button class="btn btn-primary" id="verifyBtn" type="submit">Anmelden</button>
-          <p class="msg err" id="codeMsg" role="alert" hidden></p>
-          <p class="msg muted">Keine E-Mail? Schau im Spam-Ordner nach. Du kannst auch auf den Link in der E-Mail tippen. <button class="linkbtn" id="otherEmail" type="button">Andere E-Mail verwenden</button></p>
-        </form>
-      </section>
-    </main>
-
     <!-- Dashboard -->
     <main id="dashView" class="hidden" style="display: flex; flex-direction: column; gap: 18px">
       <div class="hello-row">
@@ -139,6 +118,11 @@
         </form>
         <p class="msg" id="nickMsg" role="status" style="margin-top: 8px"></p>
         <p class="msg muted" id="emailInfo" style="margin-top: 6px"></p>
+        <form class="nick" id="pwForm" novalidate style="margin-top: 16px">
+          <label class="field"><span>Neues Passwort (mindestens 8 Zeichen)</span><input id="newPw" type="password" autocomplete="new-password" minlength="8"></label>
+          <button class="btn btn-secondary" id="pwBtn" type="submit">Passwort ändern</button>
+        </form>
+        <p class="msg" id="pwMsg" role="status" style="margin-top: 8px"></p>
       </section>
 
       <section class="card danger">
@@ -156,40 +140,13 @@
     const show = (el, on) => el.classList.toggle('hidden', !on);
     const params = new URLSearchParams(location.search);
     // Nur Rücksprünge auf die eigene Handy-Seite zulassen
-    const next = (() => { const n = params.get('next') || ''; return /^controller\.html(\?[\w=&%.-]*)?$/.test(n) ? n : ''; })();
-    let email = '';
+    const next = (() => { const n = A.safeNext(params.get('next')); return n.startsWith('controller.html') ? n : ''; })();
 
     function view(name) {
       show($('loading'), name === 'loading');
-      show($('loginView'), name === 'login');
       $('dashView').classList.toggle('hidden', name !== 'dash');
       show($('logoutBtn'), name === 'dash');
     }
-    function err(el, text) { el.textContent = text || ''; el.hidden = !text; }
-
-    // Anmelden
-    $('emailForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      email = $('email').value.trim();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return err($('emailMsg'), 'Bitte gib eine gültige E-Mail-Adresse ein.');
-      err($('emailMsg'), ''); $('sendBtn').disabled = true; $('sendBtn').textContent = 'Wird gesendet …';
-      try {
-        const back = new URL('konto.html', location.href); if (next) back.searchParams.set('next', next);
-        await A.requestCode(email, back.toString());
-        $('sentTo').textContent = `Wir haben dir einen Code an ${email} geschickt.`;
-        show($('stepEmail'), false); show($('stepCode'), true); $('code').focus();
-      } catch (ex) { err($('emailMsg'), A.niceError(ex)); }
-      finally { $('sendBtn').disabled = false; $('sendBtn').textContent = 'Code senden'; }
-    });
-    $('codeForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const code = $('code').value.replace(/\D/g, '');
-      if (code.length < 6) return err($('codeMsg'), 'Der Code hat 6 Ziffern.');
-      err($('codeMsg'), ''); $('verifyBtn').disabled = true;
-      try { await A.verifyCode(email, code); } catch (ex) { err($('codeMsg'), A.niceError(ex)); }
-      finally { $('verifyBtn').disabled = false; }
-    });
-    $('otherEmail').addEventListener('click', () => { show($('stepCode'), false); show($('stepEmail'), true); $('code').value = ''; $('email').focus(); });
 
     $('logoutBtn').addEventListener('click', async () => { await A.signOut(); });
 
@@ -199,6 +156,16 @@
       try { const n = await A.setNickname($('nick').value); $('hello').textContent = n ? `Hallo, ${n}!` : 'Hallo!'; $('nickMsg').className = 'msg ok'; $('nickMsg').textContent = 'Gespeichert.'; }
       catch (ex) { $('nickMsg').className = 'msg err'; $('nickMsg').textContent = A.niceError(ex); }
       finally { $('nickBtn').disabled = false; }
+    });
+
+    $('pwForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const pw = $('newPw').value;
+      if (pw.length < 8) { $('pwMsg').className = 'msg err'; $('pwMsg').textContent = 'Mindestens 8 Zeichen.'; return; }
+      $('pwBtn').disabled = true;
+      try { await A.updatePassword(pw); $('newPw').value = ''; $('pwMsg').className = 'msg ok'; $('pwMsg').textContent = 'Passwort geändert.'; }
+      catch (ex) { $('pwMsg').className = 'msg err'; $('pwMsg').textContent = A.niceError(ex); }
+      finally { $('pwBtn').disabled = false; }
     });
 
     $('deleteBtn').addEventListener('click', async () => {
@@ -277,7 +244,7 @@
       if (user) {
         await loadDash(user);
       } else {
-        view('login'); show($('stepEmail'), true); show($('stepCode'), false);
+        view('loading'); // gate.js leitet zur Anmeldung weiter
       }
     }
     A.onAuth((u) => route(u));

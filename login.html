@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Anmelden · Slop Games</title>
+  <meta name="description" content="Gratis Bewegungsspiele für den Fernseher. Dein Handy ist die Kamera, dein Körper der Controller – ohne App.">
+  <meta name="theme-color" content="#5a1f25">
+  <link rel="icon" href="media/brand/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="media/brand/apple-touch-icon.png">
+  <meta property="og:image" content="https://slopgames.ch/media/brand/icon-512.png">
+  <link rel="stylesheet" href="css/fonts.css">
+  <style>
+    :root { --wine-900: #2a0e11; --wine-800: #3d1418; --wine-700: #461519; --wine-600: #5a1f25; --wine-500: #7d2a2e; --coral: #e2574c; --coral-2: #d9584f; --cream: #f7e9a6; --text: #f6e3e1; --soft: #e2b3ae; --mute: #e2847b; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body { font-family: 'Poppins', system-ui, sans-serif; background: var(--wine-600); color: var(--text); -webkit-font-smoothing: antialiased; min-height: 100vh; display: grid; place-items: center; padding: 22px 16px; }
+    .wrap { width: 100%; max-width: 440px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+    .brand { display: flex; flex-direction: column; align-items: center; color: var(--cream); text-align: center; }
+    .brand-mark { display: block; overflow: visible; }
+    .brand-mark .jump { animation: sg-hop 1.1s linear infinite; }
+    .brand-mark .shadow { transform-box: fill-box; transform-origin: center; animation: sg-shadow 1.1s linear infinite; }
+    .brand-mark .lines { animation: sg-lines 1.1s linear infinite; }
+    @keyframes sg-hop { 0% { transform: translateY(0); animation-timing-function: cubic-bezier(.33,0,.4,1); } 45% { transform: translateY(-10px); animation-timing-function: cubic-bezier(.6,0,.67,1); } 80% { transform: translateY(0); animation-timing-function: ease-out; } 88% { transform: translateY(-1.6px); animation-timing-function: ease-in; } 100% { transform: translateY(0); } }
+    @keyframes sg-shadow { 0% { transform: scaleX(1); animation-timing-function: cubic-bezier(.33,0,.4,1); } 45% { transform: scaleX(.72); animation-timing-function: cubic-bezier(.6,0,.67,1); } 80%, 100% { transform: scaleX(1); } }
+    @keyframes sg-lines { 0% { opacity: .55; } 45% { opacity: .2; } 80%, 100% { opacity: .55; } }
+    @media (prefers-reduced-motion: reduce) { .brand-mark * { animation: none !important; } }
+    .brand b { font-size: 44px; font-weight: 800; letter-spacing: -.01em; line-height: .95; margin-top: 2px; }
+    .brand small { font-size: 13px; font-weight: 600; letter-spacing: .3em; margin-right: -.3em; margin-top: 6px; }
+    .card { width: 100%; background: var(--wine-700); border-radius: 28px; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
+    .tabs { display: grid; grid-template-columns: 1fr 1fr; background: var(--wine-800); border-radius: 999px; padding: 4px; }
+    .tabs button { font: 600 15px 'Poppins', sans-serif; color: var(--mute); background: transparent; border: 0; border-radius: 999px; padding: 11px 8px; cursor: pointer; }
+    .tabs button[aria-selected="true"] { background: var(--coral); color: var(--wine-900); }
+    h1 { margin: 0; font-size: 24px; font-weight: 700; color: #fff; }
+    .lead { margin: -6px 0 0; font-size: 14px; line-height: 1.5; color: var(--soft); }
+    form { display: flex; flex-direction: column; gap: 12px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field span { font-size: 13px; color: var(--mute); }
+    .pw { position: relative; }
+    input { font: 500 17px 'Poppins', sans-serif; color: #fff; background: var(--wine-800); border: 2px solid transparent; border-radius: 16px; padding: 13px 16px; width: 100%; }
+    .pw input { padding-right: 84px; }
+    input:focus { border-color: var(--coral); outline: none; }
+    .eye { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font: 600 13px 'Poppins', sans-serif; color: var(--soft); background: var(--wine-700); border: 0; border-radius: 999px; padding: 7px 12px; cursor: pointer; }
+    .btn { font: 600 16px 'Poppins', sans-serif; border: 0; border-radius: 999px; padding: 14px 22px; cursor: pointer; background: #fff; color: var(--wine-600); transition: background .15s; }
+    .btn:hover { background: var(--cream); }
+    .btn:disabled { opacity: .6; cursor: wait; }
+    .btn:focus-visible, .tabs button:focus-visible, .linkbtn:focus-visible, .eye:focus-visible { outline: 4px solid var(--cream); outline-offset: 3px; }
+    .linkbtn { align-self: center; background: none; border: 0; padding: 4px; font: 500 14px 'Poppins', sans-serif; color: var(--cream); text-decoration: underline; cursor: pointer; }
+    .msg { margin: 0; font-size: 14px; line-height: 1.5; }
+    .msg.err { color: #ffb3ab; }
+    .msg.ok { color: var(--cream); }
+    .hint { font-size: 13px; line-height: 1.5; color: var(--soft); text-align: center; margin: 0; }
+    .hidden { display: none !important; }
+    footer { font-size: 13px; color: #c99696; display: flex; gap: 14px; }
+    footer a { color: inherit; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand" aria-label="Slop Games"><svg class="brand-mark" width="96" height="96" viewBox="0 0 120 120" aria-hidden="true"><g class="jump"><g transform="rotate(-10 60 58)"><path fill-rule="evenodd" fill="currentColor" d="M34 30 H86 C96 30 102 38 103 48 L106 70 C108 84 96 92 86 84 L76 76 H44 L34 84 C24 92 12 84 14 70 L17 48 C18 38 24 30 34 30 Z M84.2 46 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 Z M91.7 54 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 Z M49.2 48 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 Z M63.2 48 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 Z M27.7 45 H32.3 V49.7 H37 V54.3 H32.3 V59 H27.7 V54.3 H23 V49.7 H27.7 Z M50.3 56.4 Q60 68.2 69.7 56.4 Q68.6 54.4 67.2 55.4 Q60 63 52.8 55.4 Q51.4 54.4 50.3 56.4 Z"/></g></g><path class="lines" d="M42 98 V106 M60 101 V111 M78 96 V104" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" opacity=".55"/><ellipse class="shadow" cx="60" cy="116" rx="24" ry="3" fill="currentColor" opacity=".25"/></svg><b>Slop</b><small>GAMES</small></div>
+
+    <main class="card" id="card">
+      <div class="tabs" role="tablist" aria-label="Anmelden oder Konto erstellen">
+        <button type="button" role="tab" id="tabIn" aria-selected="true">Anmelden</button>
+        <button type="button" role="tab" id="tabUp" aria-selected="false">Konto erstellen</button>
+      </div>
+
+      <!-- Anmelden / Registrieren -->
+      <form id="authForm" novalidate>
+        <p class="lead" id="lead">Schön, bist du wieder da.</p>
+        <label class="field"><span>E-Mail-Adresse</span><input id="email" type="email" autocomplete="email" inputmode="email" required></label>
+        <label class="field"><span>Passwort</span>
+          <span class="pw"><input id="pw" type="password" autocomplete="current-password" required minlength="8"><button class="eye" type="button" id="eye" aria-label="Passwort anzeigen">Zeigen</button></span>
+        </label>
+        <button class="btn" id="submitBtn" type="submit">Anmelden</button>
+        <p class="msg err" id="err" role="alert" hidden></p>
+        <button class="linkbtn" id="forgot" type="button">Passwort vergessen?</button>
+      </form>
+
+      <!-- Bestätigung / Hinweise -->
+      <div id="info" class="hidden">
+        <h1 id="infoTitle">Fast geschafft!</h1>
+        <p class="msg ok" id="infoText" style="margin-top: 8px"></p>
+        <button class="linkbtn" id="backToLogin" type="button" style="margin-top: 10px">Zurück zum Anmelden</button>
+      </div>
+
+      <!-- Passwort vergessen -->
+      <form id="forgotForm" class="hidden" novalidate>
+        <h1>Passwort vergessen</h1>
+        <p class="lead" style="margin-top: 0">Gib deine E-Mail ein. Du bekommst einen Link, mit dem du ein neues Passwort setzen kannst.</p>
+        <label class="field"><span>E-Mail-Adresse</span><input id="fEmail" type="email" autocomplete="email" inputmode="email" required></label>
+        <button class="btn" id="fBtn" type="submit">Link senden</button>
+        <p class="msg err" id="fErr" role="alert" hidden></p>
+        <button class="linkbtn" type="button" data-back>Zurück zum Anmelden</button>
+      </form>
+
+      <!-- Neues Passwort (nach Klick auf den Link in der E-Mail) -->
+      <form id="newPwForm" class="hidden" novalidate>
+        <h1>Neues Passwort</h1>
+        <label class="field"><span>Neues Passwort (mindestens 8 Zeichen)</span><input id="newPw" type="password" autocomplete="new-password" required minlength="8"></label>
+        <button class="btn" id="npBtn" type="submit">Speichern und weiter</button>
+        <p class="msg err" id="npErr" role="alert" hidden></p>
+      </form>
+    </main>
+
+    <p class="hint">Nur mitspielen? Dafür brauchst du kein Konto – einfach den QR-Code am Fernseher scannen.</p>
+    <footer><a href="impressum.html">Impressum</a><a href="datenschutz.html">Datenschutz</a></footer>
+  </div>
+
+  <script type="module">
+    import * as A from './js/account.js';
+    const $ = (id) => document.getElementById(id);
+    const show = (el, on) => el.classList.toggle('hidden', !on);
+    const params = new URLSearchParams(location.search);
+    const next = A.safeNext(params.get('next'));
+    const target = next || './';
+    const here = new URL('login.html' + (next ? '?next=' + encodeURIComponent(next) : ''), location.href).href;
+    let mode = 'in', recovering = /type=recovery/.test(location.hash);
+
+    function err(el, t) { el.textContent = t || ''; el.hidden = !t; }
+    function panel(name) {
+      show($('authForm'), name === 'auth'); show($('info'), name === 'info');
+      show($('forgotForm'), name === 'forgot'); show($('newPwForm'), name === 'newpw');
+      show(document.querySelector('.tabs'), name === 'auth');
+    }
+    function setMode(m) {
+      mode = m;
+      $('tabIn').setAttribute('aria-selected', m === 'in'); $('tabUp').setAttribute('aria-selected', m === 'up');
+      $('submitBtn').textContent = m === 'in' ? 'Anmelden' : 'Konto erstellen';
+      $('lead').textContent = m === 'in' ? 'Schön, bist du wieder da.' : 'Gratis, ohne App. Deine Minuten und Bestzeiten werden gespeichert.';
+      $('pw').autocomplete = m === 'in' ? 'current-password' : 'new-password';
+      show($('forgot'), m === 'in'); err($('err'), '');
+    }
+    $('tabIn').onclick = () => setMode('in');
+    $('tabUp').onclick = () => setMode('up');
+    $('eye').onclick = () => { const on = $('pw').type === 'password'; $('pw').type = on ? 'text' : 'password'; $('eye').textContent = on ? 'Verbergen' : 'Zeigen'; $('eye').setAttribute('aria-label', on ? 'Passwort verbergen' : 'Passwort anzeigen'); };
+    $('forgot').onclick = () => { $('fEmail').value = $('email').value; panel('forgot'); $('fEmail').focus(); };
+    document.querySelectorAll('[data-back]').forEach((b) => (b.onclick = () => panel('auth')));
+    $('backToLogin').onclick = () => { setMode('in'); panel('auth'); };
+
+    $('authForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = $('email').value.trim(), pw = $('pw').value;
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return err($('err'), 'Bitte gib eine gültige E-Mail-Adresse ein.');
+      if (pw.length < 8) return err($('err'), 'Das Passwort braucht mindestens 8 Zeichen.');
+      err($('err'), ''); $('submitBtn').disabled = true;
+      try {
+        if (mode === 'in') { await A.signIn(email, pw); }
+        else {
+          const r = await A.signUp(email, pw, here);
+          if (r.needsConfirm) {
+            $('infoTitle').textContent = 'Fast geschafft!';
+            $('infoText').textContent = `Wir haben dir eine E-Mail an ${email} geschickt. Tipp auf den Link darin, dann bist du angemeldet. Kein Mail? Schau im Spam-Ordner nach.`;
+            panel('info');
+          }
+        }
+      } catch (ex) { err($('err'), A.niceError(ex)); }
+      finally { $('submitBtn').disabled = false; }
+    });
+
+    $('forgotForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = $('fEmail').value.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return err($('fErr'), 'Bitte gib eine gültige E-Mail-Adresse ein.');
+      err($('fErr'), ''); $('fBtn').disabled = true;
+      try {
+        await A.resetPassword(email, here);
+        $('infoTitle').textContent = 'E-Mail ist unterwegs';
+        $('infoText').textContent = `Falls es für ${email} ein Konto gibt, bekommst du gleich einen Link zum Zurücksetzen.`;
+        panel('info');
+      } catch (ex) { err($('fErr'), A.niceError(ex)); }
+      finally { $('fBtn').disabled = false; }
+    });
+
+    $('newPwForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const pw = $('newPw').value;
+      if (pw.length < 8) return err($('npErr'), 'Das Passwort braucht mindestens 8 Zeichen.');
+      err($('npErr'), ''); $('npBtn').disabled = true;
+      try { await A.updatePassword(pw); recovering = false; location.replace(target); }
+      catch (ex) { err($('npErr'), A.niceError(ex)); $('npBtn').disabled = false; }
+    });
+
+    A.sb.auth.onAuthStateChange((ev, session) => {
+      if (ev === 'PASSWORD_RECOVERY') { recovering = true; panel('newpw'); $('newPw').focus(); return; }
+      if (session && !recovering) location.replace(target);
+    });
+    setMode('in');
+    if (recovering) panel('newpw'); else panel('auth');
+  </script>
+</body>
+</html>
