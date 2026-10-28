@@ -105,6 +105,18 @@
     .wd-badge.excl { background: #9fd6ef; color: #12384a; }
     .wd-badge.on { background: #7fd18b; color: #123a1a; }
     .wd-foot { margin-top: 18px; }
+    /* Pass-Banner */
+    .promo { display: flex; align-items: center; gap: 18px; background: linear-gradient(110deg, var(--cream) 0%, #ffd27a 55%, #f39a4c 100%); color: var(--wine-700); border-radius: 26px; padding: 16px 22px; text-decoration: none; box-shadow: 0 10px 30px rgba(42, 14, 17, .35); transition: transform .15s; flex: none; }
+    .promo[hidden] { display: none; }
+    .promo:hover, .promo:focus-visible { transform: translateY(-2px); outline: none; }
+    .promo:focus-visible { box-shadow: 0 0 0 4px #fff; }
+    .promo-ico { width: 54px; height: 54px; flex: none; border-radius: 18px; background: var(--wine-600); color: var(--cream); display: grid; place-items: center; transform: rotate(-6deg); }
+    .promo-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+    .promo-t small { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--wine-500); }
+    .promo-t b { font-size: clamp(18px, 1.7vw, 24px); font-weight: 800; color: var(--wine-700); line-height: 1.2; }
+    .promo-t > span { font-size: 14px; color: var(--wine-600); line-height: 1.45; }
+    .promo-go { flex: none; background: var(--wine-600); color: #fff; font-weight: 700; font-size: 16px; border-radius: 999px; padding: 12px 22px; white-space: nowrap; }
+    @media (max-width: 720px) { .promo { flex-wrap: wrap; padding: 16px; } .promo-ico { width: 44px; height: 44px; } .promo-go { width: 100%; text-align: center; } }
     .wd-right { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
     .wd-right .card h3 { margin: 0 0 12px; }
     .wd-sub { margin: 10px 0 0; font-size: 20px; font-weight: 600; color: #fff; }
@@ -372,6 +384,7 @@
       .rail .rail-bottom { margin-top: 0; flex-direction: row; gap: 6px; }
       .steps { grid-template-columns: 1fr; }
       .hero { min-height: 340px; }
+      .hero-wrap { min-height: 340px; }
       .grid2, .grid3, .gamecard { grid-template-columns: 1fr; }
       .grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .gamecard .media { min-height: 220px; }
@@ -405,6 +418,15 @@
 
       <!-- ===== Start ===== -->
       <div class="view" data-view="start">
+        <a class="promo" id="passPromo" href="kaufen.html?p=pass" hidden>
+          <span class="promo-ico" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9a2 2 0 0 0 0 6v3a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-3a2 2 0 0 0 0-6V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1z"/><path d="M14 5v2M14 11v2M14 17v2"/></svg></span>
+          <span class="promo-t">
+            <small>Vorverkauf · Early-Supporter-Pass</small>
+            <b>Alle Spiele für einmalig <span id="passPrice">CHF 9.–</span></b>
+            <span>Auch alle künftigen Spiele, dazu 300 Juwelen für die Garderobe. Später kostet der Pass CHF 15.–</span>
+          </span>
+          <span class="promo-go">Pass holen →</span>
+        </a>
         <div class="row">
           <div class="hero-wrap" id="heroWrap">
             <a class="hero slide on" href="kurvenflitzer/" data-game="kurvenflitzer">
@@ -616,9 +638,6 @@
             </div>
             <p class="note">Münzen bekommst du fürs Spielen: pro halbe Minute eine, dazu Bonus für Siege und Podestplätze (bis 200 pro Tag). Juwelen gibt es zu kaufen. Mit beiden holst du dir in der Garderobe neue Teile für deine Figur.</p>
             <p class="note" id="wOwned"></p>
-            <div class="acct-actions">
-              <a class="pill" href="#garderobe">Zur Garderobe</a>
-            </div>
             <div class="acct-actions" id="wBuy" hidden>
               <a class="pill dark" href="kaufen.html?p=juwelen-500">500 Juwelen kaufen</a>
               <a class="pill dark" href="kaufen.html?p=pass">Pass für alle Spiele</a>

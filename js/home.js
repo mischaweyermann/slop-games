@@ -300,6 +300,9 @@ async function applyShop(admin) {
   $('wBuy').hidden = !(on || admin);
   if (!on) return; // solange die Bezahlung aus ist, sind alle Spiele frei
   const hasPass = owned.has('pass');
+  // Pass-Banner auf der Startseite, solange man den Pass noch nicht hat
+  const pass = products.find((p) => p.kind === 'pass');
+  if (pass && !hasPass) { $('passPrice').textContent = `CHF ${A.chf(pass.price_rappen)}`; $('passPromo').hidden = false; }
   for (const p of products.filter((x) => x.kind === 'game')) {
     if (hasPass || owned.has(p.game_id)) continue;
     const price = `CHF ${A.chf(p.price_rappen)}`;
