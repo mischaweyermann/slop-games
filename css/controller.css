@@ -21,8 +21,9 @@ body {
 }
 header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 auto 14px; max-width: 520px; }
 .mini-logo { font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 8px; color: #fff; }
-.balloon { width: 28px; height: 28px; border-radius: 9px; background: var(--coral); position: relative; }
-.balloon::after { content: ''; position: absolute; left: 6px; top: 8px; width: 15px; height: 10px; border: solid #fff; border-width: 0 0 3px 3px; transform: skewY(-35deg); border-radius: 2px; }
+.mini-logo .brand-mark { color: var(--cream); flex: none; overflow: visible; }
+.mini-logo span { font-weight: 800; color: var(--cream); letter-spacing: -.01em; }
+.mini-logo small { font-weight: 600; font-size: 10px; letter-spacing: .3em; margin-left: 2px; }
 
 .chip { display: flex; align-items: center; gap: 7px; background: var(--panel); border-radius: 999px; padding: 6px 12px 6px 9px; font-size: 13px; font-weight: 500; }
 .chip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--mute); }

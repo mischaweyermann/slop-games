@@ -327,3 +327,5 @@ button.ghost.small { margin: 0; font-size: calc(1.4 * var(--u)); padding: calc(.
 .lobby.hide .other-game, .lobby.editing .other-game { pointer-events: none; }
 
 @media (prefers-reduced-motion: reduce) { .bump, .popup { animation-duration: .01s; } }
+
+.back-mark { width: calc(3.6 * var(--u)); height: calc(3.6 * var(--u)); overflow: visible; flex: none; }
