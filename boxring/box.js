@@ -70,9 +70,18 @@ for (const [x, c] of [[-6, '#ff6b5e'], [6, '#6fb7e0']]) {
   s.position.set(x, 6, 4); s.target.position.set(x * 0.15, 1, 0); scene.add(s, s.target);
 }
 
+// Kameras: Seitenansicht (TV-Kamera) + je eine Spieler-Kamera (hinter dir / Ich-Sicht)
 const camera = new THREE.PerspectiveCamera(40, 16 / 9, 0.1, 100);
 const CAM_BASE = new THREE.Vector3(0, 2.7, 9.6), CAM_LOOK = new THREE.Vector3(0, 1.55, 0);
 camera.position.copy(CAM_BASE); camera.lookAt(CAM_LOOK);
+const pcams = [0, 1].map(() => { const c = new THREE.PerspectiveCamera(46, 16 / 9, 0.06, 100); c.userData.look = new THREE.Vector3(); c.userData.fresh = true; return c; });
+const VIEWS = ['third', 'first', 'side'];
+const VIEW_NAMES = { third: 'Hinter dir', first: 'Ich-Sicht', side: 'Seitlich' };
+let view = (() => {
+  const q = params.get('view'); if (VIEWS.includes(q)) return q;
+  if (CAPTURE) return 'side';
+  try { const v = localStorage.getItem('slop.boxview'); return VIEWS.includes(v) ? v : 'third'; } catch { return 'third'; }
+})();
 
 const mat = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, ...o });
 const crowd = { list: [], heads: null, bodies: null }; // Publikum
@@ -120,7 +129,7 @@ const crowd = { list: [], heads: null, bodies: null }; // Publikum
     l.position.set(-3.2 + i * 1.28, 7.0, -3); scene.add(l);
   }
   // Publikum (Instanzen: Köpfe + Körper)
-  const N = 170;
+  const N = 300;
   const heads = new THREE.InstancedMesh(new THREE.SphereGeometry(0.28, 14, 10), mat('#e3a97f', { roughness: 0.8 }), N);
   const bodies = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.3, 0.35, 4, 10), mat('#ffffff', { roughness: 0.9 }), N);
   const cols = ['#e2574c', '#5aa9c9', '#9b7fd1', '#f7e9a6', '#7fb069', '#f39a4c', '#7d2a2e', '#f3a6b8'];
@@ -131,21 +140,22 @@ const crowd = { list: [], heads: null, bodies: null }; // Publikum
   for (let i = 0; i < N; i++) { heads.setMatrixAt(i, hidden); bodies.setMatrixAt(i, hidden); }
   for (let i = 0; i < N; i++) {
     const row = i % 4, k = Math.floor(i / 4);
-    const ang = -Math.PI * 0.05 - (k / (N / 4)) * Math.PI * 1.1;
+    const ang = (k / (N / 4)) * Math.PI * 2 + row * 0.07; // rundherum (vorne nur in den Spieler-Ansichten sichtbar)
     const r = 7.2 + row * 1.1;
     const x = Math.cos(ang) * r * 1.25, z = Math.sin(ang) * r * 0.85 - 1;
-    if (z > 1.5) continue;
     const y = -0.4 + row * 0.55;
-    crowd.list.push({ i, x, y, z, ph: Math.random() * 6 });
+    crowd.list.push({ i, x, y, z, ph: Math.random() * 6, front: z > 1.5 });
     m4.makeTranslation(x, y + 0.5, z); bodies.setMatrixAt(i, m4); bodies.setColorAt(i, col.set(cols[i % cols.length]));
     m4.makeTranslation(x, y + 1.12, z); heads.setMatrixAt(i, m4); heads.setColorAt(i, col.set(skins[i % skins.length]));
   }
   scene.add(heads, bodies);
   crowd.heads = heads; crowd.bodies = bodies;
 })();
-function animateCrowd(excite) {
+const HIDDEN = new THREE.Matrix4().makeScale(0, 0, 0);
+function animateCrowd(excite, showFront) {
   const m4 = new THREE.Matrix4();
   for (const c of crowd.list) {
+    if (c.front && !showFront) { crowd.bodies.setMatrixAt(c.i, HIDDEN); crowd.heads.setMatrixAt(c.i, HIDDEN); continue; }
     const j = Math.max(0, Math.sin(now * (3 + excite * 5) + c.ph)) * (0.05 + excite * 0.22);
     m4.makeTranslation(c.x, c.y + 0.5 + j, c.z); crowd.bodies.setMatrixAt(c.i, m4);
     m4.makeTranslation(c.x, c.y + 1.12 + j, c.z); crowd.heads.setMatrixAt(c.i, m4);
@@ -166,21 +176,88 @@ function starTexture(text, color) {
 }
 const STARS = { POW: starTexture('POW!', '#f7e9a6'), BAM: starTexture('BAM!', '#f39a4c'), KICK: starTexture('KICK!', '#f3a6b8'), BLOCK: starTexture('BLOCK', '#9fd6ef') };
 const sprites = [];
-function burst(pos, kind) {
+function burst(pos, kind, target = null) {
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: STARS[kind], depthTest: false, transparent: true }));
-  s.position.copy(pos); s.renderOrder = 10; scene.add(s);
+  s.position.copy(pos); s.renderOrder = 10; s.userData.target = target; scene.add(s);
   sprites.push({ s, t: 0 });
 }
 function animateSprites(dt) {
   for (let i = sprites.length - 1; i >= 0; i--) {
     const o = sprites[i]; o.t += dt;
     const k = o.t / 0.6;
-    o.s.scale.setScalar(0.6 + Math.min(1, k * 4) * 0.7);
+    o.s.scale.setScalar(0.35 + Math.min(1, k * 4) * 0.4);
     o.s.material.opacity = 1 - Math.max(0, k - 0.5) * 2;
     o.s.position.y += dt * 0.4;
     if (k >= 1) { scene.remove(o.s); o.s.material.dispose(); sprites.splice(i, 1); }
   }
 }
+
+/* ---------- Blutspritzer (Comic-Tropfen) + Flecken auf dem Ringboden ---------- */
+const DROP_GEO = new THREE.SphereGeometry(1, 10, 8);
+const DROP_MAT = new THREE.MeshStandardMaterial({ color: '#c8102e', roughness: 0.25, transparent: true });
+const SPLAT_GEO = new THREE.CircleGeometry(1, 18);
+const drops = [], splats = [];
+function splatter(pos, target, from, n) {
+  const away = new THREE.Vector3(target.av.root.position.x - from.av.root.position.x, 0, 0).normalize();
+  for (let i = 0; i < n; i++) {
+    const m = new THREE.Mesh(DROP_GEO, DROP_MAT);
+    const r = rand(0.03, 0.065); m.scale.setScalar(r);
+    m.position.copy(pos).add(new THREE.Vector3(rand(-0.15, 0.15), rand(-0.1, 0.15), rand(-0.2, 0.2)));
+    m.userData = { target, r, v: away.clone().multiplyScalar(rand(0.8, 2.4)).add(new THREE.Vector3(0, rand(0.6, 2.2), rand(-1.1, 1.1))) };
+    scene.add(m); drops.push(m);
+  }
+}
+function animateDrops(dt) {
+  for (let i = drops.length - 1; i >= 0; i--) {
+    const d = drops[i], u = d.userData;
+    u.v.y -= 9 * dt; d.position.addScaledVector(u.v, dt);
+    d.scale.set(u.r * 0.8, u.r * (1 + Math.min(1, Math.abs(u.v.y) * 0.15)), u.r * 0.8);
+    if (d.position.y <= 0.045) {
+      scene.remove(d); drops.splice(i, 1);
+      if (Math.abs(d.position.x) < 3.6 && Math.abs(d.position.z) < 2.7 && splats.length < 140) {
+        const s = new THREE.Mesh(SPLAT_GEO, new THREE.MeshStandardMaterial({ color: '#b3122b', roughness: 0.4, transparent: true, opacity: 0.85, polygonOffset: true, polygonOffsetFactor: -2 }));
+        s.rotation.x = -Math.PI / 2; s.position.set(d.position.x, 0.04, d.position.z);
+        s.scale.set(u.r * rand(1.6, 2.6), u.r * rand(1.3, 2.2), 1); s.receiveShadow = true;
+        scene.add(s); splats.push(s);
+      }
+    }
+  }
+}
+function clearSplats() { for (const s of splats) { scene.remove(s); s.material.dispose(); } splats.length = 0; }
+
+/* ---------- Wunden am Kopf: je weniger Energie, desto mehr Spuren (pro Runde neu) ---------- */
+const WOUND_SPOTS = [ // Richtung auf dem Kopf (vorne = +z), Art
+  { d: [-0.42, 0.42, 0.8], kind: 'bruise' },
+  { d: [0.55, -0.28, 0.78], kind: 'scratch' },
+  { d: [0.32, 0.5, 0.8], kind: 'plaster' },
+  { d: [-0.27, -0.04, 1], kind: 'eye' },
+  { d: [-0.15, -0.62, 0.78], kind: 'bruise' },
+];
+const WOUND_AT = [85, 68, 50, 32, 16];
+const woundMat = {
+  bruise: new THREE.MeshStandardMaterial({ color: '#7b4a8f', roughness: 0.8, transparent: true, opacity: 0.6, polygonOffset: true, polygonOffsetFactor: -2 }),
+  cut: new THREE.MeshStandardMaterial({ color: '#c8102e', roughness: 0.35, polygonOffset: true, polygonOffsetFactor: -3 }),
+  plaster: new THREE.MeshStandardMaterial({ color: '#f1d3a8', roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -3 }),
+  pad: new THREE.MeshStandardMaterial({ color: '#fbf2e3', roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -4 }),
+  eye: new THREE.MeshStandardMaterial({ color: '#4a2a5e', roughness: 0.8, transparent: true, opacity: 0.7, polygonOffset: true, polygonOffsetFactor: -1 }),
+};
+const CIRC = new THREE.CircleGeometry(1, 24), RING_G = new THREE.RingGeometry(0.62, 1, 28), PLANE = new THREE.PlaneGeometry(1, 1);
+function addWound(f, spot) {
+  const n = new THREE.Vector3(...spot.d).normalize();
+  const g = new THREE.Group();
+  g.position.set(n.x * D.head.x, n.y * D.head.y, n.z * D.head.z).multiplyScalar(1.004);
+  g.lookAt(g.position.clone().add(new THREE.Vector3(n.x / D.head.x, n.y / D.head.y, n.z / D.head.z))); // Flächen-Normale des Ellipsoids
+  const piece = (geo, m, sx, sy, x = 0, y = 0, rz = 0) => { const o = new THREE.Mesh(geo, m.clone()); o.scale.set(sx, sy, 1); o.position.set(x, y, 0.003); o.rotation.z = rz; g.add(o); };
+  if (spot.kind === 'bruise') { piece(CIRC, woundMat.bruise, 0.17, 0.13); piece(CIRC, woundMat.cut, 0.035, 0.03, 0.02, -0.01); }
+  if (spot.kind === 'scratch') for (let k = 0; k < 3; k++) piece(PLANE, woundMat.cut, 0.22, 0.022, 0, (k - 1) * 0.05, 0.5);
+  if (spot.kind === 'plaster') { piece(PLANE, woundMat.plaster, 0.36, 0.1, 0, 0, -0.6); piece(PLANE, woundMat.plaster, 0.36, 0.1, 0, 0, 0.6); piece(PLANE, woundMat.pad, 0.09, 0.09, 0, 0, 0.78); }
+  if (spot.kind === 'eye') piece(RING_G, woundMat.eye, 0.13, 0.15);
+  f.av.head.add(g); f.wounds.push(g); f.look = null;
+}
+function woundsFor(f) {
+  while (f.wounds.length < WOUND_AT.length && f.hp <= WOUND_AT[f.wounds.length]) addWound(f, WOUND_SPOTS[f.wounds.length]);
+}
+function clearWounds(f) { for (const g of f.wounds) { f.av.head.remove(g); g.traverse((o) => o.material?.dispose()); } f.wounds.length = 0; }
 
 /* ================================================================
    Kämpfer (Figur + Zustand)
@@ -196,11 +273,38 @@ function makeFighter(i) {
   return {
     i, av, player: null, ai: null, name: '', cfg: null, hp: HP, wins: 0,
     guard: false, dodge: 0, knock: 0, anim: { l: 0, r: 0, kick: 0 }, cool: { l: 0, r: 0, kick: 0 }, queue: [],
-    combo: 0, lastHitAt: -9, stats: { thrown: 0, landed: 0, blocked: 0, dmg: 0 }, down: 0, cheer: 0,
+    combo: 0, lastHitAt: -9, wounds: [], stats: { thrown: 0, landed: 0, blocked: 0, dmg: 0 }, down: 0, cheer: 0,
   };
 }
 const fighters = [makeFighter(0), makeFighter(1)];
 const opp = (f) => fighters[1 - f.i];
+
+// Von hinten gesehen wäre die Figur sonst spiegelverkehrt: links/rechts tauschen, damit deine linke Hand links im Bild ist
+function mirrorS(s) {
+  const mx = (v) => v && { ...v, x: -v.x };
+  const arm = (a) => ({ ...a, u: mx(a.u), f: mx(a.f) });
+  const leg = (L) => ({ ...L, t: mx(L.t), s: mx(L.s) });
+  return { ...s, lean: -s.lean, tilt: -(s.tilt || 0), head: mx(s.head), arms: { l: arm(s.arms.r), r: arm(s.arms.l) }, legs: { l: leg(s.legs.r), r: leg(s.legs.l) } };
+}
+
+// Darstellung der eigenen Figur je Kamera: normal · halb durchsichtig (hinter dir) · nur Handschuhe (Ich-Sicht)
+function setLook(f, look) {
+  if (f.look === look) return;
+  f.look = look;
+  const av = f.av, body = look !== 'hands';
+  av.head.visible = av.torsoFrame.visible = av.pelvis.visible = body;
+  for (const s of ['l', 'r']) {
+    for (const [k, m] of Object.entries(av.legs[s])) m.visible = body && (k !== 'cuff' || !!av.style?.shorts);
+    const A = av.arms[s]; A.sh.visible = A.upper.visible = A.sleeve.visible = body;
+  }
+  av.root.traverse((o) => {
+    const ms = !o.material ? [] : Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of ms) {
+      if (!m.userData.look) { m.userData.look = { op: m.opacity }; if (!m.transparent) { m.transparent = true; m.needsUpdate = true; } }
+      m.opacity = m.userData.look.op * (look === 'ghost' ? 0.32 : 1);
+    }
+  });
+}
 
 // Setzt die Gelenkziele: Richtungen + Tiefe (z = nach vorne zum Gegner), Längen von der Figur
 function compose(av, s) {
@@ -416,11 +520,13 @@ function attack(f, kind, target) {
   const isKick = kind === 'kick';
   if (isKick && mode !== 'kick') return;
   if (f.cool[kind] > 0) return;
-  f.cool[kind] = isKick ? 0.8 : 0.32;
+  f.cool[kind] = isKick ? 0.9 : 0.4;
+  // Dauerfeuer lohnt sich nicht: schnelle Folgeschläge machen weniger Schaden
+  const tired = now - (f.lastThrow ?? -9) < 0.5; f.lastThrow = now;
   f.anim[kind] = 0.001;
   f.punchHigh = { ...(f.punchHigh || {}), [kind]: target === 'head' };
   f.stats.thrown++;
-  f.queue.push({ kind, target: isKick ? 'kick' : target, at: now + (isKick ? 0.2 : 0.13) });
+  f.queue.push({ kind, target: isKick ? 'kick' : target, tired, at: now + (isKick ? 0.3 : 0.2) }); // Zeit zum Decken/Ausweichen
   audio.whoosh();
   const o = opp(f);
   if (o.ai) o.ai.react(kind); // KI kann reagieren
@@ -433,18 +539,22 @@ function resolve(f, a) {
   hitPos.x += (o.i === 0 ? 0.3 : -0.3);
   if (o.dodge && a.target === 'head') { pop(o, 'Ausgewichen!', 'miss'); audio.skid(0.6); f.combo = 0; return; }
   let dmg = DMG[a.target];
-  const blocked = o.guard && (a.target !== 'body' || Math.random() < 0.6);
+  if (a.tired) dmg = Math.round(dmg * 0.6);
+  const blocked = o.guard && (a.target !== 'body' || Math.random() < 0.7);
   if (blocked) {
-    dmg = Math.round(dmg * (a.target === 'kick' ? 0.4 : 0.2));
+    // Kopf-Deckung hält Schläge ganz ab, Körper/Tritt nur teilweise – der Angreifer kommt kurz aus dem Tritt
+    dmg = a.target === 'head' ? 0 : Math.round(dmg * (a.target === 'kick' ? 0.4 : 0.25));
     o.stats.blocked++;
-    burst(hitPos, 'BLOCK'); pop(o, 'Geblockt', 'block'); audio.tick();
+    f.cool.l = Math.max(f.cool.l, 0.55); f.cool.r = Math.max(f.cool.r, 0.55);
+    burst(hitPos, 'BLOCK', o); pop(o, 'Geblockt', 'block'); audio.tick();
     f.combo = 0;
   } else {
     f.combo = now - f.lastHitAt < 1.1 ? f.combo + 1 : 1;
     f.lastHitAt = now;
     dmg += Math.min(4, f.combo - 1);
     f.stats.landed++;
-    burst(hitPos, a.target === 'kick' ? 'KICK' : Math.random() < 0.5 ? 'POW' : 'BAM');
+    burst(hitPos, a.target === 'kick' ? 'KICK' : Math.random() < 0.5 ? 'POW' : 'BAM', o); hurt(o);
+    splatter(hitPos, o, f, a.target === 'kick' ? 12 : a.target === 'head' ? 9 : 5);
     pop(o, `−${dmg}`, 'dmg');
     if (f.combo >= 3) pop(f, `Kombo ×${f.combo}!`, 'combo');
     audio.bad(); shake = Math.max(shake, a.target === 'kick' ? 0.35 : 0.22);
@@ -455,6 +565,7 @@ function resolve(f, a) {
   }
   o.hp = Math.max(0, o.hp - dmg);
   f.stats.dmg += dmg;
+  if (dmg > 0) woundsFor(o);
   if (o.hp <= 0) roundOver(f, 'K.O.!');
 }
 
@@ -480,8 +591,8 @@ function makeAI(f, level = 1) {
     react() {
       if (f.guard || f.down > 0) return;
       const r = Math.random();
-      if (r < 0.18) { f.dodge = Math.random() < 0.5 ? -1 : 1; f.dodgeT = 0.45; }
-      else if (r < 0.38) { f.guard = true; this.guardT = 0.5; }
+      if (r < 0.14) { f.dodge = Math.random() < 0.5 ? -1 : 1; f.dodgeT = 0.45; }
+      else if (r < 0.3) { f.guard = true; this.guardT = 0.5; }
     },
   };
 }
@@ -503,15 +614,17 @@ function assignFighters() {
       f.name = f.aiDef.name; f.cfg = sanitize({ ...PRESETS[f.aiDef.preset].cfg });
       f.ai = makeAI(f, 1);
     }
-    if (f.cfgKey !== JSON.stringify(f.cfg)) { f.cfgKey = JSON.stringify(f.cfg); f.av.setConfig(f.cfg); }
+    if (f.cfgKey !== JSON.stringify(f.cfg)) { f.cfgKey = JSON.stringify(f.cfg); f.av.setConfig(f.cfg); f.look = null; }
   });
   renderPanels(true);
 }
 function resetFighters(full) {
+  if (full) clearSplats();
   for (const f of fighters) {
     Object.assign(f, { hp: HP, guard: false, dodge: 0, knock: 0, combo: 0, down: 0, cheer: 0, queue: [] });
     f.anim = { l: 0, r: 0, kick: 0 }; f.cool = { l: 0, r: 0, kick: 0 };
     if (full) { f.wins = 0; f.stats = { thrown: 0, landed: 0, blocked: 0, dmg: 0 }; }
+    clearWounds(f);
     f.av.root.rotation.z = 0; f.av.root.position.y = 0;
   }
 }
@@ -602,12 +715,22 @@ function renderPanels(full = false) {
 }
 // Kleine Texte über den Köpfen
 function pop(f, text, kind) {
-  const el = document.createElement('div');
-  el.className = 'pop ' + kind; el.textContent = text;
-  const head = f.av.head.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.9, 0)).project(camera);
-  el.style.left = ((head.x + 1) / 2) * 100 + '%'; el.style.top = ((1 - head.y) / 2) * 100 + '%';
-  $('pops').appendChild(el);
-  setTimeout(() => el.remove(), 1000);
+  const world = f.av.head.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.9, 0));
+  for (const v of views) {
+    let x, y;
+    if (v.f === f && view === 'first') { x = 0.5; y = 0.72; } // eigener Kopf ist die Kamera: Text unten in die Mitte
+    else {
+      const p = world.clone().project(v.cam);
+      if (p.z > 1) continue;
+      x = (p.x + 1) / 2; y = clamp((1 - p.y) / 2, 0.08, 0.95);
+      if (x < 0.02 || x > 0.98) continue;
+    }
+    const el = document.createElement('div');
+    el.className = 'pop ' + kind; el.textContent = text;
+    el.style.left = (v.x + x * v.w) * 100 + '%'; el.style.top = y * 100 + '%';
+    $('pops').appendChild(el);
+    setTimeout(() => el.remove(), 1000);
+  }
 }
 const RING = 2 * Math.PI * 42;
 function setPrompt(show, text = '', sub = '', icon = '🥊', fill = 0) {
@@ -672,6 +795,7 @@ addEventListener('keydown', (e) => {
   if (k === 'b' && (state === 'lobby' || state === 'ready')) setMode('box');
   if (k === 'x' && (state === 'lobby' || state === 'ready')) setMode('kick');
   if (k === 't' && !e.repeat) addKeysPlayer();
+  if (k === 'v' && !e.repeat) { setView(VIEWS[(VIEWS.indexOf(view) + 1) % VIEWS.length]); toast('Ansicht: ' + VIEW_NAMES[view]); }
   held.add(k);
   if (k === ' ' || k === 'enter') {
     if (state === 'ready') for (const p of locals) if (p.source === 'keys') { if (p.ready) p.startNow = true; p.ready = true; }
@@ -884,6 +1008,76 @@ function renderJoin() {
 /* ================================================================
    Hauptschleife
    ================================================================ */
+/* ---------- Ansichten: Seitlich · Hinter dir · Ich-Sicht (zu zweit: geteilter Bildschirm) ---------- */
+const SIDE_VIEW = [{ cam: camera, f: null, x: 0, w: 1 }];
+let views = SIDE_VIEW;
+function layoutViews() {
+  const live = state === 'ready' || state === 'intro' || state === 'fight' || state === 'roundEnd';
+  const hs = fighters.filter((f) => f.player);
+  if (CAPTURE && view !== 'side') hs.splice(0, hs.length, fighters[0]);
+  else if (view === 'side' || !live || !hs.length) return SIDE_VIEW;
+  const out = hs.map((f, k) => ({ cam: pcams[k], f, x: hs.length === 2 ? k * 0.5 : 0, w: hs.length === 2 ? 0.5 : 1 }));
+  if (out.length !== views.length || out.some((v, k) => v.f !== views[k].f)) out.forEach((v) => (v.cam.userData.fresh = true));
+  return out;
+}
+const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3();
+function placeCam(v, dt) {
+  const f = v.f, o = opp(f), cam = v.cam, J = f.av.J;
+  const me = f.av.root.position, op = o.av.root.position;
+  const fwd = _a.set(op.x - me.x, 0, op.z - me.z).normalize();
+  const right = _b.set(-fwd.z, 0, fwd.x);
+  const pos = new THREE.Vector3(), look = new THREE.Vector3();
+  if (view === 'first') {
+    // Augenhöhe: zwischen den Schultern, etwas höher – folgt Ausweichen und K.O.-Sturz
+    f.av.root.localToWorld(_c.addVectors(J.lSh.cur, J.rSh.cur).multiplyScalar(0.5));
+    pos.copy(_c).addScaledVector(fwd, -0.8).add(new THREE.Vector3(0, 0.45, 0));
+    look.copy(op).add(new THREE.Vector3(0, 1.7, 0));
+  } else {
+    // Über die Schulter: hinter dir, leicht rechts versetzt, Blick auf den Gegner
+    pos.copy(me).addScaledVector(fwd, -2.7).addScaledVector(right, 2.1).add(new THREE.Vector3(0, 4.2, 0));
+    look.copy(op).addScaledVector(right, 0.1).add(new THREE.Vector3(0, 1.85, 0));
+  }
+  if (cam.userData.fresh) { cam.position.copy(pos); cam.userData.look.copy(look); cam.userData.fresh = false; }
+  cam.position.lerp(pos, damp(view === 'first' ? 14 : 6, dt)).add(camShake);
+  cam.userData.look.lerp(look, damp(8, dt));
+  cam.lookAt(cam.userData.look);
+  const aspect = (innerWidth * v.w) / innerHeight, narrow = aspect < 1.3;
+  const fov = view === 'first' ? (narrow ? 80 : 64) : (narrow ? 62 : 50);
+  if (cam.fov !== fov || Math.abs(cam.aspect - aspect) > 1e-3) { cam.fov = fov; cam.aspect = aspect; cam.updateProjectionMatrix(); }
+}
+function render() {
+  const W = innerWidth, H = innerHeight, split = views.length > 1;
+  document.body.classList.toggle('split', split);
+  renderer.setScissorTest(split);
+  for (const v of views) {
+    for (const f of fighters) setLook(f, f !== v.f ? 'normal' : view === 'first' ? 'hands' : 'ghost');
+    // Ich-Sicht: Treffer-Sterne am eigenen Kopf nicht direkt vor die Kamera setzen
+    for (const o of sprites) o.s.visible = !(view === 'first' && v.f && o.s.userData.target === v.f);
+    for (const d of drops) d.visible = !(view === 'first' && v.f && d.userData.target === v.f && d.position.distanceTo(v.cam.position) < 1.2);
+    renderer.setViewport(v.x * W, 0, v.w * W, H);
+    if (split) renderer.setScissor(v.x * W, 0, v.w * W, H);
+    renderer.render(scene, v.cam);
+  }
+  // Rote Ränder (getroffen) an die richtige Bildhälfte
+  for (const f of fighters) {
+    const el = $('hurt' + f.i), v = views.find((x) => x.f === f);
+    el.hidden = !v;
+    if (v) { el.style.left = v.x * 100 + '%'; el.style.width = v.w * 100 + '%'; }
+  }
+}
+function hurt(f) {
+  if (!views.some((v) => v.f === f)) return;
+  const el = $('hurt' + f.i); el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+}
+function setView(v) {
+  view = VIEWS.includes(v) ? v : 'third';
+  try { localStorage.setItem('slop.boxview', view); } catch { /* */ }
+  document.querySelectorAll('.view').forEach((b) => { const on = b.dataset.view === view; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
+  pcams.forEach((c) => (c.userData.fresh = true));
+}
+document.querySelectorAll('.view').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); setView(b.dataset.view); audio.unlock(); audio.tick(); }));
+setView(view);
+
 const clock = new THREE.Clock();
 let hudT = 0, syncT = 0;
 const camShake = new THREE.Vector3();
@@ -892,6 +1086,7 @@ function tick() {
   now += realDt; stateT += realDt;
   keysInput();
   dropLost();
+  views = layoutViews();
 
   if (state === 'ready') {
     for (const p of locals) {
@@ -933,12 +1128,16 @@ function tick() {
     if (f.ai) f.ai.tick(dt);
     for (const k of ['l', 'r', 'kick']) {
       f.cool[k] = Math.max(0, f.cool[k] - dt);
-      if (f.anim[k] > 0) { f.anim[k] += dt / (k === 'kick' ? 0.42 : 0.26); if (f.anim[k] >= 1) f.anim[k] = 0; }
+      if (f.anim[k] > 0) { f.anim[k] += dt / (k === 'kick' ? 0.6 : 0.4); if (f.anim[k] >= 1) f.anim[k] = 0; }
     }
     for (let i = f.queue.length - 1; i >= 0; i--) if (now >= f.queue[i].at) { const a = f.queue.splice(i, 1)[0]; resolve(f, a); }
     if (f.player && f.player.source !== 'keys' && state !== 'fight') { f.guard = f.player.guard; f.dodge = f.player.dodge; }
     const human = f.player && f.player.source !== 'keys' && f.down <= 0 && f.cheer <= 0;
-    compose(f.av, human ? fromPose(f, dt) : synth(f, dt));
+    const pose = human ? fromPose(f, dt) : synth(f, dt);
+    compose(f.av, views.some((v) => v.f === f) ? mirrorS(pose) : pose);
+    // Seitlich: leicht zur Kamera gedreht · Spieler-Ansichten: direkt zueinander
+    const yaw = views[0].f ? Math.PI / 2 : YAW;
+    f.av.root.rotation.y = lerp(f.av.root.rotation.y, f.i === 0 ? yaw : -yaw, damp(8, dt));
     // Rückstoss nach Treffer, K.O.-Sturz
     f.knock = Math.max(0, f.knock - dt * 1.6);
     const dirX = f.i === 0 ? -1 : 1;
@@ -953,8 +1152,9 @@ function tick() {
     if (f.down > 0) f.av.root.position.y = -0.15 * Math.min(1, Math.abs(f.av.root.rotation.z));
   }
   animateSprites(dt);
+  animateDrops(dt);
   excite = Math.max(0, excite - dt * 0.5);
-  animateCrowd(excite);
+  animateCrowd(excite, !!views[0].f);
 
   // Kamera: leicht wackeln bei Treffern
   shake = Math.max(0, shake - dt * 1.4);
@@ -962,7 +1162,8 @@ function tick() {
   const zoom = state === 'roundEnd' ? Math.min(1, stateT) * 1.2 : 0;
   camera.position.lerp(new THREE.Vector3(CAM_BASE.x, CAM_BASE.y - zoom * 0.3, CAM_BASE.z - zoom * 1.6).add(camShake), damp(5, dt));
   camera.lookAt(CAM_LOOK);
-  renderer.render(scene, camera);
+  for (const v of views) if (v.f) placeCam(v, dt);
+  render();
 
   hudT -= realDt;
   if (hudT <= 0) {
@@ -1004,7 +1205,7 @@ tick();
 
 // Test-Hilfe (Konsole)
 window.__box = {
-  locals, fighters, get state() { return state; }, get code() { return code; }, get mode() { return mode; },
+  locals, fighters, get state() { return state; }, get code() { return code; }, get mode() { return mode; }, get view() { return view; }, setView, cams: () => pcams.map((c) => [c.position.toArray().map((v) => +v.toFixed(2)), c.userData.look.toArray().map((v) => +v.toFixed(2))]),
   frame: () => tick(), setState, setMode, attack, addKeysPlayer, onPose: (i, k, w, h, z) => locals[i] && onPose(locals[i], k, w, h, z),
   get roundT() { return roundT; }, set roundT(v) { roundT = v; },
 };

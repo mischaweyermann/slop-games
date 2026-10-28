@@ -71,14 +71,16 @@ Der Bildschirm teilt sich automatisch (2 = nebeneinander, 3–4 = Viertel). Wer 
 
 ## 🥊 Boxring – `boxring/`
 
-Kampf im Ring, gesehen von der Seite. Die Figur folgt deinem Körper; was du Richtung Kamera machst, geht in der Figur nach vorne zum Gegner (MediaPipe liefert dafür die Tiefe).
+Kampf im Ring. Die Figur folgt deinem Körper; was du Richtung Kamera machst, geht in der Figur nach vorne zum Gegner (MediaPipe liefert dafür die Tiefe).
 
 - **Kampfart in der Lobby:** *Boxen* (nur Arme, auch sitzend) oder *Kickboxen* (auch Tritte – ganzer Körper im Bild, stehend)
+- **Ansicht in der Lobby:** *Hinter dir* (über die Schulter, eigene Figur halb durchsichtig, Standard) · *Ich-Sicht* (nur die eigenen Handschuhe) · *Seitlich* (TV-Kamera). Zu zweit bekommt jede Person ihre Bildhälfte. Von hinten wird die Bewegung nicht gespiegelt: linke Hand = links im Bild.
 - **Spieler:** 1 Person = gegen die KI, 2 Personen = gegeneinander (eigene Handys oder ein Handy für beide, nebeneinander stehen)
-- **Schlagen:** Faust schnell Richtung Kamera · **Deckung:** beide Fäuste vors Gesicht (Treffer machen kaum Schaden) · **Ausweichen:** Oberkörper zur Seite (Kopftreffer gehen daneben) · **Tritt:** Fuss schnell nach vorne oder Knie hoch
-- 100 Lebenspunkte, Runden à 60 s, wer zuerst 2 Runden gewinnt (K.O. oder mehr Lebenspunkte bei Zeitende). Kombos geben Bonus-Schaden.
+- **Schlagen:** Faust schnell Richtung Kamera · **Deckung:** beide Fäuste vors Gesicht (Kopftreffer ganz geblockt, Angreifer kurz ausser Tritt; Körper/Tritt teilweise) · **Ausweichen:** Oberkörper zur Seite (Kopftreffer gehen daneben) · **Tritt:** Fuss schnell nach vorne oder Knie hoch
+- 100 Lebenspunkte, Runden à 60 s, wer zuerst 2 Runden gewinnt (K.O. oder mehr Lebenspunkte bei Zeitende). Kombos geben Bonus-Schaden, Dauerfeuer (Schläge kurz hintereinander) weniger. Schläge kommen nach 0,2 s an – Zeit zum Reagieren.
+- **Treffer-Spuren:** blaue Flecken, Kratzer, Pflaster und blaues Auge je nach Energie (pro Runde neu), Comic-Blutstropfen mit Flecken auf dem Ringboden.
 - **Start:** am Handy «Bereit», dann Fäuste vors Gesicht halten · **Neuer Kampf:** beide Fäuste über den Kopf
-- **Tastatur:** P1 `Q`/`E` schlagen, `W` Deckung, `A`/`D` ausweichen, `S` Tritt · P2 `U`/`O`, `I`, `J`/`L`, `K` · `Leertaste` bereit · `B`/`X` Boxen/Kickboxen
+- **Tastatur:** P1 `Q`/`E` schlagen, `W` Deckung, `A`/`D` ausweichen, `S` Tritt · P2 `U`/`O`, `I`, `J`/`L`, `K` · `Leertaste` bereit · `B`/`X` Boxen/Kickboxen · `V` Ansicht
 
 ## Verbindung Handy ↔ TV
 

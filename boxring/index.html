@@ -36,6 +36,12 @@
           <button type="button" class="mode on" data-mode="box" role="radio" aria-checked="true"><span class="mi">🥊</span><b>Boxen</b><small>nur Arme · sitzend oder stehend</small></button>
           <button type="button" class="mode" data-mode="kick" role="radio" aria-checked="false"><span class="mi">🦵</span><b>Kickboxen</b><small>Arme + Beine · stehend, ganzer Körper im Bild</small></button>
         </div>
+        <div class="views" role="radiogroup" aria-label="Ansicht">
+          <span class="views-lbl">Ansicht</span>
+          <button type="button" class="view on" data-view="third" role="radio" aria-checked="true"><b>Hinter dir</b><small>über die Schulter</small></button>
+          <button type="button" class="view" data-view="first" role="radio" aria-checked="false"><b>Ich-Sicht</b><small>nur deine Handschuhe</small></button>
+          <button type="button" class="view" data-view="side" role="radio" aria-checked="false"><b>Seitlich</b><small>wie im Fernsehen</small></button>
+        </div>
         <div class="slots two" id="slots" aria-label="Spielerplätze"></div>
         <div class="kf-actions">
           <button class="ghost" id="camBtn" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="13" rx="2"/><path d="M8 22h8M12 18v4"/></svg>Kamera dieses Geräts</button>
@@ -53,6 +59,11 @@
         <div class="privacy-note">Das Kamerabild bleibt auf dem Handy</div>
       </aside>
     </section>
+
+    <!-- Treffer-Rand + Trennlinie bei geteiltem Bildschirm -->
+    <div class="hurt" id="hurt0" hidden></div>
+    <div class="hurt" id="hurt1" hidden></div>
+    <div class="split-line" aria-hidden="true"></div>
 
     <!-- Kampf-Anzeige -->
     <div class="bhud" id="bhud">
