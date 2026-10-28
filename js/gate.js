@@ -10,7 +10,10 @@ async function checkGame() {
   const m = location.href.slice(root.href.length).match(/^([a-z0-9-]+)\//);
   if (!m) return;
   const { data } = await sb.from('games').select('visible').eq('id', m[1]).maybeSingle();
-  if (data && data.visible === false && !(await isAdmin())) location.replace(new URL('./#spiele', root).href);
+  if (data && data.visible === false && !(await isAdmin())) return location.replace(new URL('./#spiele', root).href);
+  // Kostenpflichtiges Spiel ohne Kauf: zur Kaufseite
+  const { data: ok, error } = await sb.rpc('has_access', { game: m[1] });
+  if (!error && ok === false) location.replace(new URL('kaufen.html?p=' + encodeURIComponent(m[1]), root).href);
 }
 sb.auth.getSession().then(({ data }) => { if (!data.session) toLogin(); else checkGame().catch(() => {}); }).catch(() => {});
 sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT') toLogin(); });

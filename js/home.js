@@ -161,9 +161,38 @@ async function init() {
     const noAdmin = () => { if (location.hash === '#admin') location.hash = '#start'; };
     noAdmin(); addEventListener('hashchange', noAdmin);
   }
+  applyShop(admin).catch(() => {});
   try { await A.importLocalStats(); } catch { /* */ }
   try { plays = await A.loadPlays(); } catch { plays = []; }
   renderStats();
+}
+
+/* ---------------- Preise, Käufe, Münzen und Juwelen ---------------- */
+async function applyShop(admin) {
+  const [on, products, owned, wallet] = await Promise.all([
+    A.paymentsEnabled().catch(() => false), A.loadProducts().catch(() => []), A.loadOwned().catch(() => new Set()), A.loadWallet().catch(() => ({ coins: 0, gems: 0 })),
+  ]);
+  $('wCoins').textContent = wallet.coins.toLocaleString('de-CH');
+  $('wGems').textContent = wallet.gems.toLocaleString('de-CH');
+  const names = [...owned].map((i) => (i === 'pass' ? 'Early-Supporter-Pass' : (A.GAMES[i] || {}).name)).filter(Boolean);
+  $('wOwned').textContent = names.length ? `Gekauft: ${names.join(', ')}` : '';
+  $('wBuy').hidden = !(on || admin);
+  if (!on) return; // solange die Bezahlung aus ist, sind alle Spiele frei
+  const hasPass = owned.has('pass');
+  for (const p of products.filter((x) => x.kind === 'game')) {
+    if (hasPass || owned.has(p.game_id)) continue;
+    const price = `CHF ${A.chf(p.price_rappen)}`;
+    document.querySelectorAll(`[data-game="${p.game_id}"]`).forEach((el) => {
+      if (el.closest('#aGames') || el.tagName === 'BUTTON') return;
+      if (el.classList.contains('tile')) {
+        const thumb = el.querySelector('.thumb');
+        if (thumb && !thumb.querySelector('.price')) thumb.insertAdjacentHTML('beforeend', `<span class="tag price">${price}</span>`);
+        const go = el.querySelector('.go'); if (go) go.textContent = `Freischalten für ${price} →`;
+      } else if (el.classList.contains('game') && !el.querySelector('.price-chip')) {
+        el.querySelector('.t')?.insertAdjacentHTML('afterend', `<span class="price-chip">${price}</span>`);
+      }
+    });
+  }
 }
 
 /* ---------------- Ausgeblendete Spiele ---------------- */

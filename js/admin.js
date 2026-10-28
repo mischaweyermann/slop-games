@@ -66,6 +66,22 @@ function renderUsers() {
 
 async function loadUsers() { users = await A.adminUsers(); renderUsers(); }
 
+/* Verkäufe und Schalter «Kaufen» */
+async function loadSales() {
+  const [on, s] = await Promise.all([A.paymentsEnabled(), A.adminSales()]);
+  const b = $('aPay');
+  b.setAttribute('aria-pressed', on); b.querySelector('span').textContent = on ? 'Ein' : 'Aus';
+  $('aSales').textContent = `${s.count} Käufe · CHF ${A.chf(s.rappen)} insgesamt · ${s.count_30d} Käufe / CHF ${A.chf(s.rappen_30d)} in 30 Tagen`;
+}
+$('aPay').addEventListener('click', async () => {
+  const b = $('aPay'), on = b.getAttribute('aria-pressed') !== 'true';
+  if (on && !confirm('Kaufen einschalten? Ab dann sind Boxring und Skicross nur noch mit Kauf oder Pass spielbar.')) return;
+  b.disabled = true;
+  try { await A.adminSetPayments(on); await loadSales(); msg(on ? 'Kaufen ist eingeschaltet.' : 'Kaufen ist aus, alle Spiele sind gratis.', 'ok'); }
+  catch (e) { msg(A.niceError(e), 'err'); }
+  finally { b.disabled = false; }
+});
+
 $('aTable').addEventListener('click', async (e) => {
   const b = e.target.closest('button[data-act]');
   if (!b) return;
@@ -91,9 +107,9 @@ export async function initAdmin({ user, games, onGames }) {
   try {
     const st = await loadStats();
     renderGames(games, st.per_game);
-    await loadUsers();
+    await Promise.all([loadUsers(), loadSales()]);
   } catch (e) { msg('Admin-Daten konnten nicht geladen werden: ' + A.niceError(e), 'err'); }
 }
 export async function refreshAdmin(games) {
-  try { const st = await loadStats(); renderGames(games, st.per_game); await loadUsers(); } catch { /* */ }
+  try { const st = await loadStats(); renderGames(games, st.per_game); await Promise.all([loadUsers(), loadSales()]); } catch { /* */ }
 }

@@ -144,8 +144,48 @@ export function niceError(e) {
 // Erlaubte Rücksprungziele nach dem Login (nur Seiten von Slop Games)
 export function safeNext(n) {
   n = String(n || '').split('#')[0];
-  return /^(?:index\.html|konto\.html|controller\.html|kurvenflitzer\/|boxring\/|skicross\/)?(?:\?[\w=&%.:-]*)?$/.test(n) ? n : '';
+  return /^(?:index\.html|konto\.html|kaufen\.html|controller\.html|kurvenflitzer\/|boxring\/|skicross\/)?(?:\?[\w=&%.:-]*)?$/.test(n) ? n : '';
 }
+
+/* ---------------- Käufe, Münzen und Juwelen ---------------- */
+// Ist die Bezahlung eingeschaltet? Solange nicht, sind alle Spiele frei.
+export async function paymentsEnabled() {
+  const { data } = await sb.from('app_settings').select('payments_enabled').maybeSingle();
+  return !!(data && data.payments_enabled);
+}
+export async function hasAccess(game) {
+  const { data, error } = await sb.rpc('has_access', { game });
+  if (error) throw error;
+  return !!data;
+}
+export async function loadProducts() {
+  const { data, error } = await sb.from('products')
+    .select('id, kind, name, description, game_id, price_rappen, gems').eq('active', true).order('sort');
+  if (error) throw error;
+  return data || [];
+}
+// Gekaufte Spiele und Pass ('pass')
+export async function loadOwned() {
+  const { data, error } = await sb.from('entitlements').select('item');
+  if (error) throw error;
+  return new Set((data || []).map((r) => r.item));
+}
+export async function loadWallet() {
+  const { data, error } = await sb.from('wallets').select('coins, gems').maybeSingle();
+  if (error) throw error;
+  return data || { coins: 0, gems: 0 };
+}
+// Leitet zur sicheren Bezahlseite von Stripe weiter (Karte, TWINT, Apple/Google Pay)
+export async function startCheckout(product) {
+  const { data, error } = await sb.functions.invoke('create-checkout', { body: { product } });
+  if (error) {
+    let code = '';
+    try { code = (await error.context.json()).error; } catch { /* */ }
+    const e = new Error(code || 'checkout'); e.code = code; throw e;
+  }
+  location.href = data.url;
+}
+export const chf = (rappen) => (rappen / 100).toFixed(2).replace(/\.00$/, '.–');
 
 /* ---------------- Spiele und Admin ---------------- */
 export async function loadGames() {
@@ -167,3 +207,5 @@ export const adminStats = (days = 30) => rpc('admin_stats', { days });
 export const adminSetBanned = (target, ban) => rpc('admin_set_banned', { target, ban });
 export const adminDeleteUser = (target) => rpc('admin_delete_user', { target });
 export const adminSetGameVisible = (game, show) => rpc('admin_set_game_visible', { game, show });
+export const adminSetPayments = (enabled) => rpc('admin_set_payments', { enabled });
+export const adminSales = () => rpc('admin_sales');

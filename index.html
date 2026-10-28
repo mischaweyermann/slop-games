@@ -71,6 +71,17 @@
     .prof-grid { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); align-items: start; }
     .prof-grid .card { display: flex; flex-direction: column; gap: 14px; }
     .prof-grid h3 { margin: 0; }
+    .prof-side { display: flex; flex-direction: column; gap: inherit; min-width: 0; }
+    .wallet { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .wallet div { background: var(--wine-800); border-radius: 20px; padding: 14px 16px; display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; }
+    .wallet b { font-size: 28px; font-weight: 700; color: #fff; line-height: 1.1; }
+    .wallet small { grid-column: 2; font-size: 13px; color: var(--mute); }
+    .wallet .coin, .wallet .gem { grid-row: span 2; width: 30px; height: 30px; }
+    .wallet .coin { border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff6c9, var(--cream) 45%, #d9b84a); box-shadow: inset 0 0 0 3px #d9b84a; }
+    .wallet .gem { background: linear-gradient(135deg, #b9f0ff, #5aa9c9 60%, #2f6f8f); clip-path: polygon(50% 0, 100% 38%, 50% 100%, 0 38%); }
+    .acct-actions a.pill { text-decoration: none; }
+    .tile .thumb .tag.price { left: auto; right: 12px; background: #fff; color: var(--wine-600); }
+    .game .price-chip { flex: none; font-size: 13px; font-weight: 600; color: var(--wine-600); background: var(--cream); border-radius: 999px; padding: 4px 10px; }
     .prof-field { display: flex; flex-direction: column; gap: 6px; }
     .prof-field span { font-size: 13px; color: var(--mute); }
     .prof-field input { font: 500 17px 'Poppins', sans-serif; color: #fff; background: var(--wine-800); border: 2px solid transparent; border-radius: 16px; padding: 12px 16px; width: 100%; }
@@ -525,6 +536,20 @@
             <button class="pill" id="profSave" type="button">Speichern</button>
             <p class="note" id="profMsg" role="status"></p>
           </section>
+          <div class="prof-side">
+          <section class="card">
+            <h3>Münzen und Juwelen</h3>
+            <div class="wallet">
+              <div><span class="coin" aria-hidden="true"></span><b id="wCoins">0</b><small>Münzen</small></div>
+              <div><span class="gem" aria-hidden="true"></span><b id="wGems">0</b><small>Juwelen</small></div>
+            </div>
+            <p class="note">Münzen bekommst du fürs Spielen: pro halbe Minute eine, dazu Bonus für Siege und Podestplätze (bis 200 pro Tag). Juwelen gibt es zu kaufen. Mit beiden holst du dir bald Skins für deine Figur.</p>
+            <p class="note" id="wOwned"></p>
+            <div class="acct-actions" id="wBuy" hidden>
+              <a class="pill dark" href="kaufen.html?p=juwelen-500">500 Juwelen kaufen</a>
+              <a class="pill dark" href="kaufen.html?p=pass">Pass für alle Spiele</a>
+            </div>
+          </section>
           <section class="card">
             <h3>Konto</h3>
             <p class="note" id="profMail"></p>
@@ -536,8 +561,9 @@
               <button class="pill dark" id="logoutBtn" type="button">Abmelden</button>
               <button class="pill danger" id="deleteBtn" type="button">Konto löschen</button>
             </div>
-            <p class="note">«Konto löschen» entfernt dein Konto mit allen gespeicherten Runden.</p>
+            <p class="note">«Konto löschen» entfernt dein Konto mit allen gespeicherten Runden, Münzen und Juwelen.</p>
           </section>
+          </div>
         </div>
       </div>
 
@@ -557,6 +583,12 @@
           <div class="adm-bars" id="aBars"></div>
         </section>
         <section class="card">
+          <h3>Verkäufe</h3>
+          <p class="note" style="margin-bottom: 12px">Solange «Kaufen» aus ist, sind alle Spiele gratis. Als Admin kannst du trotzdem testen.</p>
+          <div class="adm-game"><span class="t"><b>Kaufen</b><span id="aSales">–</span></span>
+            <button type="button" class="switch" id="aPay" aria-pressed="false" aria-label="Kaufen eingeschaltet"><span>Aus</span><i></i></button></div>
+        </section>
+        <section class="card">
           <h3>Spiele</h3>
           <p class="note" style="margin-bottom: 12px">Ausgeblendete Spiele sehen nur Admins – gut zum Testen neuer Spiele.</p>
           <div class="adm-games" id="aGames"></div>
@@ -573,6 +605,7 @@
       <footer>
         <span>© 2026 Slop Games</span>
         <a href="impressum.html">Impressum</a>
+        <a href="agb.html">AGB</a>
         <a href="datenschutz.html">Datenschutz</a>
         <a href="lizenzen.html">Lizenzen</a>
       </footer>

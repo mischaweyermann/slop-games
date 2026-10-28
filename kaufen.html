@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Freischalten · Slop Games</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#5a1f25">
+  <link rel="icon" href="media/brand/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="media/brand/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/fonts.css">
+  <script type="module" src="js/gate.js"></script>
+  <style>
+    :root { --wine-900: #2a0e11; --wine-800: #3d1418; --wine-700: #461519; --wine-600: #5a1f25; --wine-500: #7d2a2e; --coral: #e2574c; --cream: #f7e9a6; --text: #f6e3e1; --soft: #e2b3ae; --mute: #e2847b; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body { font-family: 'Poppins', system-ui, sans-serif; background: var(--wine-600); color: var(--text); -webkit-font-smoothing: antialiased; min-height: 100vh; display: grid; place-items: center; padding: 22px 16px; }
+    .wrap { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 16px; }
+    .back { align-self: flex-start; color: var(--cream); font-size: 14px; font-weight: 600; text-decoration: none; }
+    .back:hover { text-decoration: underline; }
+    .card { background: var(--wine-700); border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; }
+    .card .pic { aspect-ratio: 16 / 9; background: var(--wine-800) center / cover no-repeat; }
+    .card .in { padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 12px; }
+    .kicker { font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); margin: 0; }
+    h1 { margin: 0; font-size: 26px; font-weight: 700; color: #fff; line-height: 1.2; }
+    h2 { margin: 0; font-size: 18px; font-weight: 600; color: #fff; }
+    p { margin: 0; font-size: 14.5px; line-height: 1.6; color: var(--soft); }
+    .price { font-size: 32px; font-weight: 800; color: var(--cream); line-height: 1; }
+    .price small { font-size: 14px; font-weight: 500; color: var(--soft); margin-left: 6px; }
+    ul { margin: 0; padding-left: 18px; font-size: 14.5px; line-height: 1.7; color: var(--soft); }
+    .btn { font: 600 16px 'Poppins', sans-serif; border: 0; border-radius: 999px; padding: 14px 22px; cursor: pointer; background: #fff; color: var(--wine-600); text-align: center; text-decoration: none; transition: background .15s; }
+    .btn:hover { background: var(--cream); }
+    .btn.dark { background: var(--wine-800); color: #fff; }
+    .btn.dark:hover { background: var(--wine-500); }
+    .btn:disabled { opacity: .6; cursor: wait; }
+    .btn:focus-visible, .back:focus-visible { outline: 4px solid var(--cream); outline-offset: 3px; }
+    .pay { font-size: 12.5px; color: var(--soft); text-align: center; }
+    .msg { font-size: 14px; }
+    .msg.err { color: #ffb3ab; }
+    .msg.ok { color: var(--cream); }
+    .hidden { display: none !important; }
+    .spin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--wine-500); border-top-color: var(--cream); animation: r .8s linear infinite; }
+    @keyframes r { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+    .row { display: flex; align-items: center; gap: 12px; }
+    footer { font-size: 13px; color: #c99696; display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+    footer a { color: inherit; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="./#spiele">← Zurück zu den Spielen</a>
+
+    <!-- Hauptangebot -->
+    <section class="card" id="main" aria-live="polite">
+      <div class="pic" id="pic"></div>
+      <div class="in">
+        <p class="kicker" id="kicker">Spiel freischalten</p>
+        <h1 id="title">Einen Moment …</h1>
+        <p id="desc"></p>
+        <ul id="incl" class="hidden"></ul>
+        <div class="price hidden" id="price"></div>
+        <button class="btn hidden" id="buy" type="button"></button>
+        <a class="btn hidden" id="play" href="./"></a>
+        <div class="row hidden" id="wait"><span class="spin" aria-hidden="true"></span><p>Zahlung wird bestätigt …</p></div>
+        <p class="msg" id="msg" role="status"></p>
+        <p class="pay hidden" id="payNote">Sicher bezahlen mit TWINT, Karte, Apple Pay oder Google Pay über Stripe. Einmalig, kein Abo.</p>
+      </div>
+    </section>
+
+    <!-- Pass als Alternative -->
+    <section class="card hidden" id="passCard">
+      <div class="in">
+        <p class="kicker">Lohnt sich ab 5 Spielen</p>
+        <h2>Oder gleich alle Spiele</h2>
+        <p id="passDesc"></p>
+        <button class="btn dark" id="buyPass" type="button"></button>
+      </div>
+    </section>
+
+    <footer>
+      <a href="agb.html">AGB</a>
+      <a href="datenschutz.html">Datenschutz</a>
+      <a href="impressum.html">Impressum</a>
+    </footer>
+  </div>
+
+  <script type="module">
+    import * as A from './js/account.js';
+    const $ = (id) => document.getElementById(id);
+    const show = (el, on = true) => el.classList.toggle('hidden', !on);
+    const params = new URLSearchParams(location.search);
+    const pid = (params.get('p') || '').replace(/[^a-z0-9-]/g, '');
+    const paid = params.get('ok') === '1';
+    const PICS = { kurvenflitzer: 'media/kurvenflitzer.jpg', boxring: 'media/boxring.jpg', skicross: 'media/skicross.jpg' };
+
+    function msg(text, kind) { $('msg').textContent = text || ''; $('msg').className = 'msg' + (kind ? ' ' + kind : ''); }
+    function errorText(e) {
+      switch (e && e.code) {
+        case 'owned': return 'Das hast du schon gekauft.';
+        case 'payments_off': return 'Kaufen ist noch nicht freigeschaltet.';
+        case 'not_configured': return 'Die Bezahlung ist noch nicht eingerichtet.';
+        case 'login': return 'Bitte melde dich nochmals an.';
+        default: return 'Das hat nicht geklappt. Versuch es nochmals.';
+      }
+    }
+    async function checkout(id, btn) {
+      btn.disabled = true; msg('');
+      try { await A.startCheckout(id); }
+      catch (e) { msg(errorText(e), 'err'); btn.disabled = false; }
+    }
+    function playLink(game, name) {
+      $('play').href = game + '/';
+      $('play').textContent = `${name} spielen →`;
+      show($('play'));
+    }
+
+    async function init() {
+      const user = await A.currentUser().catch(() => null);
+      if (!user) return; // gate.js leitet zur Anmeldung weiter
+      const [products, owned, on, admin] = await Promise.all([
+        A.loadProducts(), A.loadOwned().catch(() => new Set()), A.paymentsEnabled().catch(() => false), A.isAdmin().catch(() => false),
+      ]);
+      const product = products.find((p) => p.id === pid) || products.find((p) => p.kind === 'game' && p.game_id === pid);
+      const pass = products.find((p) => p.kind === 'pass');
+      if (!product) { $('title').textContent = 'Das gibt es nicht (mehr).'; return; }
+
+      const isGame = product.kind === 'game', isPass = product.kind === 'pass', isGems = product.kind === 'gems';
+      const game = isGame ? product.game_id : null;
+      if (game && PICS[game]) $('pic').style.backgroundImage = `url(${PICS[game]})`; else $('pic').remove();
+      $('kicker').textContent = isGame ? 'Spiel freischalten' : isPass ? 'Pass' : 'Juwelen';
+      $('title').textContent = product.name;
+      $('desc').textContent = product.description || '';
+      document.title = `${product.name} · Slop Games`;
+
+      // Zurück von Stripe: warten, bis der Webhook gutgeschrieben hat
+      if (paid) {
+        $('kicker').textContent = 'Danke für deinen Kauf!';
+        show($('wait'));
+        const before = isGems ? (await A.loadWallet()).gems : 0;
+        for (let i = 0; i < 20; i++) {
+          let done = false;
+          if (isGems) done = (await A.loadWallet().catch(() => ({ gems: before }))).gems > before;
+          else done = (await A.loadOwned().catch(() => new Set())).has(isPass ? 'pass' : game);
+          if (done) {
+            show($('wait'), false);
+            if (isGems) { msg(`Deine Juwelen sind da. Du hast jetzt ${(await A.loadWallet()).gems} Juwelen.`, 'ok'); $('play').href = './#profil'; $('play').textContent = 'Zum Profil →'; show($('play')); }
+            else if (isPass) { msg('Der Pass ist aktiv. Alle Spiele sind freigeschaltet.', 'ok'); $('play').href = './#spiele'; $('play').textContent = 'Zu den Spielen →'; show($('play')); }
+            else { msg('Freigeschaltet – viel Spass!', 'ok'); playLink(game, product.name); }
+            return;
+          }
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+        show($('wait'), false);
+        msg('Die Bestätigung dauert länger als üblich. Lade die Seite in einer Minute neu – bezahlt ist bezahlt, nichts geht verloren.', 'err');
+        return;
+      }
+
+      // Schon gekauft oder gratis?
+      const has = isGame ? (owned.has(game) || owned.has('pass')) : isPass ? owned.has('pass') : false;
+      if (has) {
+        msg(isPass ? 'Du hast den Pass schon – alle Spiele sind freigeschaltet.' : 'Du hast dieses Spiel schon.', 'ok');
+        if (isGame) playLink(game, product.name);
+        return;
+      }
+      if (!on && !admin) {
+        msg('Kaufen geht noch nicht – im Moment sind alle Spiele gratis.', 'ok');
+        if (isGame) playLink(game, product.name);
+        return;
+      }
+      if (!on && admin) msg('Testmodus: Kaufen ist nur für Admins sichtbar.', '');
+
+      // Angebot
+      const incl = isGame
+        ? ['Das ganze Spiel mit allen Modi', 'Alle späteren Inhalte gratis dazu', 'Für alle Personen vor deinem TV']
+        : isPass ? ['Alle Spiele, auch alle künftigen', '300 Juwelen für Skins dazu', 'Einmal zahlen, kein Abo'] : ['Für Skins deiner Figur', 'Skins kannst du dir auch mit Münzen erspielen'];
+      $('incl').innerHTML = incl.map((t) => `<li>${t}</li>`).join(''); show($('incl'));
+      $('price').innerHTML = `CHF ${A.chf(product.price_rappen)}<small>einmalig</small>`; show($('price'));
+      $('buy').textContent = `Kaufen für CHF ${A.chf(product.price_rappen)}`;
+      $('buy').onclick = () => checkout(product.id, $('buy'));
+      show($('buy')); show($('payNote'));
+
+      if (isGame && pass) {
+        $('passDesc').textContent = `${pass.name} für CHF ${A.chf(pass.price_rappen)}: ${pass.description}.`;
+        $('buyPass').textContent = `Pass kaufen für CHF ${A.chf(pass.price_rappen)}`;
+        $('buyPass').onclick = () => checkout(pass.id, $('buyPass'));
+        show($('passCard'));
+      }
+    }
+    init().catch(() => { $('title').textContent = 'Das hat nicht geklappt.'; msg('Prüf deine Verbindung und lade die Seite neu.', 'err'); });
+  </script>
+</body>
+</html>

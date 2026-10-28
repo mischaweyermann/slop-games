@@ -100,6 +100,22 @@ Vier am Start, eine Piste (ca. 1,2 km) mit Steilkurven, Wellen und drei Schanzen
 - **Tastatur:** P1 `←`/`→` lenken, `↓` Hocke, `↑` springen/anschieben · P2 `A`/`D`, `S`, `W` · `Leertaste` bereit
 - Statistik: `skicross` (Sekunden), `skiRaces`, `skiWins`, `skiBest`, Verlauf mit `g: 'ski'`
 
+## 💳 Kaufen, Münzen und Juwelen
+
+| Teil | Wo |
+|---|---|
+| Kurvenflitzer gratis, Boxring und Skicross je CHF 2, Pass CHF 9 (alle Spiele + 300 Juwelen), Juwelen-Pakete | Tabelle `products` (Preise in Rappen), Gratis-Spiele: `games.free` |
+| Schalter «Kaufen» (aus = alles gratis) | Admin-Seite → Verkäufe, Tabelle `app_settings` |
+| Sperre für nicht gekaufte Spiele | `js/gate.js` → `has_access(game)`, sonst `kaufen.html?p=<spiel>` |
+| Bezahlseite | `kaufen.html` → Edge Function `create-checkout` → Stripe Checkout (TWINT, Karte, Apple/Google Pay) |
+| Gutschrift | Stripe → Edge Function `stripe-webhook` (Signatur geprüft) → `grant_purchase()` |
+| Münzen | automatisch pro gespeicherter Runde (Trigger `award_coins`): 1 pro 30 s, max. 20 pro Runde, +10 Sieg, +5 Podest, max. 200 pro Tag |
+| Münzen und Juwelen anzeigen | Profil → «Münzen und Juwelen» |
+
+Datenbank-Änderungen liegen in `supabase/migrations/`, die Funktionen in `supabase/functions/`.
+
+**Einrichten (einmalig):** In Supabase unter *Edge Functions → Secrets* `STRIPE_SECRET_KEY` und `STRIPE_WEBHOOK_SECRET` setzen. In Stripe einen Webhook auf `https://viqonxeoaaffqigpwami.supabase.co/functions/v1/stripe-webhook` mit den Ereignissen `checkout.session.completed` und `checkout.session.async_payment_succeeded` anlegen und TWINT aktivieren.
+
 ## Verbindung Handy ↔ TV
 
 Handy und TV verbinden sich direkt (WebRTC). Am zuverlässigsten ist es, wenn beide im **gleichen WLAN** sind.

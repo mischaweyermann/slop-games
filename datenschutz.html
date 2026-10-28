@@ -15,7 +15,7 @@
   <div class="legal">
     <div class="legal-top">
       <a class="back" href="./"><span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></span><svg class="mark" width="30" height="30" viewBox="0 0 120 120" aria-hidden="true"><g class="jump"><g transform="rotate(-10 60 58)"><path fill-rule="evenodd" fill="currentColor" d="M34 30 H86 C96 30 102 38 103 48 L106 70 C108 84 96 92 86 84 L76 76 H44 L34 84 C24 92 12 84 14 70 L17 48 C18 38 24 30 34 30 Z M84.2 46 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 Z M91.7 54 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 Z M49.2 48 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 Z M63.2 48 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 Z M27.7 45 H32.3 V49.7 H37 V54.3 H32.3 V59 H27.7 V54.3 H23 V49.7 H27.7 Z M50.3 56.4 Q60 68.2 69.7 56.4 Q68.6 54.4 67.2 55.4 Q60 63 52.8 55.4 Q51.4 54.4 50.3 56.4 Z"/></g></g><path class="lines" d="M42 98 V106 M60 101 V111 M78 96 V104" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" opacity=".55"/><ellipse class="shadow" cx="60" cy="116" rx="24" ry="3" fill="currentColor" opacity=".25"/></svg>Slop Games</a>
-      <nav aria-label="Rechtliches"><a href="impressum.html">Impressum</a><a href="datenschutz.html" aria-current="page">Datenschutz</a><a href="lizenzen.html">Lizenzen</a></nav>
+      <nav aria-label="Rechtliches"><a href="impressum.html">Impressum</a><a href="agb.html">AGB</a><a href="datenschutz.html" aria-current="page">Datenschutz</a><a href="lizenzen.html">Lizenzen</a></nav>
     </div>
     <main>
       <h1>Datenschutz</h1>
@@ -27,6 +27,7 @@
           <li><b>Dein Kamerabild verlässt dein Handy nie.</b> Die Körpererkennung läuft direkt auf dem Handy.</li>
           <li>Um Spiele am Fernseher zu starten, brauchst du ein Konto. Mitspielen per Handy geht ohne. Das Konto speichert nur E-Mail, Passwort (verschlüsselt), deinen Namen im Spiel, deine Figur und deine Runden.</li>
           <li>Keine Werbung, kein Tracking, keine Cookies.</li>
+          <li>Bezahlt wird über Stripe. Deine Karten- oder TWINT-Daten sieht Slop Games nie.</li>
           <li>Wie bei jeder Website sehen die beteiligten Dienste (Hosting, Bibliotheken, Verbindungsserver) deine IP-Adresse.</li>
         </ul>
       </section>
@@ -51,17 +52,23 @@
           <li><b>dein Passwort</b> – nur als verschlüsselter Hash, niemand kann es lesen,</li>
           <li><b>deinen Namen im Spiel und deine Figur</b> (Frisur, Farben, Kleidung), damit sie in allen Spielen gleich sind,</li>
           <li><b>deine Runden</b>: Spiel, Dauer, Platz, Anzahl Spieler, Zielzeit, Sieg ja/nein und Zeitpunkt. Gespeichert wird vom angemeldeten Handy aus, wenn du allein vor der Kamera spielst.</li>
-          <li>beim ersten Anmelden einmalig die Bewegungsminuten, die bisher nur in diesem Browser lagen.</li>
+          <li>beim ersten Anmelden einmalig die Bewegungsminuten, die bisher nur in diesem Browser lagen,</li>
+          <li><b>deine Münzen, Juwelen und Käufe</b>, siehe Abschnitt 5.</li>
         </ul>
         <p>Zweck ist, dir deine Figur und deine Statistik zu zeigen. Andere Spielerinnen und Spieler sehen deine Daten nicht; es gibt keine Ranglisten und keine Weitergabe. Der Betreiber (siehe Impressum) sieht in einer Admin-Übersicht E-Mail, Namen, Figur, Registrierungsdatum und die Zahl deiner Runden und Minuten, um Slop Games zu betreuen und Missbrauch zu verhindern, z. B. durch Sperren eines Kontos. Die Daten liegen bei <b>Supabase</b> (Supabase Inc., USA) auf Servern in London (Grossbritannien), das der Bundesrat als Land mit angemessenem Datenschutz anerkennt. Supabase bearbeitet sie in unserem Auftrag. Die Bestätigungs- und Passwort-E-Mails verschickt Supabase.</p>
-        <p>Die Daten bleiben gespeichert, bis du dein Konto löschst. Das geht jederzeit selbst im Profil → «Konto löschen»; dabei werden alle Runden mitgelöscht. Damit du angemeldet bleibst, legt die Seite eine Anmeldesitzung im Speicher deines Browsers ab (<code>slop.auth</code>).</p>
+        <p>Die Daten bleiben gespeichert, bis du dein Konto löschst. Das geht jederzeit selbst im Profil → «Konto löschen»; dabei werden alle Runden, Münzen und Juwelen mitgelöscht. Damit du angemeldet bleibst, legt die Seite eine Anmeldesitzung im Speicher deines Browsers ab (<code>slop.auth</code>).</p>
       </section>
       <section class="card">
-        <h2>5. Hosting</h2>
+        <h2>5. Käufe und Bezahlung</h2>
+        <p>Kaufst du ein Spiel, den Pass oder Juwelen, bezahlst du auf der Bezahlseite von <b>Stripe</b> (Stripe Payments Europe Ltd., Irland; zur Stripe-Gruppe in den USA). Stripe erhält dabei deine E-Mail-Adresse, den Kauf und deine Zahlungsangaben (z. B. TWINT oder Karte) und bearbeitet sie als eigene Verantwortliche, unter anderem zur Betrugsprävention. Slop Games sieht deine Karten- oder TWINT-Daten nie. Details: <a href="https://stripe.com/ch/privacy" rel="noopener">Datenschutzerklärung von Stripe</a>.</p>
+        <p>In deinem Konto speichern wir, was du gekauft hast, deine Münzen und Juwelen und deren Buchungen (wann, wie viele, wofür). Kaufbelege (Produkt, Betrag, Datum, Zahlungsreferenz) bewahren wir wegen der gesetzlichen Buchführungspflicht 10 Jahre auf. Löschst du dein Konto, werden sie von deinem Konto getrennt; alles andere wird gelöscht.</p>
+      </section>
+      <section class="card">
+        <h2>6. Hosting</h2>
         <p>Slop Games liegt bei <b>GitHub Pages</b> (GitHub, Inc., USA). Beim Aufruf einer Seite verarbeitet GitHub technische Daten wie IP-Adresse, Zeitpunkt und aufgerufene Adresse, um die Seite auszuliefern und vor Missbrauch zu schützen. Details: <a href="https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener">Datenschutzerklärung von GitHub</a>.</p>
       </section>
       <section class="card">
-        <h2>6. Bibliotheken und Bewegungsmodell</h2>
+        <h2>7. Bibliotheken und Bewegungsmodell</h2>
         <p>Damit die Spiele laufen, lädt dein Browser Programmteile von externen Servern:</p>
         <ul>
           <li><b>jsDelivr</b> (Content Delivery Network): three.js (3D-Grafik), PeerJS (Verbindung), qrcode-generator (QR-Code) und MediaPipe (Körpererkennung).</li>
@@ -71,7 +78,7 @@
         <p>Diese Anbieter erhalten dabei technisch bedingt deine IP-Adresse und Browser-Angaben. Die Schrift Poppins wird dagegen direkt von slopgames.ch geladen, nicht von Google.</p>
       </section>
       <section class="card">
-        <h2>7. Gespeichert in deinem Browser</h2>
+        <h2>8. Gespeichert in deinem Browser</h2>
         <ul>
           <li><code>slope.stats</code> (localStorage): deine Bewegungsminuten pro Spiel für «Deine Bewegung» auf der Startseite.</li>
           <li><code>kurvenflitzer.code</code>, <code>skicross.code</code> (sessionStorage): der Raumcode, damit er beim Neuladen gleich bleibt. Wird beim Schliessen des Tabs gelöscht.</li>
@@ -80,15 +87,15 @@
         <p>Ausser der Anmeldesitzung bleiben diese Angaben auf deinem Gerät und werden nicht übertragen. Du kannst sie jederzeit über die Browser-Einstellungen («Websitedaten löschen») entfernen.</p>
       </section>
       <section class="card">
-        <h2>8. Bekanntgabe ins Ausland</h2>
-        <p>GitHub, Google und Supabase sind US-Firmen, die Konto-Daten liegen in London; die Server von jsDelivr und PeerJS stehen weltweit. Dabei können technische Daten wie deine IP-Adresse in Länder gelangen, deren Datenschutz nicht dem schweizerischen entspricht. Die Anbieter stützen sich dafür auf eigene Garantien wie Standardvertragsklauseln.</p>
+        <h2>9. Bekanntgabe ins Ausland</h2>
+        <p>GitHub, Google, Supabase und Stripe sind US-Firmen bzw. gehören zu US-Gruppen, die Konto-Daten liegen in London; die Server von jsDelivr und PeerJS stehen weltweit. Dabei können technische Daten wie deine IP-Adresse in Länder gelangen, deren Datenschutz nicht dem schweizerischen entspricht. Die Anbieter stützen sich dafür auf eigene Garantien wie Standardvertragsklauseln.</p>
       </section>
       <section class="card">
-        <h2>9. Deine Rechte</h2>
+        <h2>10. Deine Rechte</h2>
         <p>Du kannst Auskunft verlangen, ob und welche Daten über dich bearbeitet werden, und deren Berichtigung oder Löschung verlangen. Ohne Konto speichert Slop Games selbst nichts über dich. Mit Konto siehst du alles Gespeicherte in deinem Profil und unter «Deine Bewegung» und kannst es dort löschen. Bei Fragen schreib an die Adresse im <a href="impressum.html">Impressum</a>. Du kannst dich auch beim Eidgenössischen Datenschutz- und Öffentlichkeitsbeauftragten (EDÖB) beschweren.</p>
       </section>
       <section class="card">
-        <h2>10. Änderungen</h2>
+        <h2>11. Änderungen</h2>
         <p>Kommen neue Spiele oder Dienste dazu, wird diese Erklärung angepasst. Es gilt die Fassung auf dieser Seite.</p>
       </section>
       </div>
