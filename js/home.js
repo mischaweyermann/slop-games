@@ -16,23 +16,19 @@ let user = null;
 function showAvatar(cfg) {
   const c = sanitize(cfg || DEFAULT_CONFIG);
   $('profAv').innerHTML = avatarSvg(c, { body: false });
+  if ($('profFig')) $('profFig').innerHTML = avatarSvg(c, { body: true });
   const nav = $('railProfil');
   if (nav) nav.innerHTML = `<span class="rail-av">${avatarSvg(c, { body: false })}</span>`;
 }
 function showProfile() {
   const name = profile.nickname;
   $('profTitle').textContent = name ? `Hallo, ${name}!` : 'Dein Profil';
+  const hello = $('helloName'); if (hello) hello.textContent = name || 'schön bist du da';
   $('profMail').textContent = user ? `Angemeldet mit ${user.email}` : '';
   showAvatar(profile.character);
 }
 
-let editor = null, draft = null;
-function setupProfileEditor() {
-  draft = sanitize(profile.character || DEFAULT_CONFIG);
-  $('profNick').value = profile.nickname || '';
-  if (!editor) editor = createEditor($('profEditor'), draft, (cfg) => { draft = cfg; $('profAv').innerHTML = avatarSvg(cfg, { body: false }); $('profMsg').textContent = ''; }, { owned: ownedSkins, onLocked: () => { location.hash = '#garderobe'; } });
-  else editor.set(draft);
-}
+function setupNameField() { $('profNick').value = profile.nickname || ''; }
 function note(el, text, kind) { el.textContent = text || ''; el.className = 'note' + (kind ? ' ' + kind : ''); }
 
 $('profSave').addEventListener('click', async () => {
@@ -40,8 +36,8 @@ $('profSave').addEventListener('click', async () => {
   if (!nick) return note($('profMsg'), 'Bitte gib einen Namen ein.', 'err');
   $('profSave').disabled = true;
   try {
-    await A.saveProfile({ nickname: nick, character: draft });
-    profile = { ...profile, nickname: nick, character: draft };
+    await A.saveProfile({ nickname: nick });
+    profile = { ...profile, nickname: nick };
     showProfile();
     note($('profMsg'), 'Gespeichert – gilt ab sofort in allen Spielen.', 'ok');
   } catch (e) { note($('profMsg'), A.niceError(e), 'err'); }
@@ -89,7 +85,7 @@ function welcome() {
     try {
       await A.saveProfile({ nickname: nick, character: cfg });
       profile = { ...profile, nickname: nick, character: cfg };
-      showProfile(); setupProfileEditor();
+      showProfile(); setupNameField(); setFigure(cfg, false);
       dlg.close();
     } catch (e) { $('wErr2').textContent = A.niceError(e); $('wErr2').hidden = false; }
     finally { $('wDone').disabled = false; }
@@ -145,18 +141,20 @@ window.renderStats = renderStats;
 
 /* ---------------- Start ---------------- */
 async function init() {
+  applyGames(false).catch(() => document.documentElement.classList.remove('g-wait'));
   user = await A.currentUser().catch(() => null);
   if (!user) return; // gate.js leitet zur Anmeldung weiter
   try { profile = (await A.getProfile()) || profile; } catch { /* trotzdem weiter */ }
   showProfile();
-  setupProfileEditor();
+  setupNameField();
+  setupFigureEditor();
   if (!profile.nickname) welcome();
   const admin = await A.isAdmin().catch(() => false);
   await applyGames(admin);
   if (admin) {
     $('railAdmin').hidden = false;
     const ad = await import('./admin.js');
-    ad.initAdmin({ user, games, onGames: () => applyGames(true) });
+    ad.initAdmin({ user, games, onGames: () => applyGames(true, true) });
     addEventListener('hashchange', () => { if (location.hash === '#admin') ad.refreshAdmin(games); });
   } else {
     const noAdmin = () => { if (location.hash === '#admin') location.hash = '#start'; };
@@ -177,7 +175,35 @@ const ERR = {
   gems_only: 'Dieses Teil gibt es nur mit Juwelen.',
   login: 'Bitte melde dich nochmals an.',
 };
-const myCfg = () => sanitize(profile.character || DEFAULT_CONFIG);
+let live = null; // was gerade im Editor eingestellt ist
+const myCfg = () => sanitize(live || profile.character || DEFAULT_CONFIG);
+let gEditor = null, saveT = 0, itemsT = 0;
+function setupFigureEditor() {
+  live = sanitize(profile.character || DEFAULT_CONFIG);
+  if (gEditor) return gEditor.set(live);
+  gEditor = createEditor($('gdEditor'), live, (cfg) => { pick = null; setFigure(cfg, true); }, {
+    owned: ownedSkins,
+    onLocked: (id) => { pick = id; wdNote(''); renderWardrobe(); if (matchMedia('(max-width: 860px)').matches) $('gdFig').scrollIntoView({ behavior: 'smooth', block: 'center' }); },
+  });
+}
+// Figur übernehmen; mit autosave kurz warten und dann im Konto speichern
+function setFigure(cfg, autosave) {
+  live = sanitize(cfg);
+  if (gEditor) gEditor.set(live);
+  showAvatar(live);
+  renderStage(); // grosse Figur sofort, die Vorschaubilder kurz danach
+  clearTimeout(itemsT); itemsT = setTimeout(renderWardrobe, 350);
+  if (!autosave) return;
+  clearTimeout(saveT);
+  wdNote('');
+  saveT = setTimeout(async () => {
+    try {
+      await A.saveProfile({ character: live });
+      profile = { ...profile, character: live };
+      wdNote('Gespeichert – gilt in allen Spielen.', 'ok');
+    } catch (e) { wdNote(A.niceError(e), 'err'); }
+  }, 700);
+}
 const withItem = (s) => ({ ...myCfg(), [s.slot]: s.value });
 const fmtN = (n) => Number(n || 0).toLocaleString('de-CH');
 function priceHtml(s) {
@@ -233,7 +259,7 @@ async function buy(s, currency, b) {
   try {
     wallet = await A.buySkin(s.id, currency);
     ownedSkins.add(s.id);
-    if (editor) editor.setOwned(ownedSkins);
+    if (gEditor) gEditor.setOwned(ownedSkins);
     renderWallet();
     await equip(s, true, null);
     wdNote(`${s.name} gehört jetzt dir und ist angezogen.`, 'ok');
@@ -243,11 +269,12 @@ async function equip(s, on, b) {
   if (b) b.disabled = true;
   const cfg = { ...myCfg(), [s.slot]: on ? s.value : BASE[s.slot] };
   try {
+    clearTimeout(saveT);
     await A.saveProfile({ character: cfg });
     profile = { ...profile, character: cfg };
-    showProfile(); setupProfileEditor();
+    if (on) pick = null;
+    setFigure(cfg, false);
     if (b) wdNote(on ? `${s.name} angezogen – gilt in allen Spielen.` : `${s.name} ausgezogen.`, 'ok');
-    renderWardrobe();
   } catch (e) { wdNote(A.niceError(e), 'err'); if (b) b.disabled = false; }
 }
 $('gdItems').addEventListener('click', (e) => {
@@ -257,7 +284,7 @@ $('gdItems').addEventListener('click', (e) => {
 async function initWardrobe() {
   try { [skins, ownedSkins] = await Promise.all([A.loadSkins(), A.loadOwnedSkins()]); } catch { skins = []; }
   skins = skins.filter((s) => SHOP[s.id]); // nur Teile, die diese Version zeichnen kann
-  if (editor) editor.setOwned(ownedSkins);
+  if (gEditor) gEditor.setOwned(ownedSkins);
   renderWardrobe();
 }
 
@@ -291,8 +318,11 @@ async function applyShop(admin) {
 
 /* ---------------- Ausgeblendete Spiele ---------------- */
 let games = [];
-async function applyGames(admin) {
-  try { games = await A.loadGames(); } catch { return; }
+const gamesReady = A.loadGames().catch(() => null); // sofort laden, nicht erst nach dem Profil
+async function applyGames(admin, fresh = false) {
+  const list = fresh ? await A.loadGames().catch(() => null) : await gamesReady;
+  if (!list) { document.documentElement.classList.remove('g-wait'); return; }
+  games = list;
   const hidden = new Set(games.filter((g) => !g.visible).map((g) => g.id));
   document.querySelectorAll('[data-game]').forEach((el) => {
     if (el.closest('#aGames')) return;
@@ -301,5 +331,6 @@ async function applyGames(admin) {
     else el.hidden = off;
   });
   if (typeof window.showSlide === 'function') window.showSlide(0);
+  document.documentElement.classList.remove('g-wait');
 }
 init();

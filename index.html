@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="de" class="g-wait">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -74,7 +74,7 @@
     .prof-head { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
     .prof-av { width: 88px; height: 88px; border-radius: 50%; background: var(--wine-500); overflow: hidden; flex: none; }
     .prof-av svg, .prof-av img { width: 100%; height: 100%; display: block; }
-    .prof-grid { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); align-items: start; }
+    .prof-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
     .prof-grid .card { display: flex; flex-direction: column; gap: 14px; }
     .prof-grid h3 { margin: 0; }
     /* Garderobe */
@@ -105,6 +105,11 @@
     .wd-badge.excl { background: #9fd6ef; color: #12384a; }
     .wd-badge.on { background: #7fd18b; color: #123a1a; }
     .wd-foot { margin-top: 18px; }
+    .wd-right { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+    .wd-right .card h3 { margin: 0 0 12px; }
+    .wd-sub { margin: 10px 0 0; font-size: 20px; font-weight: 600; color: #fff; }
+    .prof-fig { display: flex; align-items: center; gap: 14px; }
+    .prof-fig-av { width: 96px; height: 96px; flex: none; border-radius: 22px; background: var(--wine-800); overflow: hidden; }
     @media (max-width: 860px) { .wd-grid { grid-template-columns: 1fr; } .wd-stage { position: static; } .wd-fig { max-width: 320px; margin: 0 auto; width: 100%; } }
     .prof-side { display: flex; flex-direction: column; gap: inherit; min-width: 0; }
     .wallet { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -137,6 +142,8 @@
     @media (max-width: 980px) { .prof-grid { grid-template-columns: 1fr; } }
     /* Ausgeblendete Spiele / Admin */
     .hero[hidden], .game[hidden], .tile[hidden], .dots button[hidden], .rail a.nav[hidden] { display: none !important; }
+    /* Bis die Datenbank bestätigt, welche Spiele sichtbar sind, keine Spiele zeigen (sonst blitzen ausgeblendete auf) */
+    html.g-wait [data-game]:not(#aGames *) { visibility: hidden !important; }
     .off-game { outline: 2px dashed var(--mute); outline-offset: 3px; }
     .adm-bars { display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); gap: 4px; align-items: end; height: 170px; margin-top: 14px; }
     .adm-bars div { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; min-width: 0; }
@@ -390,9 +397,8 @@
 
     <main>
       <div class="top">
-        <div class="top-left"><p class="hello"><span id="greet">Hallo</span>, <b>schön bist du da</b></p></div>
+        <div class="top-left"><p class="hello"><span id="greet">Hallo</span>, <b id="helloName">schön bist du da</b></p></div>
         <div class="top-right">
-          <span class="badge">Gratis starten · <b>ohne App</b> · für jeden Fernseher</span>
           <button class="fs" id="fsBtn" type="button" aria-label="Vollbild"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
         </div>
       </div>
@@ -561,7 +567,7 @@
       <!-- ===== Garderobe ===== -->
       <div class="view" data-view="garderobe">
         <div class="wd-head">
-          <div><h1 class="page-title">Garderobe</h1><p class="page-lead">Neue Teile für deine Figur – mit erspielten Münzen oder mit Juwelen. Antippen zum Anprobieren.</p></div>
+          <div><h1 class="page-title">Garderobe</h1><p class="page-lead">Stell deine Figur ein und hol dir neue Teile – mit erspielten Münzen oder mit Juwelen. Änderungen werden automatisch gespeichert.</p></div>
           <div class="wd-wallet" aria-label="Dein Guthaben"><span><i class="coin" aria-hidden="true"></i><b id="gdCoins">0</b> Münzen</span><span><i class="gem" aria-hidden="true"></i><b id="gdGems">0</b> Juwelen</span></div>
         </div>
         <div class="wd-grid">
@@ -572,7 +578,14 @@
             <div class="wd-actions" id="gdActions"></div>
             <p class="note" id="gdMsg" role="status"></p>
           </section>
-          <div class="wd-items" id="gdItems"></div>
+          <div class="wd-right">
+            <section class="card">
+              <h3>Figur anpassen</h3>
+              <div class="prof-ed" id="gdEditor"></div>
+            </section>
+            <h2 class="wd-sub">Neu in der Garderobe</h2>
+            <div class="wd-items" id="gdItems"></div>
+          </div>
         </div>
         <p class="note wd-foot">Münzen gibt es fürs Spielen: pro halbe Minute eine, dazu Bonus für Siege und Podestplätze, bis 200 pro Tag. Gekaufte Teile findest du danach auch im Figuren-Editor im Profil und auf dem Handy.</p>
       </div>
@@ -581,15 +594,18 @@
       <div class="view" data-view="profil">
         <div class="prof-head">
           <span class="prof-av" id="profAv"></span>
-          <div><h1 class="page-title" id="profTitle">Dein Profil</h1><p class="page-lead" id="profLead">Name und Figur gelten in allen Spielen.</p></div>
+          <div><h1 class="page-title" id="profTitle">Dein Profil</h1><p class="page-lead" id="profLead">Dein Name und deine Figur gelten in allen Spielen.</p></div>
         </div>
         <div class="grid2 prof-grid">
           <section class="card">
-            <h3>Name und Figur</h3>
+            <h3>Name</h3>
             <label class="prof-field"><span>Dein Name im Spiel</span><input id="profNick" maxlength="14" autocomplete="nickname" spellcheck="false"></label>
-            <div class="prof-ed" id="profEditor"></div>
             <button class="pill" id="profSave" type="button">Speichern</button>
             <p class="note" id="profMsg" role="status"></p>
+            <hr class="sep">
+            <h3>Figur</h3>
+            <div class="prof-fig"><span class="prof-fig-av" id="profFig"></span><p class="note">Frisur, Kleider, Farben und neue Teile stellst du in der Garderobe ein – dort siehst du deine Figur live.</p></div>
+            <a class="pill" href="#garderobe" style="text-decoration:none">Zur Garderobe</a>
           </section>
           <div class="prof-side">
           <section class="card">
@@ -694,7 +710,9 @@
     const $ = (id) => document.getElementById(id);
     // Begrüssung nach Tageszeit
     const h = new Date().getHours();
-    $('greet').textContent = h < 11 ? 'Guten Morgen' : h < 18 ? 'Guten Tag' : 'Guten Abend';
+    $('greet').textContent = h < 11 ? 'Guten Morgen' : h < 17 ? 'Guten Mittag' : 'Guten Abend';
+    // Name sofort aus dem letzten Besuch, home.js aktualisiert ihn aus dem Profil
+    try { const n = localStorage.getItem('slop.name'); if (n) $('helloName').textContent = n; } catch { /* */ }
 
     // Seiten wechseln (#start, #spiele, #so, #bewegung, #profil)
     const VIEWS = ['start', 'spiele', 'so', 'bewegung', 'garderobe', 'profil', 'admin'];
