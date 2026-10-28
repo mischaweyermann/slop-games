@@ -1,4 +1,5 @@
-// Slop Games – Handy-Seite (Kurvenflitzer)
+// Slop Games – Handy-Seite für alle Spiele (Kamera + Körpererkennung, Spieler-Karten).
+// Spiel-eigene Texte kommen aus GAMES (Spiel über ?g=…).
 // Kamera -> MediaPipe Pose (läuft komplett auf dem Handy) -> Körperpunkte per WebRTC an den TV.
 
 import { createEditor, loadConfig, saveConfig, sanitize, PRESETS } from './character.js';
@@ -21,12 +22,32 @@ const tracker = new MultiTracker(4);
 const BONES = [[11, 12], [11, 13], [13, 15], [12, 14], [14, 16], [11, 23], [12, 24], [23, 24], [23, 25], [25, 27], [24, 26], [26, 28], [15, 19], [16, 20]];
 
 const params = new URLSearchParams(location.search);
+// Texte je Spiel – neue Spiele hier eintragen
+const GAMES = {
+  rennen: {
+    title: 'Kurvenflitzer', intro: 'Das Handy wird zur Kamera. Stell es vor dich, sodass es deinen Oberkörper und beide Hände sieht – im Sitzen geht das prima.',
+    far: 'Setz dich so hin, dass Oberkörper und beide Hände im Bild sind.',
+    pose: 'Hände vor die Brust wie an ein Lenkrad und still halten',
+    play: ['Rennen läuft! 🏎️', 'Dreh das unsichtbare Lenkrad. Beide Arme runter = Item werfen.'],
+    queued: 'Das aktuelle Rennen läuft noch – du fährst beim nächsten mit.',
+    results: ['Im Ziel!', 'Beide Hände über den Kopf für ein neues Rennen.'],
+    result: (m) => [m.score === 1 ? '🏆 Sieg!' : `Platz ${m.score}!`, 'Beide Hände über den Kopf für ein neues Rennen.'],
+  },
+  box: {
+    title: 'Boxring', intro: 'Das Handy wird zur Kamera. Stell es 2–3 m vor dich (zu zweit: nebeneinander), sodass es euch ganz sieht.',
+    far: 'Stell dich so hin, dass dich die Kamera vom Kopf bis (beim Kickboxen) zu den Füssen sieht.',
+    pose: 'Fäuste vors Gesicht halten (Deckung)',
+    play: ['Kampf läuft! 🥊', 'Fäuste vors Gesicht = Deckung, zur Seite lehnen = ausweichen, zuschlagen!'],
+    queued: 'Der Kampf läuft noch – du bist beim nächsten dabei.',
+    results: ['Kampf vorbei!', 'Beide Fäuste hoch über den Kopf für einen neuen Kampf.'],
+    result: (m) => [m.score === 1 ? '🏆 Gewonnen!' : 'Knapp verloren!', 'Beide Fäuste hoch über den Kopf für einen neuen Kampf.'],
+  },
+};
+const GAME_ID = GAMES[params.get('g')] ? params.get('g') : 'rennen';
+const G = GAMES[GAME_ID];
 const TXT = {
-  far: 'Setz dich so hin, dass Oberkörper und beide Hände im Bild sind.',
-  play: ['Rennen läuft! 🏎️', 'Dreh das unsichtbare Lenkrad. Beide Arme runter = Item werfen.'],
-  results: ['Im Ziel!', 'Beide Hände über den Kopf für ein neues Rennen.'],
-  ready: ['Fast bereit!', 'Unten bei «Spieler» Name und Fahrer wählen und «Bereit» drücken. Danach am TV die Hände ans Lenkrad.'],
-  result: (m) => [m.score === 1 ? '🏆 Sieg!' : `Platz ${m.score}!`, 'Beide Hände über den Kopf für ein neues Rennen.'],
+  ...G,
+  ready: ['Fast bereit!', `Unten bei «Spieler» Name und Figur wählen und «Bereit» drücken. Danach am TV: ${G.pose}.`],
 };
 const ui = {
   codeInput: $('codeInput'), startBtn: $('startBtn'), setupError: $('setupError'),
@@ -95,7 +116,7 @@ ui.startBtn.addEventListener('click', async () => {
   diag('dgCam', 'ok', 'läuft');
   ui.setup.hidden = true; ui.running.hidden = false;
   document.getElementById('running').prepend(document.getElementById('diag'));
-  history.replaceState(null, '', '?c=' + code + '&g=rennen' + (params.get('peer') ? '&peer=' + params.get('peer') : ''));
+  history.replaceState(null, '', '?c=' + code + '&g=' + GAME_ID + (params.get('peer') ? '&peer=' + params.get('peer') : ''));
   running = true;
   keepAwake();
   connect();
@@ -137,6 +158,7 @@ async function loadModel() {
 let lastTs = -1, fpsN = 0, fpsT = performance.now(), slowCheckAt = Infinity, lastFps = 30;
 
 const filters = IDX.map(() => [new OneEuro(), new OneEuro()]);
+const zf = IDX.map(() => new OneEuro(1, 4));
 const r3 = (v) => Math.round(v * 1000) / 1000;
 
 function loop() {
@@ -174,14 +196,15 @@ function handle(res) {
   if (visible !== bodySeen) { bodySeen = !!visible; check('chkBody', bodySeen); updateMessage(); }
 
   if (lm) {
-    const k = [], t = performance.now();
+    const k = [], z = [], t = performance.now();
     // Glätten und spiegeln (1 - x), damit der TV wie ein Spiegel wirkt
     IDX.forEach((i, n) => {
       const p = lm[i];
       const x = filters[n][0].filter(p.x, t), y = filters[n][1].filter(p.y, t);
       k.push(r3(1 - x), r3(y), Math.round((p.visibility ?? 1) * 100) / 100);
+      z.push(r3(zf[n].filter(p.z ?? 0, t)));
     });
-    send({ t: 'p', k, w: v.videoWidth, h: v.videoHeight });
+    send({ t: 'p', k, z, w: v.videoWidth, h: v.videoHeight });
     if (previewOn) drawSkeleton(lm);
   } else if (performance.now() - lastNoneSent > 300) {
     filters.forEach((f) => { f[0].reset(); f[1].reset(); });
@@ -199,7 +222,7 @@ function handleMulti(res) {
   if (seen !== bodySeen) { bodySeen = seen; check('chkBody', bodySeen); updateMessage(); }
   if (tracks.length || t - lastMultiSent > 300) {
     lastMultiSent = t;
-    send({ t: 'mp', ps: tracks.map((tr) => ({ id: tr.id, k: tracker.points(tr, t) })), w: v.videoWidth, h: v.videoHeight });
+    send({ t: 'mp', ps: tracks.map((tr) => ({ id: tr.id, k: tracker.points(tr, t), z: tracker.depth(tr, t) })), w: v.videoWidth, h: v.videoHeight });
   }
   if (previewOn) for (const tr of tracks) {
     const info = players.find((q) => q.id === tr.id);
@@ -360,7 +383,7 @@ let fxTimer = 0;
 function updateMessage() {
   if (!conn) return message('Verbinde mit dem Fernseher …', `Code ${code} – die TV-Seite muss offen sein.`);
   if (!bodySeen) return message('Ich sehe dich noch nicht', TXT.far);
-  if (tvState === 'queued') return message('Du bist dabei! 🎉', 'Das aktuelle Rennen läuft noch – du fährst ab dem nächsten Rennen mit.');
+  if (tvState === 'queued') return message('Du bist dabei! 🎉', TXT.queued);
   if (tvState === 'play') return message(...TXT.play);
   if (tvState === 'countdown') return message('Achtung, fertig …', 'Gleich geht’s los!');
   if (tvState === 'results') return message(...TXT.results);
@@ -450,9 +473,9 @@ function renderPlayers(list) {
     if (document.activeElement !== name) { name.value = q.name; c.name = q.name; }
     if (!c.editor || c.editorEl.hidden) c.cfg = sanitize(q.cfg);
     drawAvatar(c);
-    // Ablauf: 1. einstellen + «Bereit» drücken  2. am TV Hände ans Lenkrad  3. bereit
-    const step = q.ready ? 'Bereit! Gleich geht’s los 🏁' : q.ok ? 'Jetzt am TV: Hände vor die Brust wie an ein Lenkrad und still halten' : 'Name und Fahrer wählen, dann «Bereit» drücken';
-    el.querySelector('.pc-step').textContent = tvState === 'play' || tvState === 'countdown' ? 'Fährt mit 🏎️' : step;
+    // Ablauf: 1. einstellen + «Bereit» drücken  2. am TV Startpose halten (je Spiel)  3. bereit
+    const step = q.ready ? 'Bereit! Gleich geht’s los 🏁' : q.ok ? `Jetzt am TV: ${G.pose}` : 'Name und Figur wählen, dann «Bereit» drücken';
+    el.querySelector('.pc-step').textContent = tvState === 'play' || tvState === 'countdown' ? 'Spielt mit 🎮' : step;
     el.querySelector('.pc-bar').hidden = !q.ok || q.ready;
     el.querySelector('.pc-bar i').style.width = Math.round((q.fill || 0) * 100) + '%';
     const ok = el.querySelector('.pc-ok');
@@ -486,10 +509,11 @@ async function switchToLite() {
   } catch (e) { console.warn('Lite-Modell nicht verfügbar', e); }
 }
 
-// Einleitungstext
+// Einleitungstext + Titel je Spiel
 {
+  document.title = `${G.title} · Handy`;
   const p = document.querySelector('.hero > p');
-  if (p) p.textContent = 'Das Handy wird zur Kamera. Stell es vor dich, sodass es deinen Oberkörper und beide Hände sieht – im Sitzen geht das prima.';
+  if (p) p.textContent = G.intro;
 }
 
 // Test-Hilfe (Konsole)

@@ -1,0 +1,101 @@
+/* Gemeinsame Spiel-Stile für alle Slop-Games-Spiele (Lobby mit Spielerplätzen, Banner, Resultate, Kamera-Vorschau, Hinweise).
+   Ergänzt css/tv.css. Spiel-eigene Stile liegen im Ordner des jeweiligen Spiels. */
+
+/* ---------- Startbildschirm / Startaufstellung ---------- */
+.lobby.kf {
+  display: grid; grid-template-columns: minmax(0, 1fr) calc(40 * var(--u)); gap: 4vw; align-items: center;
+  background: linear-gradient(90deg, rgba(42, 14, 17, .94) 0%, rgba(42, 14, 17, .82) 55%, rgba(42, 14, 17, .5) 100%);
+}
+.kf-main { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+.kf .logo { font-size: calc(8.4 * var(--u)); margin-top: calc(1.2 * var(--u)); }
+.kf .logo .word { display: inline; }
+.kf .tagline { margin-bottom: calc(2.8 * var(--u)); }
+
+.slots { width: 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: calc(1.6 * var(--u)); }
+.slot {
+  background: var(--wine-600); border-radius: calc(2.8 * var(--u)); padding: calc(1.8 * var(--u)) calc(1.4 * var(--u));
+  display: flex; flex-direction: column; align-items: center; gap: calc(1 * var(--u)); text-align: center;
+  border: 2px solid transparent; min-height: calc(21 * var(--u)); justify-content: center;
+  transition: border-color .3s, transform .3s;
+}
+.slot.ready { border-color: var(--green); }
+.slot.new { animation: bump .5s cubic-bezier(.3, 1.6, .5, 1); }
+.slot.empty { background: transparent; border: 2px dashed var(--wine-500); }
+.slot .av {
+  width: calc(8 * var(--u)); height: calc(8 * var(--u)); border-radius: 50%; border: calc(.45 * var(--u)) solid var(--text);
+  background: var(--c); display: grid; place-items: center; position: relative;
+}
+.slot .av svg { width: 70%; height: 70%; }
+.slot .src { position: absolute; right: -6%; bottom: -6%; width: 40%; height: 40%; border-radius: 50%; background: var(--wine-800); display: grid; place-items: center; }
+.slot .src svg { width: 62%; height: 62%; }
+.slot.empty .av { background: var(--wine-600); border: 0; }
+.slot b { font-size: calc(2 * var(--u)); font-weight: 600; color: #fff; }
+.slot.empty b { color: var(--text-mute); }
+.slot .st { font-size: calc(1.4 * var(--u)); color: var(--text-soft); line-height: 1.35; }
+.slot.ready .st { color: var(--green); font-weight: 600; }
+.slot .bar { width: 100%; height: calc(.9 * var(--u)); border-radius: 99px; background: var(--wine-800); overflow: hidden; }
+.slot .bar i { display: block; height: 100%; width: 0; background: var(--cream); transition: width .1s linear; }
+.slot.ready .bar i { background: var(--green); }
+
+.kf-actions { display: flex; flex-wrap: wrap; gap: calc(1 * var(--u)); margin-top: calc(1.4 * var(--u)); }
+.kf-actions button.ghost.on { background: var(--coral); }
+
+
+.pbanner, .banner {
+  position: absolute; left: 50%; top: 30%; transform: translate(-50%, -50%) rotate(-3deg);
+  font-weight: 800; font-size: calc(5.4 * var(--u)); white-space: nowrap;
+  color: var(--wine-600); background: var(--cream); border-radius: calc(2.2 * var(--u));
+  padding: calc(.6 * var(--u)) calc(3.4 * var(--u)) calc(.9 * var(--u));
+  box-shadow: 0 calc(.8 * var(--u)) 0 var(--coral-dark), 0 calc(2 * var(--u)) calc(4 * var(--u)) rgba(42, 14, 17, .35);
+  opacity: 0; pointer-events: none;
+}
+.banner { font-size: calc(8 * var(--u)); top: 36%; }
+.pbanner.bang, .banner.bang { background: var(--coral); color: #fff; box-shadow: 0 calc(.8 * var(--u)) 0 var(--wine-800), 0 calc(2 * var(--u)) calc(4 * var(--u)) rgba(42, 14, 17, .35); }
+.pbanner.pop, .banner.pop { animation: banner 1.4s cubic-bezier(.2, 1.2, .4, 1) both; }
+.pbanner.quick { animation-duration: .8s; }
+@keyframes banner {
+  0% { transform: translate(-50%, -50%) rotate(-3deg) scale(.3); opacity: 0; }
+  18% { transform: translate(-50%, -50%) rotate(-3deg) scale(1.08); opacity: 1; }
+  75% { transform: translate(-50%, -50%) rotate(-3deg) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -80%) rotate(-3deg) scale(1); opacity: 0; }
+}
+
+
+/* Resultate */
+.results { left: 50%; width: calc(64 * var(--u)); transform: translate(-50%, -46%) scale(.94); }
+.results.show { transform: translate(-50%, -50%); }
+.podium { display: grid; gap: calc(.8 * var(--u)); margin: calc(2 * var(--u)) 0 calc(1.6 * var(--u)); text-align: left; max-height: 56vh; overflow: hidden; }
+.podium div {
+  display: flex; align-items: center; gap: calc(1.4 * var(--u));
+  background: var(--wine-600); border-radius: calc(1.8 * var(--u)); padding: calc(.9 * var(--u)) calc(1.8 * var(--u));
+  font-size: calc(2 * var(--u)); font-weight: 600; color: #fff;
+}
+.podium div:first-child { background: var(--coral-2); }
+.podium div.me { box-shadow: 0 0 0 3px var(--cream); }
+.podium .place { font-size: 1.4em; font-weight: 800; width: 1.6em; }
+.podium .dot { width: 1.2em; height: 1.2em; border-radius: 50%; background: var(--c); border: 2px solid var(--text); }
+.podium .t { margin-left: auto; color: var(--text-soft); font-variant-numeric: tabular-nums; font-weight: 500; }
+.podium div:first-child .t { color: #fff; }
+.podium .who { font-size: .72em; color: var(--text-mute); font-weight: 500; }
+.podium div:first-child .who { color: #fde9e6; }
+.results-hint { margin-top: calc(1 * var(--u)); font-size: calc(1.7 * var(--u)); color: var(--text-soft); }
+
+/* Laptop-Kamera Vorschau */
+.cam-pip {
+  position: absolute; left: calc(2.4 * var(--u)); bottom: calc(7.5 * var(--u));
+  width: calc(22 * var(--u)); aspect-ratio: 4 / 3; border-radius: calc(2 * var(--u)); overflow: hidden;
+  background: var(--wine-900); box-shadow: var(--shadow); border: 3px solid var(--text); z-index: 2;
+}
+.cam-pip video, .cam-pip canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.cam-pip[hidden] { display: none; }
+
+.toast {
+  position: absolute; left: 50%; bottom: calc(10 * var(--u)); transform: translate(-50%, 20px);
+  background: var(--cream); color: var(--wine-600); font-weight: 600; font-size: calc(1.9 * var(--u));
+  border-radius: 999px; padding: calc(1 * var(--u)) calc(2.6 * var(--u)); opacity: 0; transition: opacity .3s, transform .3s; white-space: nowrap;
+  box-shadow: 0 6px 0 var(--cream-dark);
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+
+.corner, .status { transition: opacity .4s; }

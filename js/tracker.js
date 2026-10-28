@@ -43,11 +43,15 @@ export class MultiTracker {
     }
     dets.forEach((d, di) => {
       if (usedD.has(di) || this.tracks.length >= this.max) return;
-      this.tracks.push({ id: this.nextId++, cx: d.cx, cy: d.cy, sw: d.sw, first: t, seen: t, lm: d.lm, filters: IDX.map(() => [new OneEuro(), new OneEuro()]) });
+      this.tracks.push({ id: this.nextId++, cx: d.cx, cy: d.cy, sw: d.sw, first: t, seen: t, lm: d.lm, filters: IDX.map(() => [new OneEuro(), new OneEuro(), new OneEuro(1, 4)]) });
     });
     // wer zu lange fehlt, wird vergessen (kommt die Person zurück, bekommt sie eine neue ID)
     this.tracks = this.tracks.filter((tr) => t - tr.seen < this.lostMs);
     return this.tracks.filter((tr) => tr.seen === t && t - tr.first >= this.stableMs);
+  }
+  // Tiefe (MediaPipe-z, kleiner = näher an der Kamera) – fürs Boxen: Schläge und Tritte zur Kamera hin
+  depth(tr, t) {
+    return IDX.map((i, n) => Math.round(tr.filters[n][2].filter(tr.lm[i].z ?? 0, t) * 1000) / 1000);
   }
   // Geglättete, gespiegelte Körperpunkte [x, y, sichtbar, …] für eine Person
   points(tr, t, mirror = true) {

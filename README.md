@@ -5,9 +5,24 @@ Gratis Bewegungsspiele für den Fernseher. Das Handy ist die Kamera, der Körper
 | Pfad | Inhalt |
 |---|---|
 | `/` | Startseite: Start, Spiele, So funktioniert’s, Deine Bewegung (Seiten über die Leiste links) |
-| `/kurvenflitzer/` | 🏎️ Kurvenflitzer (1–4 Spieler am gleichen TV) |
-| `/controller.html` | Handy-Seite (Kamera + Körpererkennung) |
-| `js/`, `css/` | Gemeinsamer Code (Sound, Charakter, Handy-Seite, Stile) |
+| `/kurvenflitzer/` | 🏎️ Kurvenflitzer – Go-Kart-Rennen (1–4 Spieler am gleichen TV) |
+| `/boxring/` | 🥊 Boxring – Boxen & Kickboxen (1–2 Spieler, allein gegen die KI) |
+| `/controller.html?g=…` | Handy-Seite für **alle** Spiele (Kamera, Körpererkennung, Spieler-Karten) |
+| `js/`, `css/` | Gemeinsamer Plattform-Code (siehe unten) |
+
+### Plattform vs. Spiel
+Gemeinsam für alle Spiele (nichts davon ist an ein Spiel gebunden):
+
+| Datei | Aufgabe |
+|---|---|
+| `controller.html`, `js/controller.js`, `css/controller.css` | Handy: Kamera, MediaPipe, mehrere Personen, Name/Figur, «Bereit». Texte je Spiel in `GAMES` |
+| `js/tracker.js` | Mehrere Personen in einem Kamerabild unterscheiden, Glättung, Tiefe (z) |
+| `js/character.js`, `js/avatar2d.js`, `js/avatar3d.js` | Figuren-Daten, Editor, gezeichnete Figur (2D), Chibi-Figur (3D) |
+| `js/net.js`, `js/audio.js` | Verbindung (PeerJS), Klänge |
+| `css/tv.css`, `css/game.css` | Grundstil TV, Lobby mit Spielerplätzen, Banner, Resultate |
+| `index.html` | Startseite; Spiele-Liste + Statistik je Spiel in `GAMES` |
+
+Neues Spiel: eigener Ordner mit `index.html` + Spiel-Code, Eintrag in `GAMES` (Handy-Texte in `js/controller.js`, Statistik in `index.html`), Kachel auf der Startseite.
 
 Die Verbindung läuft direkt zwischen Handy und TV (WebRTC über den kostenlosen PeerJS-Vermittlungsserver). Das Kamerabild verlässt das Handy nie.
 
@@ -53,6 +68,17 @@ Der Bildschirm teilt sich automatisch (2 = nebeneinander, 3–4 = Viertel). Wer 
 ### Weitere Eingaben
 - **Kamera dieses Geräts** – z. B. Laptop-Webcam
 - **Tastatur** zum Testen: Spieler 1 mit ← →, Spieler 2 mit A / D, Leertaste = bereit, ↑ / W = Item-Menü & werfen, ↓ / S = zurück
+
+## 🥊 Boxring – `boxring/`
+
+Kampf im Ring, gesehen von der Seite. Die Figur folgt deinem Körper; was du Richtung Kamera machst, geht in der Figur nach vorne zum Gegner (MediaPipe liefert dafür die Tiefe).
+
+- **Kampfart in der Lobby:** *Boxen* (nur Arme, auch sitzend) oder *Kickboxen* (auch Tritte – ganzer Körper im Bild, stehend)
+- **Spieler:** 1 Person = gegen die KI, 2 Personen = gegeneinander (eigene Handys oder ein Handy für beide, nebeneinander stehen)
+- **Schlagen:** Faust schnell Richtung Kamera · **Deckung:** beide Fäuste vors Gesicht (Treffer machen kaum Schaden) · **Ausweichen:** Oberkörper zur Seite (Kopftreffer gehen daneben) · **Tritt:** Fuss schnell nach vorne oder Knie hoch
+- 100 Lebenspunkte, Runden à 60 s, wer zuerst 2 Runden gewinnt (K.O. oder mehr Lebenspunkte bei Zeitende). Kombos geben Bonus-Schaden.
+- **Start:** am Handy «Bereit», dann Fäuste vors Gesicht halten · **Neuer Kampf:** beide Fäuste über den Kopf
+- **Tastatur:** P1 `Q`/`E` schlagen, `W` Deckung, `A`/`D` ausweichen, `S` Tritt · P2 `U`/`O`, `I`, `J`/`L`, `K` · `Leertaste` bereit · `B`/`X` Boxen/Kickboxen
 
 ## Verbindung Handy ↔ TV
 

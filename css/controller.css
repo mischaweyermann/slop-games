@@ -142,7 +142,7 @@ button.secondary { font: 500 14px 'Poppins', sans-serif; color: #fff; background
 .pc-face svg { width: 100%; height: 100%; display: block; }
 .pc-more { width: 100%; }
 .pc-editor { overflow-x: hidden; }
-.pc-editor .ce-presets { display: none; } /* Fahrer stehen schon oben */
+.pc-editor .ce-presets { display: none; } /* Figuren stehen schon oben */
 .pc-status { display: grid; gap: 6px; font-size: 14px; color: var(--soft); line-height: 1.4; }
 .pcard.ok .pc-status { color: var(--cream); font-weight: 600; }
 .pcard.ready .pc-status { color: var(--green); }
