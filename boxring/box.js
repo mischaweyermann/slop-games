@@ -795,7 +795,8 @@ function showResults() {
     const acc = f.stats.thrown ? Math.round((f.stats.landed / f.stats.thrown) * 100) : 0;
     return `<div class="${f.player ? 'me' : ''}" style="--c:${P_COLORS[f.i]}"><span class="place">${i + 1}.</span><span class="dot" style="--c:${P_COLORS[f.i]}"></span>${esc(f.name)}<span class="who">${f.wins} Runde${f.wins === 1 ? '' : 'n'} · ${f.stats.landed} Treffer · ${acc}%</span><span class="t">${f.player ? '' : 'KI'}</span></div>`;
   }).join('');
-  for (const f of fighters) if (f.player) sendPhone(f.player.conn, { t: 'result', score: f === w ? 1 : 2 });
+  const nHum = fighters.filter((f) => f.player).length;
+  for (const f of fighters) if (f.player) sendPhone(f.player.conn, { t: 'result', score: f === w ? 1 : 2, game: 'boxring', id: f.player.conn && f.player.conn.__multi ? f.player.trackId : null, sec: Math.round(matchT), n: nHum, win: f === w });
   saveStats(w);
 }
 function saveStats(w) {

@@ -793,7 +793,8 @@ function showResults() {
   renderResults();
   locals.forEach((p) => {
     const place = standings().indexOf(p.racer) + 1;
-    sendPhone(p.conn, { t: 'result', score: place, record: place === 1, g: 'rennen' });
+    const mine = p.racer && p.racer.finished != null ? +p.racer.finished.toFixed(1) : null;
+    sendPhone(p.conn, { t: 'result', score: place, record: place === 1, g: 'rennen', game: 'kurvenflitzer', id: p.conn && p.conn.__multi ? p.trackId : null, sec: Math.round(raceT), n: locals.length, time: mine, win: place === 1 });
   });
 }
 function renderResults() {

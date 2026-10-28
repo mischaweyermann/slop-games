@@ -385,6 +385,7 @@ function onTv(msg) {
   else if (msg.t === 'ps') renderPlayers(msg.l || []);
   else if (msg.t === 'result') {
     message(...TXT.result(msg));
+    queueSave(msg);
   }
 }
 
@@ -527,3 +528,51 @@ async function switchToLite() {
 
 // Test-Hilfe (Konsole)
 window.__ctl = { renderPlayers, send: (m) => send(m), get conn() { return conn; } };
+
+/* ================================================================
+   Konto: angemeldet? Dann jede Runde dieses Handys speichern
+   ================================================================ */
+let acct = null, acctUser = null, saveBuf = [], saveTimer = 0, noteTimer = 0;
+function acctNote(text) {
+  const n = $('acctNote'); if (!n) return;
+  n.textContent = text; n.hidden = !text;
+  clearTimeout(noteTimer); if (text) noteTimer = setTimeout(() => { n.hidden = true; }, 8000);
+}
+async function renderAcct() {
+  const btn = $('acctBtn'); if (!btn) return;
+  if (!acct) { $('acctTitle').textContent = 'Konto'; $('acctSub').textContent = 'Gerade nicht erreichbar – du kannst trotzdem spielen.'; btn.hidden = true; return; }
+  const back = location.pathname.split('/').pop() + location.search;
+  if (!acctUser) {
+    $('acctTitle').textContent = 'Runden speichern?';
+    $('acctSub').textContent = 'Melde dich an, dann landen deine Minuten und Plätze in «Mein Bereich».';
+    btn.textContent = 'Anmelden'; btn.href = 'konto.html?next=' + encodeURIComponent(back); btn.hidden = false;
+    return;
+  }
+  let nick = '';
+  try { const p = await acct.getProfile(); nick = (p && p.nickname) || ''; } catch { /* */ }
+  $('acctTitle').textContent = 'Angemeldet' + (nick ? ' als ' + nick : '');
+  $('acctSub').textContent = multi ? 'Deine Runden werden gespeichert, wenn du allein vor der Kamera spielst.' : 'Deine Runden werden gespeichert.';
+  btn.textContent = 'Mein Bereich'; btn.href = 'konto.html'; btn.hidden = false;
+}
+function queueSave(msg) {
+  if (!msg || !msg.game) return;
+  saveBuf.push(msg);
+  clearTimeout(saveTimer); saveTimer = setTimeout(flushSave, 1200);
+}
+async function flushSave() {
+  const list = saveBuf; saveBuf = [];
+  if (!acct || !acctUser || !list.length) return;
+  // Bei mehreren Personen vor einer Kamera ist nicht klar, wer das Konto hat
+  if (list.length > 1) { acctNote('Mehrere Personen an diesem Handy – diese Runde wird nicht ins Konto gespeichert.'); return; }
+  const m = list[0];
+  try {
+    await acct.savePlay({ game: m.game, seconds: m.sec, place: m.score, players: m.n, finishTime: m.time, won: m.win });
+    acctNote('✓ Runde in deinem Konto gespeichert');
+  } catch { acctNote('Die Runde konnte nicht gespeichert werden.'); }
+}
+import('./account.js').then(async (m) => {
+  acct = m;
+  try { acctUser = await m.currentUser(); } catch { acctUser = null; }
+  renderAcct();
+  m.onAuth((u) => { acctUser = u; renderAcct(); });
+}).catch(() => renderAcct());

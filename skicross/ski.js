@@ -673,7 +673,8 @@ function showResults() {
   const best = list.find((r) => r.player);
   $('resultsTitle').textContent = list[0].player ? `🏆 ${list[0].name} gewinnt!` : best ? `${best.name}: Platz ${list.indexOf(best) + 1}` : 'Ziel!';
   $('podium').innerHTML = list.map((r, i) => `<div class="${r.player ? 'me' : ''}"><span class="place">${i + 1}.</span><span class="dot" style="--c:${P_COLORS[r.i]}"></span>${esc(r.name)}<span class="who">${r.player ? '' : 'KI'}</span><span class="t">${r.finished != null ? fmt(r.finished) : 'nicht im Ziel'}</span></div>`).join('');
-  for (const r of racers) if (r.player) sendPhone(r.player.conn, { t: 'result', score: list.indexOf(r) + 1 });
+  const nHum = racers.filter((r) => r.player).length;
+  for (const r of racers) if (r.player) sendPhone(r.player.conn, { t: 'result', score: list.indexOf(r) + 1, game: 'skicross', id: r.player.conn && r.player.conn.__multi ? r.player.trackId : null, sec: Math.round(raceT), n: nHum, time: r.finished != null ? +r.finished.toFixed(1) : null, win: list.indexOf(r) === 0 });
   saveStats(list);
 }
 function saveStats(list) {
