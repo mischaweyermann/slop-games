@@ -47,6 +47,7 @@
         <div class="code" id="code">· · · · ·</div>
         <div class="url" id="joinUrl"></div>
         <div class="privacy-note">Das Kamerabild bleibt auf dem Handy</div>
+        <button class="ctrl-btn" id="ctrlBtn" type="button" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="11" rx="5"/><path d="M7 11v3M5.5 12.5h3M16 12h.01M18 14h.01"/></svg>Steuerung</button>
       </aside>
     </section>
 
@@ -90,5 +91,20 @@
   </div>
 
   <script type="module" src="ski.js"></script>
+
+  <dialog class="ctrl-dialog" id="ctrlDialog" aria-labelledby="ctrlTitle">
+    <div class="ctrl-head">
+      <div><h2 id="ctrlTitle">Steuerung · Skicross</h2><p>Lehnen, Hocke, Sprung – du fährst mit dem ganzen Körper.</p></div>
+      <button class="ctrl-close" type="button" data-ctrl-close aria-label="Schliessen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <ul class="ctrl-list">
+        <li><b>Lenken</b>Oberkörper zur Seite lehnen – die Anzeige unten zeigt, wie stark.</li>
+        <li><b>Tempo</b>In die Hocke gehen (Abfahrtshocke) – schneller, aber träger in Kurven.</li>
+        <li><b>Springen</b>Schnell hochkommen bzw. hochspringen – an der Schanze gibt’s Big Air, aber Vorsicht vor harten Landungen.</li>
+        <li><b>Start</b>Beide Arme schnell nach unten schwingen = mit den Stöcken anschieben. Start-Pose: Hocke halten.</li>
+        <li class="keys"><b>Tastatur</b><kbd>←</kbd> <kbd>→</kbd> lenken, <kbd>↓</kbd> Hocke, <kbd>↑</kbd> springen/anschieben (2. Spieler <kbd>A</kbd> <kbd>D</kbd> <kbd>S</kbd> <kbd>W</kbd>).</li>
+    </ul>
+  </dialog>
+  <script src="../js/controls.js" defer></script>
 </body>
 </html>

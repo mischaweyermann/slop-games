@@ -36,18 +36,30 @@
     /* Marke: Hüpf-Controller */
     .rail .logo { color: var(--cream); }
     .brand-mark { display: block; overflow: visible; }
-    .brand-mark .jump, .brand-mark .shadow, .brand-mark .lines { animation: sg-hop 1.2s cubic-bezier(.3, 0, .3, 1) 2; }
-    .brand-mark .shadow { transform-box: fill-box; transform-origin: center; animation-name: sg-shadow; }
-    .brand-mark .lines { animation-name: sg-lines; }
-    .rail .logo:hover .brand-mark *, .rail .logo:focus-visible .brand-mark * { animation-iteration-count: infinite; }
-    @keyframes sg-hop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9.6px); } }
-    @keyframes sg-shadow { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(.7); } }
-    @keyframes sg-lines { 0%, 100% { opacity: .55; } 50% { opacity: .2; } }
+    .brand-mark.hop .jump { animation: sg-hop 1.1s linear infinite; }
+    .brand-mark.hop .shadow { transform-box: fill-box; transform-origin: center; animation: sg-shadow 1.1s linear infinite; }
+    .brand-mark.hop .lines { animation: sg-lines 1.1s linear infinite; }
+    @keyframes sg-hop {
+      0% { transform: translateY(0); animation-timing-function: cubic-bezier(.33, 0, .4, 1); }
+      45% { transform: translateY(-10px); animation-timing-function: cubic-bezier(.6, 0, .67, 1); }
+      80% { transform: translateY(0); animation-timing-function: ease-out; }
+      88% { transform: translateY(-1.6px); animation-timing-function: ease-in; }
+      100% { transform: translateY(0); }
+    }
+    @keyframes sg-shadow {
+      0% { transform: scaleX(1); animation-timing-function: cubic-bezier(.33, 0, .4, 1); }
+      45% { transform: scaleX(.72); animation-timing-function: cubic-bezier(.6, 0, .67, 1); }
+      80% { transform: scaleX(1); animation-timing-function: ease-out; }
+      88% { transform: scaleX(.96); animation-timing-function: ease-in; }
+      100% { transform: scaleX(1); }
+    }
+    @keyframes sg-lines {
+      0% { opacity: .55; animation-timing-function: cubic-bezier(.33, 0, .4, 1); }
+      45% { opacity: .2; animation-timing-function: cubic-bezier(.6, 0, .67, 1); }
+      80%, 100% { opacity: .55; }
+    }
     @media (prefers-reduced-motion: reduce) { .brand-mark * { animation: none !important; } }
     .top-left { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
-    .wordmark { display: inline-flex; flex-direction: column; text-decoration: none; color: var(--cream); line-height: 1; padding-right: 18px; border-right: 2px solid var(--wine-500); }
-    .wordmark b { font-weight: 800; font-size: 30px; letter-spacing: -.01em; line-height: .95; }
-    .wordmark span { font-weight: 600; font-size: 9px; letter-spacing: .3em; margin-top: 4px; padding-left: 1px; }
     .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
     main { display: flex; flex-direction: column; gap: 22px; min-width: 0; min-height: calc(100vh - 2 * clamp(12px, 1.6vw, 22px)); }
@@ -226,7 +238,6 @@
       .rail { position: static; height: auto; min-height: 0; flex-direction: row; padding: 10px 14px; gap: 6px; justify-content: space-between; }
       .rail .logo { margin: 0; }
       .rail .logo .brand-mark { width: 44px; height: 44px; }
-      .wordmark { display: none; }
       .rail .tv { margin-top: 0; }
       .steps { grid-template-columns: 1fr; }
       .hero { min-height: 340px; }
@@ -251,7 +262,7 @@
 
     <main>
       <div class="top">
-        <div class="top-left"><a class="wordmark" href="./" aria-label="Slop Games Startseite"><b>Slop</b><span>GAMES</span></a><p class="hello"><span id="greet">Hallo</span>, <b>schön bist du da</b></p></div>
+        <div class="top-left"><p class="hello"><span id="greet">Hallo</span>, <b>schön bist du da</b></p></div>
         <div class="top-right">
           <span class="badge">Gratis · <b>ohne App</b> · für jeden Fernseher</span>
           <button class="fs" id="fsBtn" type="button" aria-label="Vollbild"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
@@ -389,31 +400,7 @@
           <section class="card" style="--c:#5aa9c9"><h3>Figur wählen & «Bereit»</h3><p>Auf dem Handy unter <b>Spieler</b> Namen eintippen und Figur aussuchen, dann <b>✓ Bereit</b> drücken.</p></section>
           <section class="card" style="--c:#7fd18b"><h3>Startpose halten</h3><p>Am TV die Startpose des Spiels halten, bis der Balken voll ist – z. B. Hände ans Lenkrad oder Fäuste vors Gesicht. Sind alle bereit, geht’s los.</p></section>
         </div>
-        <h2 class="sec-title">Steuerung je Spiel</h2>
-        <div class="grid2">
-          <section class="card"><h3>🏎️ Kurvenflitzer</h3><ul>
-            <li><b>Lenken:</b> unsichtbares Lenkrad drehen – rechte Hand tiefer = rechts.</li>
-            <li><b>Items:</b> beide Arme nach unten → Menü, Item mit der Hand auf eine Person ziehen.</li>
-            <li><b>Motorausfall:</b> 3× beide Arme über den Kopf. Im Ziel: Hände hoch = neues Rennen.</li>
-            <li><b>Tastatur:</b> <kbd>←</kbd> <kbd>→</kbd> (2. Spieler <kbd>A</kbd> <kbd>D</kbd>), <kbd>↑</kbd> Item, <kbd>Leertaste</kbd> bereit.</li>
-          </ul></section>
-          <section class="card"><h3>🥊 Boxring</h3><ul>
-            <li><b>Schlagen:</b> Gerade = Faust schnell nach vorne zur Kamera · Haken = Ellbogen hoch, Faust von der Seite zur Mitte · Uppercut = Faust schnell von unten nach oben.</li>
-            <li><b>Deckung:</b> beide Fäuste vors Gesicht – ein Schild leuchtet auf, hält Geraden und Haken zum Kopf ganz ab; Uppercut und Körpertreffer kommen teilweise durch.</li>
-            <li><b>Ausweichen:</b> Oberkörper zur Seite lehnen – Kopftreffer gehen daneben.</li>
-            <li><b>Laufen:</b> einen Schritt zur Kamera, weg oder zur Seite machen – die Figur läuft, bis du wieder in der Mitte stehst. Seitlich gehst du um den Gegner herum. Wer zu weit weg steht, trifft nicht.</li>
-            <li><b>Kickboxen:</b> zusätzlich Tritte nach vorne oder Knie hoch.</li>
-            <li><b>Ansicht:</b> hinter dir (über die Schulter), Ich-Sicht oder seitlich – zu zweit mit geteiltem Bildschirm.</li>
-            <li><b>Tastatur:</b> <kbd>Q</kbd> <kbd>E</kbd> Gerade, <kbd>Z</kbd> Haken, <kbd>C</kbd> Uppercut, <kbd>W</kbd> Deckung, <kbd>A</kbd> <kbd>D</kbd> ausweichen, <kbd>S</kbd> Tritt, Pfeiltasten laufen (2. Spieler <kbd>U</kbd> <kbd>O</kbd> <kbd>I</kbd> <kbd>J</kbd> <kbd>L</kbd> <kbd>K</kbd>, laufen <kbd>8</kbd> <kbd>4</kbd> <kbd>5</kbd> <kbd>6</kbd>), <kbd>V</kbd> Ansicht wechseln.</li>
-          </ul></section>
-          <section class="card"><h3>⛷️ Skicross</h3><ul>
-            <li><b>Lenken:</b> Oberkörper zur Seite lehnen – die Anzeige unten zeigt, wie stark.</li>
-            <li><b>Tempo:</b> in die Hocke gehen (Abfahrtshocke) – schneller, aber träger in Kurven.</li>
-            <li><b>Springen:</b> schnell hochkommen bzw. hochspringen – an der Schanze gibt’s Big Air, aber Vorsicht vor harten Landungen.</li>
-            <li><b>Start:</b> beide Arme schnell nach unten schwingen = mit den Stöcken anschieben. Start-Pose: Hocke halten.</li>
-            <li><b>Tastatur:</b> <kbd>←</kbd> <kbd>→</kbd> lenken, <kbd>↓</kbd> Hocke, <kbd>↑</kbd> springen/anschieben (2. Spieler <kbd>A</kbd> <kbd>D</kbd> <kbd>S</kbd> <kbd>W</kbd>).</li>
-          </ul></section>
-        </div>
+        <p class="page-lead">Wie du in einem Spiel lenkst, schlägst oder springst, siehst du direkt im Spiel: Auf dem Startbildschirm unter dem QR-Code auf <b>Steuerung</b> tippen.</p>
         <h2 class="sec-title">Häufige Fragen</h2>
         <details class="card"><summary>Wird mein Kamerabild übertragen?</summary><p>Nein. Die Körpererkennung läuft komplett auf dem Handy. Zum TV gehen nur ein paar Körperpunkte (Schultern, Hände usw.) – kein Bild, kein Ton.</p></details>
         <details class="card"><summary>Das Handy verbindet sich nicht mit dem TV</summary><p>Handy ins gleiche WLAN wie den TV bringen (nicht Mobilfunk oder Gäste-WLAN) und die Seite neu laden. Den Link nicht im Instagram- oder WhatsApp-Browser öffnen, sondern in Safari oder Chrome. Die Handy-Seite zeigt unten an, wo es hängt.</p></details>
@@ -541,6 +528,23 @@
     const fsBtn = $('fsBtn');
     if (!document.documentElement.requestFullscreen) fsBtn.hidden = true;
     fsBtn.addEventListener('click', () => { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {}); });
+  </script>
+  <script>
+    // Logo: hüpft beim Laden zweimal und beim Darüberfahren; ein angefangener Sprung landet immer sauber
+    (function () {
+      var logo = document.querySelector('.rail .logo'), mark = logo && logo.querySelector('.brand-mark');
+      if (!mark || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      var jump = mark.querySelector('.jump'), want = false, intro = 2;
+      jump.addEventListener('animationiteration', function () {
+        if (intro > 0) intro--;
+        if (!want && intro === 0) mark.classList.remove('hop');
+      });
+      function on() { want = true; mark.classList.add('hop'); }
+      function off() { want = false; }
+      logo.addEventListener('mouseenter', on); logo.addEventListener('focus', on);
+      logo.addEventListener('mouseleave', off); logo.addEventListener('blur', off);
+      mark.classList.add('hop');
+    })();
   </script>
 </body>
 </html>

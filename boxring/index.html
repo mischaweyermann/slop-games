@@ -57,6 +57,7 @@
         <div class="code" id="code">· · · · ·</div>
         <div class="url" id="joinUrl"></div>
         <div class="privacy-note">Das Kamerabild bleibt auf dem Handy</div>
+        <button class="ctrl-btn" id="ctrlBtn" type="button" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="11" rx="5"/><path d="M7 11v3M5.5 12.5h3M16 12h.01M18 14h.01"/></svg>Steuerung</button>
       </aside>
     </section>
 
@@ -109,5 +110,22 @@
   </div>
 
   <script type="module" src="box.js"></script>
+
+  <dialog class="ctrl-dialog" id="ctrlDialog" aria-labelledby="ctrlTitle">
+    <div class="ctrl-head">
+      <div><h2 id="ctrlTitle">Steuerung · Boxring</h2><p>Boxen oder Kickboxen, zu zweit vor einem TV.</p></div>
+      <button class="ctrl-close" type="button" data-ctrl-close aria-label="Schliessen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <ul class="ctrl-list">
+        <li><b>Schlagen</b>Gerade = Faust schnell nach vorne zur Kamera · Haken = Ellbogen hoch, Faust von der Seite zur Mitte · Uppercut = Faust schnell von unten nach oben.</li>
+        <li><b>Deckung</b>Beide Fäuste vors Gesicht – ein Schild leuchtet auf und hält Geraden und Haken zum Kopf ganz ab; Uppercut und Körpertreffer kommen teilweise durch.</li>
+        <li><b>Ausweichen</b>Oberkörper zur Seite lehnen – Kopftreffer gehen daneben.</li>
+        <li><b>Laufen</b>Einen Schritt zur Kamera, weg oder zur Seite machen – die Figur läuft, bis du wieder in der Mitte stehst. Wer zu weit weg steht, trifft nicht.</li>
+        <li><b>Kickboxen</b>Zusätzlich Tritte nach vorne oder Knie hoch.</li>
+        <li><b>Ansicht</b>Hinter dir (über die Schulter), Ich-Sicht oder seitlich – zu zweit mit geteiltem Bildschirm.</li>
+        <li class="keys"><b>Tastatur</b><kbd>Q</kbd> <kbd>E</kbd> Gerade, <kbd>Z</kbd> Haken, <kbd>C</kbd> Uppercut, <kbd>W</kbd> Deckung, <kbd>A</kbd> <kbd>D</kbd> ausweichen, <kbd>S</kbd> Tritt, Pfeiltasten laufen (2. Spieler <kbd>U</kbd> <kbd>O</kbd> <kbd>I</kbd> <kbd>J</kbd> <kbd>L</kbd> <kbd>K</kbd>, laufen <kbd>8</kbd> <kbd>4</kbd> <kbd>5</kbd> <kbd>6</kbd>), <kbd>V</kbd> Ansicht wechseln.</li>
+    </ul>
+  </dialog>
+  <script src="../js/controls.js" defer></script>
 </body>
 </html>

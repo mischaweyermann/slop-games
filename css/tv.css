@@ -329,3 +329,37 @@ button.ghost.small { margin: 0; font-size: calc(1.4 * var(--u)); padding: calc(.
 @media (prefers-reduced-motion: reduce) { .bump, .popup { animation-duration: .01s; } }
 
 .back-mark { width: calc(3.6 * var(--u)); height: calc(3.6 * var(--u)); overflow: visible; flex: none; }
+
+/* Steuerung: Button unter dem QR-Code + Modal */
+.ctrl-btn {
+  margin-top: calc(1.4 * var(--u)); display: inline-flex; align-items: center; gap: calc(.9 * var(--u));
+  font: 600 calc(1.7 * var(--u)) 'Poppins', sans-serif; color: var(--wine-600); background: #fff;
+  border: 0; border-radius: 999px; padding: calc(1 * var(--u)) calc(2.2 * var(--u)) calc(1 * var(--u)) calc(1.4 * var(--u));
+  cursor: pointer; transition: background .15s;
+}
+.ctrl-btn svg { width: calc(2.4 * var(--u)); height: calc(2.4 * var(--u)); flex: none; }
+.ctrl-btn:hover { background: var(--cream); }
+.ctrl-btn:focus-visible { outline: 4px solid var(--cream); outline-offset: 3px; }
+.ctrl-dialog {
+  width: min(calc(92 * var(--u)), 92vw); max-height: 88vh; padding: 0; border: 0;
+  border-radius: calc(4 * var(--u)); background: var(--wine-700); color: var(--text);
+  font-family: 'Poppins', system-ui, sans-serif; box-shadow: var(--shadow); overflow: auto;
+}
+.ctrl-dialog::backdrop { background: rgba(42, 14, 17, .72); }
+.ctrl-dialog[open] { animation: ctrl-in .22s cubic-bezier(.2, .8, .3, 1); }
+@keyframes ctrl-in { from { opacity: 0; transform: translateY(calc(2 * var(--u))) scale(.98); } }
+.ctrl-head { display: flex; align-items: center; justify-content: space-between; gap: calc(2 * var(--u)); padding: calc(3.2 * var(--u)) calc(3.6 * var(--u)) calc(1.4 * var(--u)); }
+.ctrl-head h2 { margin: 0; font-size: calc(3.6 * var(--u)); font-weight: 700; color: #fff; letter-spacing: -.01em; }
+.ctrl-head p { margin: calc(.4 * var(--u)) 0 0; font-size: calc(1.6 * var(--u)); color: var(--text-soft); }
+.ctrl-close {
+  flex: none; width: calc(5.2 * var(--u)); height: calc(5.2 * var(--u)); border-radius: 50%; border: 0;
+  background: var(--wine-600); color: #fff; display: grid; place-items: center; cursor: pointer;
+}
+.ctrl-close svg { width: 45%; height: 45%; }
+.ctrl-close:hover, .ctrl-close:focus-visible { background: var(--wine-500); outline: none; }
+.ctrl-list { list-style: none; margin: 0; padding: calc(1 * var(--u)) calc(3.6 * var(--u)) calc(3.6 * var(--u)); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: calc(1.4 * var(--u)); }
+.ctrl-list li { background: var(--wine-800); border-radius: calc(2.4 * var(--u)); padding: calc(1.8 * var(--u)) calc(2.2 * var(--u)); font-size: calc(1.65 * var(--u)); line-height: 1.55; color: var(--text-soft); }
+.ctrl-list li b { display: block; font-size: calc(1.9 * var(--u)); font-weight: 600; color: #fff; margin-bottom: calc(.3 * var(--u)); }
+.ctrl-list li.keys { grid-column: 1 / -1; background: transparent; border: 2px dashed var(--wine-500); }
+.ctrl-list kbd { display: inline-block; min-width: 1.6em; text-align: center; font: 600 .9em 'Poppins', sans-serif; color: #fff; background: var(--wine-600); border-radius: .4em; padding: .05em .45em; margin: 0 .05em; }
+@media (max-width: 720px) { .ctrl-list { grid-template-columns: 1fr; } }
