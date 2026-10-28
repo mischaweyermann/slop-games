@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Datenschutz · Slop Games</title>
+  <meta name="description" content="Datenschutzerklärung von Slop Games: Das Kamerabild bleibt auf dem Handy.">
+  <meta name="theme-color" content="#5a1f25">
+  <link rel="icon" href="media/brand/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="media/brand/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/legal.css">
+</head>
+<body>
+  <div class="legal">
+    <div class="legal-top">
+      <a class="back" href="./"><span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></span><svg class="mark" width="30" height="30" viewBox="0 0 120 120" aria-hidden="true"><g class="jump"><g transform="rotate(-10 60 58)"><path fill-rule="evenodd" fill="currentColor" d="M34 30 H86 C96 30 102 38 103 48 L106 70 C108 84 96 92 86 84 L76 76 H44 L34 84 C24 92 12 84 14 70 L17 48 C18 38 24 30 34 30 Z M84.2 46 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 Z M91.7 54 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 Z M49.2 48 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 Z M63.2 48 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 Z M27.7 45 H32.3 V49.7 H37 V54.3 H32.3 V59 H27.7 V54.3 H23 V49.7 H27.7 Z M50.3 56.4 Q60 68.2 69.7 56.4 Q68.6 54.4 67.2 55.4 Q60 63 52.8 55.4 Q51.4 54.4 50.3 56.4 Z"/></g></g><path class="lines" d="M42 98 V106 M60 101 V111 M78 96 V104" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" opacity=".55"/><ellipse class="shadow" cx="60" cy="116" rx="24" ry="3" fill="currentColor" opacity=".25"/></svg>Slop Games</a>
+      <nav aria-label="Rechtliches"><a href="impressum.html">Impressum</a><a href="datenschutz.html" aria-current="page">Datenschutz</a><a href="lizenzen.html">Lizenzen</a></nav>
+    </div>
+    <main>
+      <h1>Datenschutz</h1>
+      <p class="lead" style="margin-top:10px">Hier steht, welche Daten beim Spielen anfallen, wer sie sieht und was du tun kannst. Grundlage ist das Schweizer Datenschutzgesetz (DSG).</p>
+      <div style="display:flex;flex-direction:column;gap:18px;margin-top:18px">
+      <section class="card short">
+        <h2>Kurz gesagt</h2>
+        <ul>
+          <li><b>Dein Kamerabild verlässt dein Handy nie.</b> Die Körpererkennung läuft direkt auf dem Handy.</li>
+          <li>Keine Anmeldung, kein Konto, keine Werbung, kein Tracking, keine Cookies.</li>
+          <li>Wie bei jeder Website sehen die beteiligten Dienste (Hosting, Bibliotheken, Verbindungsserver) deine IP-Adresse.</li>
+        </ul>
+      </section>
+      <section class="card">
+        <h2>1. Verantwortlich</h2>
+        <p>Mischa Weyermann, Murten, Schweiz. Kontaktangaben findest du im <a href="impressum.html">Impressum</a>.</p>
+      </section>
+      <section class="card">
+        <h2>2. Kamera und Körpererkennung</h2>
+        <p>Wenn du auf dem Handy die Kamera startest, erkennt eine Software (MediaPipe Pose Landmarker von Google) im Browser deines Handys die Position deines Körpers. Das Kamerabild wird dabei weder gespeichert noch übertragen.</p>
+        <p>An den Fernseher gehen nur Körperpunkte, also Koordinaten von Schultern, Ellbogen, Händen, Hüften usw., dazu der Name und die Figur, die du für das Spiel auswählst. Diese Daten werden nur für das laufende Spiel genutzt und nirgends gespeichert.</p>
+      </section>
+      <section class="card">
+        <h2>3. Verbindung zwischen Handy und Fernseher</h2>
+        <p>Handy und Fernseher verbinden sich direkt per WebRTC (verschlüsselt). Um die Verbindung aufzubauen, nutzt Slop Games den öffentlichen Vermittlungsserver von <b>PeerJS</b> (peerjs.com). Dieser sieht den zufälligen Raumcode und die IP-Adressen der beiden Geräte. Klappt keine direkte Verbindung, laufen die Spieldaten verschlüsselt über einen Relay-Server (TURN) von PeerJS.</p>
+      </section>
+      <section class="card">
+        <h2>4. Hosting</h2>
+        <p>Slop Games liegt bei <b>GitHub Pages</b> (GitHub, Inc., USA). Beim Aufruf einer Seite verarbeitet GitHub technische Daten wie IP-Adresse, Zeitpunkt und aufgerufene Adresse, um die Seite auszuliefern und vor Missbrauch zu schützen. Details: <a href="https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener">Datenschutzerklärung von GitHub</a>.</p>
+      </section>
+      <section class="card">
+        <h2>5. Bibliotheken und Bewegungsmodell</h2>
+        <p>Damit die Spiele laufen, lädt dein Browser Programmteile von externen Servern:</p>
+        <ul>
+          <li><b>jsDelivr</b> (Content Delivery Network): three.js (3D-Grafik), PeerJS (Verbindung), qrcode-generator (QR-Code) und MediaPipe (Körpererkennung).</li>
+          <li><b>Google Cloud Storage</b> (Google LLC, USA): das Modell für die Körpererkennung.</li>
+        </ul>
+        <p>Diese Anbieter erhalten dabei technisch bedingt deine IP-Adresse und Browser-Angaben. Die Schrift Poppins wird dagegen direkt von slopgames.ch geladen, nicht von Google.</p>
+      </section>
+      <section class="card">
+        <h2>6. Gespeichert in deinem Browser</h2>
+        <ul>
+          <li><code>slope.stats</code> (localStorage): deine Bewegungsminuten pro Spiel für «Deine Bewegung» auf der Startseite.</li>
+          <li><code>kurvenflitzer.code</code>, <code>skicross.code</code> (sessionStorage): der Raumcode, damit er beim Neuladen gleich bleibt. Wird beim Schliessen des Tabs gelöscht.</li>
+        </ul>
+        <p>Diese Angaben bleiben auf deinem Gerät und werden nicht übertragen. Du kannst sie jederzeit über die Browser-Einstellungen («Websitedaten löschen») entfernen.</p>
+      </section>
+      <section class="card">
+        <h2>7. Bekanntgabe ins Ausland</h2>
+        <p>GitHub und Google sitzen in den USA, die Server von jsDelivr und PeerJS stehen weltweit. Dabei können technische Daten wie deine IP-Adresse in Länder gelangen, deren Datenschutz nicht dem schweizerischen entspricht. Die Anbieter stützen sich dafür auf eigene Garantien wie Standardvertragsklauseln.</p>
+      </section>
+      <section class="card">
+        <h2>8. Deine Rechte</h2>
+        <p>Du kannst Auskunft verlangen, ob und welche Daten über dich bearbeitet werden, und deren Berichtigung oder Löschung verlangen. Da Slop Games selbst keine Daten über dich speichert, betrifft das vor allem die genannten Dienste. Bei Fragen schreib an die Adresse im <a href="impressum.html">Impressum</a>. Du kannst dich auch beim Eidgenössischen Datenschutz- und Öffentlichkeitsbeauftragten (EDÖB) beschweren.</p>
+      </section>
+      <section class="card">
+        <h2>9. Änderungen</h2>
+        <p>Kommen neue Spiele oder Dienste dazu, wird diese Erklärung angepasst. Es gilt die Fassung auf dieser Seite.</p>
+      </section>
+      </div>
+    </main>
+    <footer>© 2026 Mischa Weyermann · Stand: 28. Oktober 2026</footer>
+  </div>
+</body>
+</html>

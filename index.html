@@ -9,9 +9,7 @@
   <link rel="icon" href="media/brand/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="media/brand/apple-touch-icon.png">
   <meta property="og:image" content="https://slopgames.ch/media/brand/icon-512.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/fonts.css">
   <style>
     :root {
       --blush: #f6d6d3; --wine-800: #3d1418; --wine-700: #461519; --wine-600: #5a1f25; --wine-500: #7d2a2e;
@@ -227,6 +225,7 @@
     .ghost-btn:hover { border-color: var(--coral); color: #fff; }
 
     footer { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 13px; color: #c99696; padding: 4px 4px 6px; }
+    footer a { text-decoration: none; } footer a:hover, footer a:focus-visible { color: #fff; text-decoration: underline; }
 
     @media (max-width: 720px) { .list .game { flex: none; } }
     @media (max-width: 980px) {
@@ -432,7 +431,10 @@
       </div>
 
       <footer>
-        <span>© Slop Games</span>
+        <span>© 2026 Mischa Weyermann</span>
+        <a href="impressum.html">Impressum</a>
+        <a href="datenschutz.html">Datenschutz</a>
+        <a href="lizenzen.html">Lizenzen</a>
         <span>Kein Kamerabild wird übertragen – nur Körperpunkte</span>
         <span>Am besten mit Chrome oder Safari</span>
       </footer>

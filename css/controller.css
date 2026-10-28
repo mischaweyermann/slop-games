@@ -152,3 +152,6 @@ button.secondary { font: 500 14px 'Poppins', sans-serif; color: #fff; background
 .pc-bar i { display: block; height: 100%; width: 0; background: var(--green); transition: width .3s; }
 .pc-ok.primary { font-size: 18px; padding: 14px; }
 .pc-ok.secondary { width: 100%; }
+
+.legal-links { text-align: center; font-size: 12px; color: var(--mute); margin: 18px 0 6px; }
+.legal-links a { color: var(--soft); }
