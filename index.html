@@ -222,8 +222,9 @@
     .hero { position: relative; min-height: 290px; border-radius: 32px; background: var(--coral-2); overflow: hidden; padding: clamp(22px, 2.6vw, 34px); display: flex; flex-direction: column; gap: 12px; text-decoration: none; }
     /* Echte Spielszenen im Hintergrund, links abgedunkelt für die Schrift */
     .hero { background: var(--wine-700); }
-    .hero-wrap { position: relative; min-height: 290px; height: 100%; }
-    .hero-wrap .slide { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity .8s, visibility .8s; }
+    /* Alle Teaser liegen im gleichen Rasterfeld übereinander: die Karte wird so hoch wie der höchste Inhalt, das Polster bleibt rundum gleich */
+    .hero-wrap { position: relative; display: grid; min-height: 290px; height: 100%; }
+    .hero-wrap .slide { grid-area: 1 / 1; position: relative; min-height: 100%; opacity: 0; visibility: hidden; transition: opacity .8s, visibility .8s; }
     .hero-wrap .slide.on { opacity: 1; visibility: visible; }
     .hero-wrap .dots { position: absolute; right: clamp(18px, 2vw, 30px); bottom: clamp(18px, 2vw, 30px); display: flex; gap: 8px; z-index: 2; }
     .hero-wrap .dots button { width: 12px; height: 12px; border-radius: 999px; border: 0; padding: 0; background: rgba(255, 255, 255, .45); cursor: pointer; transition: width .3s, background .3s; }
