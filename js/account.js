@@ -146,3 +146,24 @@ export function safeNext(n) {
   n = String(n || '').split('#')[0];
   return /^(?:index\.html|konto\.html|controller\.html|kurvenflitzer\/|boxring\/|skicross\/)?(?:\?[\w=&%.:-]*)?$/.test(n) ? n : '';
 }
+
+/* ---------------- Spiele und Admin ---------------- */
+export async function loadGames() {
+  const { data, error } = await sb.from('games').select('id, name, visible, sort').order('sort');
+  if (error) throw error;
+  return data || [];
+}
+export async function isAdmin() {
+  const { data, error } = await sb.rpc('is_admin');
+  return !error && !!data;
+}
+async function rpc(name, args) {
+  const { data, error } = await sb.rpc(name, args);
+  if (error) throw error;
+  return data;
+}
+export const adminUsers = () => rpc('admin_users');
+export const adminStats = (days = 30) => rpc('admin_stats', { days });
+export const adminSetBanned = (target, ban) => rpc('admin_set_banned', { target, ban });
+export const adminDeleteUser = (target) => rpc('admin_delete_user', { target });
+export const adminSetGameVisible = (game, show) => rpc('admin_set_game_visible', { game, show });

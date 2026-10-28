@@ -150,8 +150,33 @@ async function init() {
   showProfile();
   setupProfileEditor();
   if (!profile.nickname) welcome();
+  const admin = await A.isAdmin().catch(() => false);
+  await applyGames(admin);
+  if (admin) {
+    $('railAdmin').hidden = false;
+    const ad = await import('./admin.js');
+    ad.initAdmin({ user, games, onGames: () => applyGames(true) });
+    addEventListener('hashchange', () => { if (location.hash === '#admin') ad.refreshAdmin(games); });
+  } else {
+    const noAdmin = () => { if (location.hash === '#admin') location.hash = '#start'; };
+    noAdmin(); addEventListener('hashchange', noAdmin);
+  }
   try { await A.importLocalStats(); } catch { /* */ }
   try { plays = await A.loadPlays(); } catch { plays = []; }
   renderStats();
+}
+
+/* ---------------- Ausgeblendete Spiele ---------------- */
+let games = [];
+async function applyGames(admin) {
+  try { games = await A.loadGames(); } catch { return; }
+  const hidden = new Set(games.filter((g) => !g.visible).map((g) => g.id));
+  document.querySelectorAll('[data-game]').forEach((el) => {
+    if (el.closest('#aGames')) return;
+    const off = hidden.has(el.dataset.game);
+    if (admin) { el.hidden = false; el.classList.toggle('off-game', off); el.title = off ? 'Ausgeblendet – nur für Admins sichtbar' : ''; }
+    else el.hidden = off;
+  });
+  if (typeof window.showSlide === 'function') window.showSlide(0);
 }
 init();

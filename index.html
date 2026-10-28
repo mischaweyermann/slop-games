@@ -33,7 +33,7 @@
     .rail a.nav { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 16px; color: #c99696; transition: background .15s, color .15s; }
     .rail a.nav:hover, .rail a.nav:focus-visible { background: var(--wine-600); color: #fff; outline: none; }
     .rail a.nav.on { color: var(--coral); background: var(--wine-800); }
-    .rail .nav-bottom { margin-top: auto; }
+    .rail .rail-bottom { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 14px; }
     /* Marke: Hüpf-Controller */
     .rail .logo { color: var(--cream); }
     .brand-mark { display: block; overflow: visible; }
@@ -89,6 +89,42 @@
     .acct-actions { display: flex; flex-wrap: wrap; gap: 10px; }
     hr.sep { border: 0; border-top: 1px solid var(--wine-500); margin: 4px 0; width: 100%; }
     @media (max-width: 980px) { .prof-grid { grid-template-columns: 1fr; } }
+    /* Ausgeblendete Spiele / Admin */
+    .hero[hidden], .game[hidden], .tile[hidden], .dots button[hidden], .rail a.nav[hidden] { display: none !important; }
+    .off-game { outline: 2px dashed var(--mute); outline-offset: 3px; }
+    .adm-bars { display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); gap: 4px; align-items: end; height: 170px; margin-top: 14px; }
+    .adm-bars div { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; min-width: 0; }
+    .adm-bars i { display: block; width: 100%; border-radius: 6px 6px 2px 2px; background: var(--coral); min-height: 3px; }
+    .adm-bars i.zero { background: var(--wine-500); }
+    .adm-bars small { font-size: 10px; color: var(--cream); font-weight: 600; height: 12px; }
+    .adm-bars em { font-style: normal; font-size: 10px; color: var(--mute); height: 12px; white-space: nowrap; }
+    .adm-games { display: flex; flex-direction: column; gap: 10px; }
+    .adm-game { display: flex; align-items: center; gap: 14px; background: var(--wine-800); border-radius: 18px; padding: 12px 14px; }
+    .adm-game .t { flex: 1; min-width: 0; }
+    .adm-game .t b { display: block; color: #fff; font-weight: 600; }
+    .adm-game .t span { font-size: 13px; color: var(--soft); }
+    .switch { flex: none; display: inline-flex; align-items: center; gap: 8px; font: 600 13px 'Poppins', sans-serif; color: var(--soft); background: none; border: 0; cursor: pointer; padding: 4px; }
+    .switch i { width: 44px; height: 26px; border-radius: 999px; background: var(--wine-500); position: relative; transition: background .15s; }
+    .switch i::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .15s; }
+    .switch[aria-pressed="true"] i { background: var(--coral); }
+    .switch[aria-pressed="true"] i::after { transform: translateX(18px); }
+    .switch:focus-visible { outline: 3px solid var(--cream); outline-offset: 2px; border-radius: 999px; }
+    .adm-tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+    .adm-tools input { font: 500 15px 'Poppins', sans-serif; color: #fff; background: var(--wine-800); border: 2px solid transparent; border-radius: 999px; padding: 10px 16px; min-width: 240px; }
+    .adm-tools input:focus { border-color: var(--coral); outline: none; }
+    .adm-scroll { overflow-x: auto; }
+    .adm-users { min-width: 860px; }
+    .adm-users .who { display: flex; align-items: center; gap: 10px; }
+    .adm-users .av { width: 34px; height: 34px; border-radius: 50%; background: var(--wine-500); overflow: hidden; flex: none; }
+    .adm-users .av svg { width: 100%; height: 100%; display: block; }
+    .badge-s { display: inline-block; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--wine-800); color: var(--soft); }
+    .badge-s.ok { background: #2f4a2f; color: #bfe8c4; }
+    .badge-s.bad { background: #6b2320; color: #ffd2cc; }
+    .row-actions { display: flex; gap: 6px; }
+    .mini { font: 600 12.5px 'Poppins', sans-serif; border: 0; border-radius: 999px; padding: 7px 12px; cursor: pointer; background: var(--wine-800); color: #fff; }
+    .mini:hover { background: var(--wine-500); }
+    .mini.danger { color: #ffb3ab; }
+    .mini:focus-visible { outline: 3px solid var(--cream); outline-offset: 2px; }
     /* Willkommen (erster Login) */
     .welcome { width: min(560px, 94vw); max-height: 92vh; padding: 0; border: 0; border-radius: 32px; background: var(--wine-700); color: var(--text); overflow: auto; }
     .welcome::backdrop { background: rgba(42, 14, 17, .86); }
@@ -280,7 +316,7 @@
       .rail { position: static; height: auto; min-height: 0; flex-direction: row; padding: 10px 14px; gap: 6px; justify-content: space-between; }
       .rail .logo { margin: 0; }
       .rail .logo .brand-mark { width: 44px; height: 44px; }
-      .rail .nav-bottom { margin-top: 0; }
+      .rail .rail-bottom { margin-top: 0; flex-direction: row; gap: 6px; }
       .steps { grid-template-columns: 1fr; }
       .hero { min-height: 340px; }
       .grid2, .grid3, .gamecard { grid-template-columns: 1fr; }
@@ -299,7 +335,10 @@
       <a class="nav" href="#spiele" data-v="spiele" aria-label="Spiele"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="11" rx="5"/><path d="M7 11v3M5.5 12.5h3M16 12h.01M18 14h.01"/></svg></a>
       <a class="nav" href="#so" data-v="so" aria-label="So funktioniert’s"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17h.01"/></svg></a>
       <a class="nav" href="#bewegung" data-v="bewegung" aria-label="Deine Bewegung"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9v9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></svg></a>
-      <a class="nav nav-bottom" href="#profil" data-v="profil" aria-label="Profil" id="railProfil"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></a>
+      <div class="rail-bottom">
+      <a class="nav" href="#admin" data-v="admin" aria-label="Admin" id="railAdmin" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5 4 5.5v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10v-6z"/><path d="m8.5 12 2.4 2.4 4.6-4.8"/></svg></a>
+      <a class="nav" href="#profil" data-v="profil" aria-label="Profil" id="railProfil"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></a>
+      </div>
     </nav>
 
     <main>
@@ -315,7 +354,7 @@
       <div class="view" data-view="start">
         <div class="row">
           <div class="hero-wrap" id="heroWrap">
-            <a class="hero slide on" href="kurvenflitzer/">
+            <a class="hero slide on" href="kurvenflitzer/" data-game="kurvenflitzer">
               <video class="bgvid" autoplay muted loop playsinline preload="auto" poster="media/kurvenflitzer.jpg" aria-hidden="true">
                 <source src="media/kurvenflitzer.mp4" type="video/mp4">
                 <source src="media/kurvenflitzer.webm" type="video/webm">
@@ -326,7 +365,7 @@
               <p>Go-Kart-Rennen mit unsichtbarem Lenkrad. Bis zu vier am gleichen TV – mit Items, und ja, man darf sich rammen.</p>
               <span class="play"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#e2574c"/><path d="M10 8l6 4-6 4z" fill="#ffffff"/></svg>Jetzt spielen</span>
             </a>
-            <a class="hero slide" href="boxring/">
+            <a class="hero slide" href="boxring/" data-game="boxring">
               <video class="bgvid" muted loop playsinline preload="none" poster="media/boxring.jpg" aria-hidden="true">
                 <source src="media/boxring.mp4" type="video/mp4">
                 <source src="media/boxring.webm" type="video/webm">
@@ -337,7 +376,7 @@
               <p>Fäuste hoch! Allein gegen die KI oder zu zweit gegeneinander – Deckung, ausweichen, zuschlagen. Drei Runden, K.O. möglich.</p>
               <span class="play"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#e2574c"/><path d="M10 8l6 4-6 4z" fill="#ffffff"/></svg>Jetzt spielen</span>
             </a>
-            <a class="hero slide" href="skicross/">
+            <a class="hero slide" href="skicross/" data-game="skicross">
               <video class="bgvid" muted loop playsinline preload="none" poster="media/skicross.jpg" aria-hidden="true">
                 <source src="media/skicross.mp4" type="video/mp4">
                 <source src="media/skicross.webm" type="video/webm">
@@ -348,22 +387,22 @@
               <p>Zu viert die Piste runter: lehnen zum Lenken, Hocke für Tempo, Sprünge über die Schanzen – Rempeln und Windschatten inklusive.</p>
               <span class="play"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#e2574c"/><path d="M10 8l6 4-6 4z" fill="#ffffff"/></svg>Jetzt spielen</span>
             </a>
-            <div class="dots" role="tablist" aria-label="Spiele wechseln"><button type="button" class="on" aria-label="Kurvenflitzer"></button><button type="button" aria-label="Boxring"></button><button type="button" aria-label="Skicross"></button></div>
+            <div class="dots" role="tablist" aria-label="Spiele wechseln"><button type="button" class="on" aria-label="Kurvenflitzer" data-game="kurvenflitzer"></button><button type="button" aria-label="Boxring" data-game="boxring"></button><button type="button" aria-label="Skicross" data-game="skicross"></button></div>
           </div>
 
           <section class="list" aria-label="Alle Spiele">
             <h2>Alle Spiele</h2>
-            <a class="game" href="kurvenflitzer/">
+            <a class="game" href="kurvenflitzer/" data-game="kurvenflitzer">
               <span class="ico" style="background: #f7e9a6;"><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="none" stroke="#5a1f25" stroke-width="3.5"/><path d="M5 17h22M16 18v9" stroke="#5a1f25" stroke-width="3.5" stroke-linecap="round"/></svg></span>
               <span class="t"><b>Kurvenflitzer</b><span>1–4 Spieler · ein TV · sitzend</span></span>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
             </a>
-            <a class="game" href="boxring/">
+            <a class="game" href="boxring/" data-game="boxring">
               <span class="ico" style="background: #9fd6ef;"><svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect x="7" y="5" width="18" height="17" rx="7" fill="#5a1f25"/><rect x="10" y="21" width="12" height="6" rx="2" fill="#5a1f25"/><path d="M11 12h7" stroke="#f6e3e1" stroke-width="2.4" stroke-linecap="round"/></svg></span>
               <span class="t"><b>Boxring</b><span>1–2 Spieler · Boxen & Kickboxen</span></span>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
             </a>
-            <a class="game" href="skicross/">
+            <a class="game" href="skicross/" data-game="skicross">
               <span class="ico" style="background: #fbe3dc;"><svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><path d="M4 23 27 11" stroke="#5a1f25" stroke-width="3.2" stroke-linecap="round"/><path d="M6 28 29 16" stroke="#e2574c" stroke-width="3.2" stroke-linecap="round"/><circle cx="20" cy="6" r="3.4" fill="#5a1f25"/></svg></span>
               <span class="t"><b>Skicross</b><span>1–4 Spieler · Ski-Rennen · stehend</span></span>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
@@ -404,7 +443,7 @@
       <div class="view" data-view="spiele">
         <h1 class="page-title">Spiele</h1>
         <div class="tiles">
-          <a class="tile" href="kurvenflitzer/">
+          <a class="tile" href="kurvenflitzer/" data-game="kurvenflitzer">
             <div class="thumb"><video autoplay muted loop playsinline preload="metadata" poster="media/kurvenflitzer.jpg" aria-hidden="true"><source src="media/kurvenflitzer.mp4" type="video/mp4"><source src="media/kurvenflitzer.webm" type="video/webm"></video><span class="tag cream">Neu</span></div>
             <div class="tile-t"><b>Kurvenflitzer</b>
               <p>Go-Kart-Rennen mit unsichtbarem Lenkrad. Münzen für Turbo, Items zum Werfen – und Rempeln ist erlaubt.</p>
@@ -412,7 +451,7 @@
               <span class="go">Jetzt spielen →</span>
             </div>
           </a>
-          <a class="tile" href="boxring/">
+          <a class="tile" href="boxring/" data-game="boxring">
             <div class="thumb"><video autoplay muted loop playsinline preload="metadata" poster="media/boxring.jpg" aria-hidden="true"><source src="media/boxring.mp4" type="video/mp4"><source src="media/boxring.webm" type="video/webm"></video><span class="tag cream">Neu</span></div>
             <div class="tile-t"><b>Boxring</b>
               <p>Box- oder Kickbox-Kampf im Ring: Deckung hoch, zur Seite ausweichen und zuschlagen – drei Runden, K.O. möglich.</p>
@@ -420,7 +459,7 @@
               <span class="go">Jetzt spielen →</span>
             </div>
           </a>
-          <a class="tile" href="skicross/">
+          <a class="tile" href="skicross/" data-game="skicross">
             <div class="thumb"><video autoplay muted loop playsinline preload="metadata" poster="media/skicross.jpg" aria-hidden="true"><source src="media/skicross.mp4" type="video/mp4"><source src="media/skicross.webm" type="video/webm"></video><span class="tag cream">Neu</span></div>
             <div class="tile-t"><b>Skicross</b>
               <p>Vier am Start, eine Piste mit Steilkurven, Wellen und Schanzen. Lehnen zum Lenken, Hocke für Tempo, hochspringen für Big Air.</p>
@@ -502,6 +541,35 @@
         </div>
       </div>
 
+      <!-- ===== Admin ===== -->
+      <div class="view" data-view="admin">
+        <h1 class="page-title">Admin</h1>
+        <p class="page-lead">Nur für dich sichtbar. Alle Zahlen live aus der Datenbank.</p>
+        <div class="grid4">
+          <div class="kpi"><small>Konten</small><b id="aUsers">–</b><span id="aUsersNew">neu in 7 Tagen</span></div>
+          <div class="kpi"><small>Aktiv</small><b id="aActive">–</b><span>spielten in 7 Tagen</span></div>
+          <div class="kpi"><small>Runden</small><b id="aPlays">–</b><span>insgesamt gespeichert</span></div>
+          <div class="kpi"><small>Bewegung</small><b id="aMin">–</b><span>Minuten aller Spieler</span></div>
+        </div>
+        <section class="card">
+          <h3>Letzte 30 Tage</h3>
+          <p class="note">Balken: Runden pro Tag · Zahl darüber: neue Konten</p>
+          <div class="adm-bars" id="aBars"></div>
+        </section>
+        <section class="card">
+          <h3>Spiele</h3>
+          <p class="note" style="margin-bottom: 12px">Ausgeblendete Spiele sehen nur Admins – gut zum Testen neuer Spiele.</p>
+          <div class="adm-games" id="aGames"></div>
+        </section>
+        <section class="card">
+          <div class="adm-tools"><h3 style="margin: 0">Nutzer</h3><input id="aSearch" type="search" placeholder="Name oder E-Mail suchen" aria-label="Nutzer suchen"></div>
+          <div class="adm-scroll">
+            <table class="hist adm-users" id="aTable"><thead><tr><th>Name</th><th>E-Mail</th><th>Seit</th><th>Zuletzt gespielt</th><th>Runden</th><th>Minuten</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
+          </div>
+          <p class="note" id="aMsg" role="status"></p>
+        </section>
+      </div>
+
       <footer>
         <span>© 2026 Slop Games</span>
         <a href="impressum.html">Impressum</a>
@@ -538,7 +606,7 @@
     $('greet').textContent = h < 11 ? 'Guten Morgen' : h < 18 ? 'Guten Tag' : 'Guten Abend';
 
     // Seiten wechseln (#start, #spiele, #so, #bewegung, #profil)
-    const VIEWS = ['start', 'spiele', 'so', 'bewegung', 'profil'];
+    const VIEWS = ['start', 'spiele', 'so', 'bewegung', 'profil', 'admin'];
     function show() {
       const v = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'start';
       document.querySelectorAll('.view').forEach((el) => el.classList.toggle('on', el.dataset.view === v));
@@ -558,9 +626,11 @@
     let cur = 0, heroTimer = 0;
     function showSlide(i) {
       cur = (i + slides.length) % slides.length;
+      for (let n = 0; n < slides.length && slides[cur].hidden; n++) cur = (cur + 1) % slides.length;
       slides.forEach((sl, k) => { sl.classList.toggle('on', k === cur); const v = sl.querySelector('video'); if (k === cur && !reduce && sl.closest('.view').classList.contains('on')) { v.preload = 'auto'; v.play().catch(() => {}); } else v.pause(); });
       dots.forEach((d, k) => d.classList.toggle('on', k === cur));
       clearTimeout(heroTimer); heroTimer = setTimeout(() => showSlide(cur + 1), 9000);
+      window.showSlide = showSlide;
     }
     dots.forEach((d, k) => d.addEventListener('click', (e) => { e.preventDefault(); showSlide(k); }));
     showSlide(0);
