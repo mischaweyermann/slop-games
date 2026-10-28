@@ -278,9 +278,34 @@ function makeFighter(i) {
   };
 }
 const fighters = [makeFighter(0), makeFighter(1)];
+// Deckung sichtbar machen: durchsichtiger Schild vor dem Gesicht, blitzt beim Abblocken auf
+const SHIELD_GEO = new THREE.SphereGeometry(1, 36, 12, 0, Math.PI * 2, 0, Math.PI / 2.6);
+const SHIELD_RIM = new THREE.TorusGeometry(Math.sin(Math.PI / 2.6), 0.035, 8, 48);
+for (const f of fighters) {
+  const g = new THREE.Group(), m = new THREE.MeshBasicMaterial({ color: '#9fd6ef', transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+  const cap = new THREE.Mesh(SHIELD_GEO, m); cap.rotation.x = Math.PI / 2; cap.scale.set(0.95, 0.32, 0.85); g.add(cap);
+  const rimM = new THREE.MeshBasicMaterial({ color: '#e6f6ff', transparent: true, opacity: 0, depthWrite: false });
+  const rim = new THREE.Mesh(SHIELD_RIM, rimM); rim.scale.set(0.95, 0.85, 1); rim.position.z = 0.32 * Math.cos(Math.PI / 2.6); g.add(rim);
+  g.renderOrder = 5; scene.add(g);
+  f.shield = { g, m, rimM, a: 0 }; f.shieldHit = 0;
+}
+function updateShield(f, dt) {
+  const sh = f.shield, on = f.guard && f.down <= 0 && state !== 'lobby';
+  sh.a = lerp(sh.a, on ? 1 : 0, damp(12, dt));
+  f.shieldHit = Math.max(0, f.shieldHit - dt * 2.5);
+  const fw = facing(f), head = f.av.head.getWorldPosition(new THREE.Vector3());
+  sh.g.position.set(head.x + fw.x * 0.55, head.y - 0.45, head.z + fw.y * 0.55);
+  sh.g.rotation.y = Math.atan2(fw.x, fw.y);
+  const pulse = 1 + f.shieldHit * 0.25;
+  sh.g.scale.setScalar(pulse);
+  sh.m.opacity = sh.a * 0.3 + f.shieldHit * 0.5;
+  sh.rimM.opacity = Math.min(1, sh.a * 0.9 + f.shieldHit * 0.4);
+  sh.g.visible = sh.m.opacity > 0.01;
+  if (on) for (const k of ['l', 'r']) { const hm = f.av.m.skinHand[k]; hm.emissiveIntensity = Math.max(hm.emissiveIntensity, 0.28); } // Handschuhe leuchten in Deckung
+}
 const opp = (f) => fighters[1 - f.i];
 // Bewegung im Ring: vor/zurück zum Gegner, seitlich = um den Gegner herum (man dreht sich automatisch mit)
-const RING_X = 3.0, RING_Z = 2.15, MIN_DIST = 1.65, REACH = { punch: 2.8, kick: 3.15 };
+const RING_X = 3.0, RING_Z = 2.15, MIN_DIST = 2.05, REACH = { punch: 2.8, kick: 3.15 };
 const facing = (f) => { const o = opp(f); const d = new THREE.Vector2(o.pos.x - f.pos.x, o.pos.y - f.pos.y); return d.lengthSq() ? d.normalize() : new THREE.Vector2(f.i === 0 ? 1 : -1, 0); };
 const fDist = (f) => f.pos.distanceTo(opp(f).pos);
 function moveFighter(f, dt) {
@@ -319,7 +344,9 @@ function setLook(f, look) {
     const ms = !o.material ? [] : Array.isArray(o.material) ? o.material : [o.material];
     for (const m of ms) {
       if (!m.userData.look) { m.userData.look = { op: m.opacity }; if (!m.transparent) { m.transparent = true; m.needsUpdate = true; } }
-      m.opacity = m.userData.look.op * (look === 'ghost' ? 0.32 : 1);
+      // Handschuhe bleiben voll sichtbar, damit man die eigenen Schläge und die Deckung gut sieht
+      const glove = m === av.m.skinHand.l || m === av.m.skinHand.r;
+      m.opacity = m.userData.look.op * (look === 'ghost' && !glove ? 0.32 : 1);
     }
   });
 }
@@ -338,13 +365,15 @@ function compose(av, s) {
   for (const side of ['l', 'r']) {
     const a = s.arms[side];
     const u = nrm(a.u.x, a.u.y), f = nrm(a.f.x, a.f.y);
-    const ze = clamp(a.ze, -0.1, D.upperArm * 0.96);
-    const zw = clamp(a.zw, ze - D.foreArm * 0.6, ze + D.foreArm * 0.97);
-    const cu = Math.sqrt(1 - (ze / D.upperArm) ** 2), cf = Math.sqrt(1 - ((zw - ze) / D.foreArm) ** 2);
+    // st > 1: Comic-Streckung beim Schlag (die Chibi-Arme sind sonst kürzer als der Kopf breit ist)
+    const st = a.st || 1, UA = D.upperArm * st, FA = D.foreArm * st;
+    const ze = clamp(a.ze * st, -0.1, UA * 0.96);
+    const zw = clamp(a.zw * st, ze - FA * 0.6, ze + FA * 0.97);
+    const cu = Math.sqrt(1 - (ze / UA) ** 2), cf = Math.sqrt(1 - ((zw - ze) / FA) ** 2);
     const sh = J[side + 'Sh'].tgt;
-    const ex = sh.x + u.x * D.upperArm * cu, ey = sh.y + u.y * D.upperArm * cu;
+    const ex = sh.x + u.x * UA * cu, ey = sh.y + u.y * UA * cu;
     J[side + 'El'].tgt.set(ex, ey, sh.z + ze);
-    J[side + 'Ha'].tgt.set(ex + f.x * D.foreArm * cf, ey + f.y * D.foreArm * cf, sh.z + zw);
+    J[side + 'Ha'].tgt.set(ex + f.x * FA * cf, ey + f.y * FA * cf, sh.z + zw);
     const L = s.legs[side];
     const lt = nrm(L.t.x, L.t.y), ls = nrm(L.s.x, L.s.y);
     const zk = clamp(L.zk || 0, -0.2, D.thigh * 0.95), za = clamp(L.za || 0, zk - D.shin * 0.6, zk + D.shin * 0.97);
@@ -359,6 +388,27 @@ function compose(av, s) {
   J.head.tgt.set(shx + n.x * D.neck, shy + n.y * D.neck, 0.08);
 }
 
+// Schlag-Bewegung über die Arm-Haltung legen: Gerade, Haken, Uppercut (auch über die echte Pose, damit man den Schlag sicher sieht)
+function punchArm(f, side, a) {
+  const p = f.anim[side];
+  if (!(p > 0)) return a;
+  const sg = side === 'l' ? -1 : 1, type = f.ptype?.[side] || 'jab', k = Math.min(1, p);
+  const e = Math.sin(k * Math.PI);
+  let t;
+  if (type === 'hook') { // Haken: Ellbogen hoch und seitlich, Faust schwingt von aussen nach innen
+    const sw = Math.sin(Math.min(1, k * 1.4) * Math.PI / 2);
+    t = { u: { x: sg * 0.95, y: 0.05 }, f: { x: lerp(sg * 0.2, -sg * 1, sw), y: 0.08 }, ze: lerp(0.05, 0.28, sw), zw: lerp(0.35, 0.62, sw) };
+  } else if (type === 'upper') { // Uppercut: von unten nach oben vor dem Kinn des Gegners
+    const up = Math.sin(Math.min(1, k * 1.3) * Math.PI / 2);
+    t = { u: { x: sg * 0.18, y: lerp(-0.9, -0.2, up) }, f: { x: -sg * 0.12, y: lerp(0.2, 1, up) }, ze: lerp(0.15, 0.32, up), zw: lerp(0.3, 0.55, up) };
+  } else { // Gerade: Arm ganz nach vorne
+    t = { u: { x: -sg * 0.05, y: f.punchHigh?.[side] === false ? -0.25 : 0.05 }, f: { x: -sg * 0.02, y: 0.05 }, ze: 0.38, zw: 0.82 };
+  }
+  const w = type === 'jab' ? e : Math.min(1, e * 1.25);
+  const stMax = type === 'jab' ? 1.7 : type === 'hook' ? 1.45 : 1.5;
+  return { st: lerp(a.st || 1, stMax, w), u: { x: lerp(a.u.x, t.u.x, w), y: lerp(a.u.y, t.u.y, w) }, f: { x: lerp(a.f.x, t.f.x, w), y: lerp(a.f.y, t.f.y, w) }, ze: lerp(a.ze, t.ze, w), zw: lerp(a.zw, t.zw, w) };
+}
+
 // Grundhaltung (KI, Tastatur, ohne Kamera): Deckung, Schläge, Tritte, Ausweichen als Animation
 const STANCE = { l: { t: { x: -0.32, y: -1 }, s: { x: -0.05, y: -1 }, zk: 0.12, za: 0.18 }, r: { t: { x: 0.28, y: -1 }, s: { x: 0.08, y: -1 }, zk: -0.1, za: -0.16 } };
 function synth(f, dt) {
@@ -368,14 +418,7 @@ function synth(f, dt) {
     const sg = side === 'l' ? -1 : 1;
     const g = f.guard ? 1 : 0;
     let u = { x: sg * (0.28 - g * 0.12), y: -0.75 + g * 0.45 }, fa = { x: -sg * (0.42 + g * 0.1), y: 1 }, ze = 0.18 + g * 0.08, zw = 0.42 + g * 0.1;
-    const p = f.anim[side];
-    if (p > 0) {
-      const e = Math.sin(Math.min(1, p) * Math.PI);
-      u = { x: lerp(u.x, -sg * 0.05, e), y: lerp(u.y, f.punchHigh?.[side] === false ? -0.25 : 0.05, e) };
-      fa = { x: lerp(fa.x, -sg * 0.02, e), y: lerp(fa.y, 0.05, e) };
-      ze = lerp(ze, 0.36, e); zw = lerp(zw, 0.8, e);
-    }
-    s.arms[side] = { u, f: fa, ze, zw };
+    s.arms[side] = punchArm(f, side, { u, f: fa, ze, zw });
     s.legs[side] = { ...STANCE[side] };
   }
   if (f.anim.kick > 0) {
@@ -409,12 +452,17 @@ function fromPose(f, dt) {
     const S = P[side + 'Sh'], E = P[side + 'El'], W = P[side + 'Wr'];
     const pa = prev && prev.arms[side];
     if (ok(E) && ok(W)) {
-      let ze = depth(side + 'Sh', side + 'El'), zw = depth(side + 'Sh', side + 'Wr');
-      if (ze == null) { // ohne Tiefe: aus der Verkürzung im Bild schätzen
-        const fl = Math.hypot(W.x - E.x, W.y - E.y) / (sw * 0.85);
-        ze = 0.15; zw = 0.25 + clamp(1 - fl, 0, 1) * 0.55;
-      }
-      s.arms[side] = { u: dir(S, E), f: dir(E, W), ze: clamp(ze, -0.05, 0.4), zw: clamp(zw, 0, 0.82) };
+      // Tiefe: MediaPipe-z ist bei Händen ungenau – zusätzlich aus der Verkürzung im Bild schätzen
+      // (zeigt ein Arm zur Kamera, wirkt er im Bild kürzer). Der grössere Wert gewinnt.
+      const fs = (len, full) => full * Math.sqrt(Math.max(0, 1 - Math.min(1, len / full) ** 2));
+      const upFull = sw * (D.upperArm / (2 * D.shoulderHalf)), foFull = sw * (D.foreArm / (2 * D.shoulderHalf));
+      const zeF = fs(Math.hypot(E.x - S.x, E.y - S.y), upFull) / upFull * D.upperArm;
+      const zfF = fs(Math.hypot(W.x - E.x, W.y - E.y), foFull) / foFull * D.foreArm;
+      const zD = depth(side + 'Sh', side + 'El'), zwD = depth(side + 'Sh', side + 'Wr');
+      const ze = Math.max(zD ?? 0, zeF * 0.85), zw = Math.max(zwD ?? 0, ze + zfF * 0.9);
+      let arm = { u: dir(S, E), f: dir(E, W), ze: clamp(ze, -0.05, 0.4), zw: clamp(zw, 0, 0.82) };
+      if (pa) arm = { u: { x: lerp(pa.u.x, arm.u.x, 0.6), y: lerp(pa.u.y, arm.u.y, 0.6) }, f: { x: lerp(pa.f.x, arm.f.x, 0.6), y: lerp(pa.f.y, arm.f.y, 0.6) }, ze: lerp(pa.ze, arm.ze, 0.6), zw: lerp(pa.zw, arm.zw, 0.6) };
+      s.arms[side] = arm;
     } else s.arms[side] = pa || synth(f, dt).arms[side];
     // Beine: beim Kickboxen aus der Pose, sonst Kampfstellung
     const H = P[side + 'Hip'], K = P[side + 'Kn'], A = P[side + 'An'];
@@ -425,7 +473,15 @@ function fromPose(f, dt) {
   }
   s.bounce = Math.sin(now * 6 + f.i) * 0.02;
   f.lastS = s;
-  return s;
+  // Deckung gut sichtbar: Handschuhe klar vors Gesicht ziehen · Schläge immer als Bewegung zeigen
+  const out = { ...s, arms: {} };
+  const guardArms = f.guard ? synth({ ...f, anim: { l: 0, r: 0, kick: 0 } }, 0).arms : null;
+  for (const side of ['l', 'r']) {
+    let a = s.arms[side];
+    if (guardArms) { const g = guardArms[side]; a = { u: { x: lerp(a.u.x, g.u.x, 0.75), y: lerp(a.u.y, g.u.y, 0.75) }, f: { x: lerp(a.f.x, g.f.x, 0.75), y: lerp(a.f.y, g.f.y, 0.75) }, ze: lerp(a.ze, g.ze, 0.75), zw: lerp(a.zw, g.zw, 0.75) }; }
+    out.arms[side] = punchArm(f, side, a);
+  }
+  return out;
 }
 
 /* ================================================================
@@ -525,8 +581,24 @@ function onPose(p, k, w = 640, h = 480, z = null) {
     const pw = p.prevW[s];
     const sp = pw ? Math.hypot(W.x - pw.x, W.y - pw.y) / sw / dtp : 0;
     const away = pw ? Math.hypot(W.x - P[s + 'Sh'].x, W.y - P[s + 'Sh'].y) > Math.hypot(pw.x - P[s + 'Sh'].x, pw.y - P[s + 'Sh'].y) : false;
-    if (f.cool[s] <= 0 && ((Z && ext > 0.42 && vel > 1.6) || (sp > 6.5 && away))) {
-      attack(f, s, W.y < mid.y + sw * 0.15 ? 'head' : 'body');
+    // Verkürzung im Bild: Arm zeigt zur Kamera → wirkt kürzer (zuverlässiger als die Hand-Tiefe)
+    const E = P[s + 'El'], S = P[s + 'Sh'];
+    let fsx = 0;
+    if (ok(E)) {
+      const fs = (len, full) => Math.sqrt(Math.max(0, 1 - Math.min(1, len / full) ** 2));
+      fsx = fs(Math.hypot(E.x - S.x, E.y - S.y), sw * 0.58) * 0.5 + fs(Math.hypot(W.x - E.x, W.y - E.y), sw * 0.55) * 0.5;
+    }
+    const fsv = (fsx - (p.fs?.[s] ?? fsx)) / dtp;
+    p.fs = { ...(p.fs || {}), [s]: fsx };
+    if (f.cool[s] <= 0 && pw) {
+      const vx = (W.x - pw.x) / sw / dtp, vy = (W.y - pw.y) / sw / dtp; // Bild: y nach unten
+      const inward = s === 'l' ? vx : -vx; // zur Körpermitte hin (Bild gespiegelt: linke Hand links)
+      const elbowUp = ok(E) && E.y < mid.y + sw * 0.4;
+      let type = null;
+      if (vy < -6 && Math.abs(vy) > Math.abs(vx) * 1.3 && pw.y > mid.y - sw * 0.05 && W.y < pw.y) type = 'upper'; // schnell von unten nach oben
+      else if (inward > 6 && Math.abs(vx) > Math.abs(vy) * 1.3 && elbowUp) type = 'hook';                           // schnell seitlich zur Mitte, Ellbogen oben
+      else if ((Z && ext > 0.42 && vel > 1.6) || (fsx > 0.55 && fsv > 2.2) || (sp > 6.5 && away && vy < 3)) type = 'jab';     // nach vorne
+      if (type) attack(f, s, W.y < mid.y + sw * 0.15 ? 'head' : 'body', type);
     }
     p.ext[s] = ext; p.prevW[s] = { x: W.x, y: W.y };
   }
@@ -551,18 +623,21 @@ function onPose(p, k, w = 640, h = 480, z = null) {
 /* ================================================================
    Kampf: Angriff → Wirkung (Deckung / Ausweichen / Treffer)
    ================================================================ */
-function attack(f, kind, target) {
+const PTYPE = { jab: { cool: 0.4, dur: 0.4, mul: 1, name: '' }, hook: { cool: 0.55, dur: 0.5, mul: 1.25, name: 'Haken!' }, upper: { cool: 0.7, dur: 0.5, mul: 1.5, name: 'Uppercut!' } };
+function attack(f, kind, target, type = 'jab') {
   if (state !== 'fight' || f.down > 0) return;
   const isKick = kind === 'kick';
   if (isKick && mode !== 'kick') return;
   if (f.cool[kind] > 0) return;
-  f.cool[kind] = isKick ? 0.9 : 0.4;
+  if (isKick) type = 'kick';
+  else { if (!PTYPE[type]) type = 'jab'; f.ptype = { ...(f.ptype || {}), [kind]: type }; if (type !== 'jab') target = 'head'; }
+  f.cool[kind] = isKick ? 0.9 : PTYPE[type].cool;
   // Dauerfeuer lohnt sich nicht: schnelle Folgeschläge machen weniger Schaden
   const tired = now - (f.lastThrow ?? -9) < 0.5; f.lastThrow = now;
   f.anim[kind] = 0.001;
   f.punchHigh = { ...(f.punchHigh || {}), [kind]: target === 'head' };
   f.stats.thrown++;
-  f.queue.push({ kind, target: isKick ? 'kick' : target, tired, at: now + (isKick ? 0.3 : 0.2) }); // Zeit zum Decken/Ausweichen
+  f.queue.push({ kind, type, target: isKick ? 'kick' : target, tired, at: now + (isKick ? 0.3 : 0.2) }); // Zeit zum Decken/Ausweichen
   audio.whoosh();
   const o = opp(f);
   if (o.ai) o.ai.react(kind); // KI kann reagieren
@@ -576,15 +651,18 @@ function resolve(f, a) {
   // Reichweite: zu weit weg = daneben (zurückgehen ist auch Verteidigung)
   if (fDist(f) > (a.kind === 'kick' ? REACH.kick : REACH.punch)) { pop(f, 'Zu weit!', 'miss'); f.combo = 0; return; }
   if (o.dodge && a.target === 'head') { pop(o, 'Ausgewichen!', 'miss'); audio.skid(0.6); f.combo = 0; return; }
-  let dmg = DMG[a.target];
+  let dmg = Math.round(DMG[a.target] * (PTYPE[a.type]?.mul || 1));
   if (a.tired) dmg = Math.round(dmg * 0.6);
   const blocked = o.guard && (a.target !== 'body' || Math.random() < 0.7);
   if (blocked) {
-    // Kopf-Deckung hält Schläge ganz ab, Körper/Tritt nur teilweise – der Angreifer kommt kurz aus dem Tritt
-    dmg = a.target === 'head' ? 0 : Math.round(dmg * (a.target === 'kick' ? 0.4 : 0.25));
+    // Kopf-Deckung hält Geraden und Haken ganz ab; der Uppercut kommt teilweise von unten durch, Körper/Tritt teilweise
+    dmg = a.type === 'upper' ? Math.round(dmg * 0.4) : a.target === 'head' ? 0 : Math.round(dmg * (a.target === 'kick' ? 0.4 : 0.25));
     o.stats.blocked++;
     f.cool.l = Math.max(f.cool.l, 0.55); f.cool.r = Math.max(f.cool.r, 0.55);
-    burst(hitPos, 'BLOCK', o); pop(o, 'Geblockt', 'block'); audio.tick();
+    f.knock = Math.max(f.knock, 0.2); o.knock = Math.max(o.knock, 0.12); // Abprallen
+    o.av.flash('l'); o.av.flash('r'); o.shieldHit = 1;
+    burst(hitPos, 'BLOCK', o); pop(o, dmg ? `Geblockt −${dmg}` : 'Geblockt!', 'block'); audio.tick();
+    if (o.player) sendPhone(o.player.conn, { t: 'hit' });
     f.combo = 0;
   } else {
     f.combo = now - f.lastHitAt < 1.1 ? f.combo + 1 : 1;
@@ -594,6 +672,7 @@ function resolve(f, a) {
     burst(hitPos, a.target === 'kick' ? 'KICK' : Math.random() < 0.5 ? 'POW' : 'BAM', o); hurt(o);
     splatter(hitPos, o, f, a.target === 'kick' ? 12 : a.target === 'head' ? 9 : 5);
     pop(o, `−${dmg}`, 'dmg');
+    if (PTYPE[a.type]?.name) pop(f, PTYPE[a.type].name, 'combo');
     if (f.combo >= 3) pop(f, `Kombo ×${f.combo}!`, 'combo');
     audio.bad(); shake = Math.max(shake, a.target === 'kick' ? 0.35 : 0.22);
     o.av.shake = 1; o.knock = a.target === 'kick' ? 0.45 : 0.28;
@@ -617,7 +696,7 @@ function makeAI(f, level = 1) {
       // Laufen: ran an den Gegner, nach Schlägen manchmal zurück, ab und zu um ihn herum
       if (this.moveT <= 0) { this.circle = Math.random() < 0.45 ? (Math.random() < 0.5 ? -1 : 1) * rand(0.5, 1) : 0; this.moveT = rand(0.8, 2); }
       const d = fDist(f);
-      f.move = { f: this.back > 0 ? -1 : d > 2.55 ? 1 : d < 1.9 ? -0.6 : 0, s: this.circle };
+      f.move = { f: this.back > 0 ? -1 : d > 2.6 ? 1 : d < 2.2 ? -0.6 : 0, s: this.circle };
       if (d > REACH.punch + 0.1) { if (this.t < 0.2) this.t = 0.2; }
       if (this.guardT <= 0) f.guard = false;
       if (f.dodgeT > 0) { f.dodgeT -= dt; if (f.dodgeT <= 0) f.dodge = 0; }
@@ -625,8 +704,9 @@ function makeAI(f, level = 1) {
         const r = Math.random();
         if (r < 0.2) { f.guard = true; this.guardT = rand(0.8, 1.6); this.t = this.guardT + rand(0.2, 0.5); return; }
         const hand = Math.random() < 0.5 ? 'l' : 'r';
+        const tp = Math.random();
         if (mode === 'kick' && r > 0.85) attack(f, 'kick', 'body');
-        else attack(f, hand, Math.random() < 0.65 ? 'head' : 'body');
+        else attack(f, hand, Math.random() < 0.65 ? 'head' : 'body', tp < 0.18 ? 'upper' : tp < 0.4 ? 'hook' : 'jab');
         if (Math.random() < 0.35) setTimeout(() => attack(f, hand === 'l' ? 'r' : 'l', 'head'), 260);
         this.t = rand(0.7, 1.5) / level;
         if (Math.random() < 0.3) this.back = rand(0.4, 0.8);
@@ -795,7 +875,7 @@ const ICON = {
   keys: '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M7 14h10"/></svg>',
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="#e2847b" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
 };
-const KEYTXT = ['Q/E schlagen · W Deckung · A/D ausweichen · S Tritt · Pfeile laufen', 'U/O schlagen · I Deckung · J/L ausweichen · K Tritt · 8/4/5/6 laufen'];
+const KEYTXT = ['Q/E Gerade · Z Haken · C Uppercut · W Deckung · A/D ausweichen · S Tritt · Pfeile laufen', 'U/O Gerade · H Haken · N Uppercut · I Deckung · J/L ausweichen · K Tritt · 8/4/5/6 laufen'];
 function renderSlots() {
   const html = [0, 1].map((i) => {
     const p = locals.find((x) => x.slot === i);
@@ -829,8 +909,8 @@ setMode(mode);
    Tastatur (zum Testen ohne Kamera)
    ================================================================ */
 const KEYMAP = [
-  { l: 'q', r: 'e', guard: 'w', left: 'a', right: 'd', kick: 's', fw: 'arrowup', bk: 'arrowdown', sl: 'arrowleft', sr: 'arrowright' },
-  { l: 'u', r: 'o', guard: 'i', left: 'j', right: 'l', kick: 'k', fw: '8', bk: '5', sl: '4', sr: '6' },
+  { l: 'q', r: 'e', hook: 'z', upper: 'c', guard: 'w', left: 'a', right: 'd', kick: 's', fw: 'arrowup', bk: 'arrowdown', sl: 'arrowleft', sr: 'arrowright' },
+  { l: 'u', r: 'o', hook: 'h', upper: 'n', guard: 'i', left: 'j', right: 'l', kick: 'k', fw: '8', bk: '5', sl: '4', sr: '6' },
 ];
 const held = new Set();
 addEventListener('keydown', (e) => {
@@ -854,6 +934,8 @@ addEventListener('keydown', (e) => {
     if (!f) continue;
     if (k === m.l) attack(f, 'l', 'head');
     if (k === m.r) attack(f, 'r', Math.random() < 0.5 ? 'head' : 'body');
+    if (k === m.hook) attack(f, 'l', 'head', 'hook');
+    if (k === m.upper) attack(f, 'r', 'head', 'upper');
     if (k === m.kick) attack(f, 'kick', 'body');
   }
 });
@@ -1175,7 +1257,7 @@ function tick() {
     if (f.ai) f.ai.tick(dt);
     for (const k of ['l', 'r', 'kick']) {
       f.cool[k] = Math.max(0, f.cool[k] - dt);
-      if (f.anim[k] > 0) { f.anim[k] += dt / (k === 'kick' ? 0.6 : 0.4); if (f.anim[k] >= 1) f.anim[k] = 0; }
+      if (f.anim[k] > 0) { f.anim[k] += dt / (k === 'kick' ? 0.6 : PTYPE[f.ptype?.[k] || 'jab'].dur); if (f.anim[k] >= 1) f.anim[k] = 0; }
     }
     for (let i = f.queue.length - 1; i >= 0; i--) if (now >= f.queue[i].at) { const a = f.queue.splice(i, 1)[0]; resolve(f, a); }
     if (f.player && f.player.source !== 'keys' && state !== 'fight') { f.guard = f.player.guard; f.dodge = f.player.dodge; }
@@ -1209,6 +1291,7 @@ function tick() {
     else f.av.root.rotation.z = lerp(f.av.root.rotation.z, 0, damp(6, dt));
     f.cheer = state === 'roundEnd' || state === 'results' ? f.cheer : 0;
     f.av.update(dt, now);
+    updateShield(f, dt);
     if (f.down > 0) f.av.root.position.y = -0.15 * Math.min(1, Math.abs(f.av.root.rotation.z));
   }
   animateSprites(dt);

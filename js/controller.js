@@ -37,7 +37,7 @@ const GAMES = {
     title: 'Boxring', intro: 'Das Handy wird zur Kamera. Stell es 2–3 m vor dich (zu zweit: nebeneinander), sodass es euch ganz sieht.',
     far: 'Stell dich so hin, dass dich die Kamera vom Kopf bis (beim Kickboxen) zu den Füssen sieht.',
     pose: 'Fäuste vors Gesicht halten (Deckung)',
-    play: ['Kampf läuft! 🥊', 'Fäuste vors Gesicht = Deckung, Oberkörper lehnen = ausweichen. Schritt vor/zurück/zur Seite = laufen, zurück in die Mitte = stehen.'],
+    play: ['Kampf läuft! 🥊', 'Gerade, Haken oder Uppercut schlagen · Fäuste vors Gesicht = Deckung, Oberkörper lehnen = ausweichen. Schritt vor/zurück/zur Seite = laufen, zurück in die Mitte = stehen.'],
     queued: 'Der Kampf läuft noch – du bist beim nächsten dabei.',
     results: ['Kampf vorbei!', 'Beide Fäuste hoch über den Kopf für einen neuen Kampf.'],
     result: (m) => [m.score === 1 ? '🏆 Gewonnen!' : 'Knapp verloren!', 'Beide Fäuste hoch über den Kopf für einen neuen Kampf.'],
