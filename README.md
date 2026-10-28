@@ -1,6 +1,6 @@
 # Slop Games 🎮
 
-Gratis Bewegungsspiele für den Fernseher. Das Handy ist die Kamera, der Körper ist der Controller – ohne App, ohne eigenen Server.
+Bewegungsspiele für den Fernseher (Kurvenflitzer gratis, weitere Spiele kostenpflichtig). Das Handy ist die Kamera, der Körper ist der Controller – ohne App, ohne eigenen Server.
 
 | Pfad | Inhalt |
 |---|---|

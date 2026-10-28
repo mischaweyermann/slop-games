@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Anmelden · Slop Games</title>
-  <meta name="description" content="Gratis Bewegungsspiele für den Fernseher. Dein Handy ist die Kamera, dein Körper der Controller – ohne App.">
+  <meta name="description" content="Bewegungsspiele für den Fernseher, Kurvenflitzer gratis. Dein Handy ist die Kamera, dein Körper der Controller – ohne App.">
   <meta name="theme-color" content="#5a1f25">
   <link rel="icon" href="media/brand/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="media/brand/apple-touch-icon.png">
@@ -104,7 +104,7 @@
     </main>
 
     <p class="hint">Nur mitspielen? Dafür brauchst du kein Konto – einfach den QR-Code am Fernseher scannen.</p>
-    <footer><a href="impressum.html">Impressum</a><a href="datenschutz.html">Datenschutz</a></footer>
+    <footer><a href="impressum.html">Impressum</a><a href="agb.html">AGB</a><a href="datenschutz.html">Datenschutz</a></footer>
   </div>
 
   <script type="module">
@@ -127,7 +127,7 @@
       mode = m;
       $('tabIn').setAttribute('aria-selected', m === 'in'); $('tabUp').setAttribute('aria-selected', m === 'up');
       $('submitBtn').textContent = m === 'in' ? 'Anmelden' : 'Konto erstellen';
-      $('lead').textContent = m === 'in' ? 'Schön, bist du wieder da.' : 'Gratis, ohne App. Deine Minuten und Bestzeiten werden gespeichert.';
+      $('lead').textContent = m === 'in' ? 'Schön, bist du wieder da.' : 'Gratis starten, ohne App. Deine Minuten und Bestzeiten werden gespeichert.';
       $('pw').autocomplete = m === 'in' ? 'current-password' : 'new-password';
       show($('forgot'), m === 'in'); err($('err'), '');
     }
