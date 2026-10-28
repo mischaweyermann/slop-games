@@ -27,6 +27,19 @@ body.split.three .hud .time { left: 75%; top: calc(75% + 18 * var(--u)); }
 body.st-race .corner, body.st-race .status, body.st-countdown .corner, body.st-countdown .status, body.st-results .status { opacity: 0; pointer-events: none; }
 
 /* ---------- Anzeige pro Spieler ---------- */
+/* Rückspiegel: das Bild zeichnet WebGL genau in dieses Feld, hier nur der Rahmen */
+.pmirror {
+  position: absolute; left: 50%; top: calc(9 * var(--u)); transform: translateX(-50%) scale(.9); opacity: 0;
+  width: calc(46 * var(--u)); height: calc(14 * var(--u)); border-radius: calc(1.2 * var(--u));
+  box-shadow: 0 0 0 calc(.8 * var(--u)) var(--wine-800), 0 0 0 calc(1.1 * var(--u)) var(--wine-500), 0 calc(1.6 * var(--u)) calc(3 * var(--u)) rgba(42, 14, 17, .45);
+  transition: opacity .25s, transform .25s;
+}
+.pmirror::after { content: ''; position: absolute; left: 50%; top: calc(-2.2 * var(--u)); width: calc(1.4 * var(--u)); height: calc(1.4 * var(--u)); transform: translateX(-50%); background: var(--wine-800); border-radius: calc(.4 * var(--u)); }
+.pmirror.show { opacity: 1; transform: translateX(-50%) scale(1); }
+body.split .pmirror { top: calc(3.6 * var(--u)); width: calc(40 * var(--u)); height: calc(12.5 * var(--u)); }
+.phud.mirror-on .pfx { top: calc(25.5 * var(--u)); }
+body.split .phud.mirror-on .pfx { top: calc(19 * var(--u)); }
+
 #phuds { position: absolute; inset: 0; pointer-events: none; }
 .phud { position: absolute; overflow: hidden; opacity: 0; transition: opacity .4s; }
 .phud.show { opacity: 1; }

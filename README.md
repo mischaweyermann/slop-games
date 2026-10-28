@@ -50,7 +50,7 @@ Auf der Strecke stehen vier Reihen **?-Boxen**. Wer durchfährt, bekommt ein Ite
 | Item | Wirkung beim Getroffenen |
 |---|---|
 | 🔀 Spiegel-Lenkung | links und rechts vertauscht (7 s) |
-| ↩️ Rückwärtsgang | Kart dreht sich um, fährt rückwärts in Fahrtrichtung, Blick nach hinten (6 s) |
+| ↩️ Rückwärtsgang | Kart dreht sich um, fährt rückwärts in Fahrtrichtung, Blick nach hinten, oben ein Rückspiegel zeigt die Strecke vor dir (6 s) |
 | ⛔ Vollbremse | sofortiger Stillstand (ca. 2,5 s) |
 | 🔧 Motorausfall | Motor aus, bis die getroffene Person **3× beide Arme über den Kopf** hebt (Tastatur: ← → abwechselnd) |
 

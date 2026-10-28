@@ -604,6 +604,7 @@ function createHud(p) {
       </div>
       <div class="pitems"><span class="islot"></span><span class="islot"></span><span class="hint">Arme runter</span></div>
     </div>
+    <div class="pmirror" aria-hidden="true"></div>
     <div class="pfx"><span class="ic"></span><span class="tx"></span><span class="cr"></span></div>
     <div class="pbottom">
       <div class="pcoins">${ICON.coin}<b>0</b></div>
@@ -627,7 +628,7 @@ function createHud(p) {
     bar: q('.speedo .bar'), coins: q('.pcoins b'), coinsBox: q('.pcoins'), turbo: q('.pturbo'), segs: [...el.querySelectorAll('.pturbo .seg i')],
     change: q('.pchange'), wheel: q('.pwheel'), banner: q('.pbanner'), name: q('.pname'),
     items: q('.pitems'), itemHint: q('.pitems .hint'), itemSlots: [...el.querySelectorAll('.pitems .islot')], fx: q('.pfx'), fxIc: q('.pfx .ic'), fxTx: q('.pfx .tx'), fxCr: q('.pfx .cr'),
-    hand: q('.phand'), handNum: q('.phand b'),
+    hand: q('.phand'), handNum: q('.phand b'), mirror: q('.pmirror'), mirrorOn: false,
     aim: q('.paim'), aimTitle: q('.aim-title'), aimSub: q('.aim-sub'), aimTargets: q('.aim-targets'), aimItems: q('.aim-items'), aimCursor: q('.aim-cursor'), aimKey: '',
   };
 }
@@ -661,6 +662,37 @@ function setPrompt(show, text = '', sub = '', icon = '🏎️', fill = 0) {
 
 // Bildausschnitte je nach Spielerzahl
 let views = [];
+
+/* ---------- Rückspiegel (beim Rückwärtsgang): zeigt, was in Fahrtrichtung kommt – gespiegelt wie ein echter Spiegel ---------- */
+const MIRROR = (() => {
+  const rt = new THREE.WebGLRenderTarget(640, 200, { samples: 4 });
+  rt.texture.colorSpace = THREE.SRGBColorSpace;
+  const cam = new THREE.PerspectiveCamera(52, 3.2, 0.1, 900);
+  const tex = rt.texture; tex.repeat.x = -1; tex.offset.x = 1; // links/rechts spiegeln
+  const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({ map: tex, depthTest: false, depthWrite: false }));
+  const overlay = new THREE.Scene(); overlay.add(quad);
+  const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  return { rt, cam, overlay, ortho };
+})();
+function renderMirror(p) {
+  const r = p.racer, el = p.hud.mirror;
+  const on = !!r && (r.turn || 0) > 1.2 && (state === 'race' || state === 'countdown');
+  if (on !== p.hud.mirrorOn) { p.hud.mirrorOn = on; el.classList.toggle('show', on); p.hud.root.classList.toggle('mirror-on', on); }
+  if (!on) return;
+  const box = el.getBoundingClientRect();
+  if (box.width < 4) return;
+  // Kamera schaut in Fahrtrichtung (nach hinten aus Sicht der Person, die rückwärts schaut)
+  const dir = _v.set(Math.sin(r.heading), 0, Math.cos(r.heading));
+  const cam = MIRROR.cam;
+  cam.position.copy(r.pos).addScaledVector(dir, 0.6); cam.position.y = 1.45;
+  cam.lookAt(cam.position.x + dir.x * 14, 0.9, cam.position.z + dir.z * 14);
+  cam.aspect = box.width / box.height; cam.updateProjectionMatrix();
+  cam.layers.mask = p.camera.layers.mask & ~(1 << (5 + p.slot)); // ohne eigenes Cockpit
+  renderer.setRenderTarget(MIRROR.rt); renderer.render(scene, cam); renderer.setRenderTarget(null);
+  const H = innerHeight, x = box.left, y = H - box.bottom;
+  renderer.setViewport(x, y, box.width, box.height); renderer.setScissor(x, y, box.width, box.height);
+  renderer.autoClear = false; renderer.render(MIRROR.overlay, MIRROR.ortho); renderer.autoClear = true;
+}
 function updateLayout() {
   const W = innerWidth, H = innerHeight, n = locals.length;
   const quads = [[0, 0, W / 2, H / 2], [W / 2, 0, W / 2, H / 2], [0, H / 2, W / 2, H / 2], [W / 2, H / 2, W / 2, H / 2]];
@@ -1379,6 +1411,7 @@ function tick() {
       const [x, y, w, h] = views[i] || [0, 0, W, H];
       renderer.setViewport(x, H - y - h, w, h); renderer.setScissor(x, H - y - h, w, h);
       renderer.render(scene, p.camera);
+      renderMirror(p);
     });
     if (locals.length === 3) {
       const [x, y, w, h] = [W / 2, H / 2, W / 2, H / 2];
