@@ -271,6 +271,7 @@ function makeFighter(i) {
   av.root.position.set(i === 0 ? -SIDE_X : SIDE_X, 0, 0);
   av.root.rotation.y = i === 0 ? YAW : -YAW;
   return {
+    pos: new THREE.Vector2(i === 0 ? -SIDE_X : SIDE_X, 0), move: { f: 0, s: 0 }, walk: 0, walkPh: 0,
     i, av, player: null, ai: null, name: '', cfg: null, hp: HP, wins: 0,
     guard: false, dodge: 0, knock: 0, anim: { l: 0, r: 0, kick: 0 }, cool: { l: 0, r: 0, kick: 0 }, queue: [],
     combo: 0, lastHitAt: -9, wounds: [], stats: { thrown: 0, landed: 0, blocked: 0, dmg: 0 }, down: 0, cheer: 0,
@@ -278,6 +279,23 @@ function makeFighter(i) {
 }
 const fighters = [makeFighter(0), makeFighter(1)];
 const opp = (f) => fighters[1 - f.i];
+// Bewegung im Ring: vor/zurück zum Gegner, seitlich = um den Gegner herum (man dreht sich automatisch mit)
+const RING_X = 3.0, RING_Z = 2.15, MIN_DIST = 1.65, REACH = { punch: 2.8, kick: 3.15 };
+const facing = (f) => { const o = opp(f); const d = new THREE.Vector2(o.pos.x - f.pos.x, o.pos.y - f.pos.y); return d.lengthSq() ? d.normalize() : new THREE.Vector2(f.i === 0 ? 1 : -1, 0); };
+const fDist = (f) => f.pos.distanceTo(opp(f).pos);
+function moveFighter(f, dt) {
+  const m = f.move, can = state === 'fight' && f.down <= 0;
+  const mf = can ? clamp(m.f, -1, 1) : 0, ms = can ? clamp(m.s, -1, 1) : 0;
+  const fw = facing(f), rt = new THREE.Vector2(-fw.y, fw.x); // rt = rechts aus Sicht des Kämpfers (Welt-z = Bild-y)
+  const sp = f.guard ? 1.1 : 1.6;
+  f.pos.addScaledVector(fw, mf * sp * dt).addScaledVector(rt, ms * sp * 0.9 * dt);
+  f.walk = lerp(f.walk, Math.min(1, Math.hypot(mf, ms)), damp(10, dt));
+  f.walkPh += dt * 9 * f.walk;
+  f.pos.x = clamp(f.pos.x, -RING_X, RING_X); f.pos.y = clamp(f.pos.y, -RING_Z, RING_Z);
+  // nicht ineinander laufen
+  const o = opp(f), d = f.pos.distanceTo(o.pos);
+  if (d < MIN_DIST) { const push = new THREE.Vector2().subVectors(f.pos, o.pos).normalize().multiplyScalar((MIN_DIST - d) / 2); f.pos.add(push); o.pos.sub(push); }
+}
 
 // Von hinten gesehen wäre die Figur sonst spiegelverkehrt: links/rechts tauschen, damit deine linke Hand links im Bild ist
 function mirrorS(s) {
@@ -472,14 +490,32 @@ function onPose(p, k, w = 640, h = 480, z = null) {
   const nearFace = (W) => ok(W) && Math.hypot(W.x - nose.x, W.y - nose.y) < sw * 0.95 && W.y < mid.y + sw * 0.35;
   p.guard = nearFace(P.lWr) && nearFace(P.rWr);
   p.handsUp = ok(P.lWr) && ok(P.rWr) && P.lWr.y < noseY - sw * 0.35 && P.rWr.y < noseY - sw * 0.35;
-  // Ausweichen: Oberkörper zur Seite (gegenüber der ruhigen Mitte)
-  if (p.base == null) p.base = mid.x;
-  p.leanN = (mid.x - p.base) / sw;
-  if (Math.abs(p.leanN) < 0.25) p.base = lerp(p.base, mid.x, 0.03);
+  const hipsOk = ok(P.lHip, 0.5) && ok(P.rHip, 0.5);
+  const hipX = hipsOk ? (P.lHip.x + P.rHip.x) / 2 : null;
+  if (hipsOk) {
+    // Ausweichen: Oberkörper gegenüber der Hüfte zur Seite lehnen
+    if (p.lbase == null) p.lbase = mid.x - hipX;
+    p.leanN = (mid.x - hipX - p.lbase) / sw;
+    if (Math.abs(p.leanN) < 0.2) p.lbase = lerp(p.lbase, mid.x - hipX, 0.03);
+    // Laufen wie ein Joystick: Schritt zur Seite = seitlich gehen, Schritt zur Kamera/weg = vor/zurück, zurück in die Mitte = stehen bleiben
+    if (p.hbase == null) p.hbase = hipX;
+    if (p.swBase == null) p.swBase = sw;
+    const sideN = (hipX - p.hbase) / sw, size = sw / p.swBase;
+    p.moveS = Math.abs(sideN) > 0.45 ? clamp((Math.abs(sideN) - 0.35) * 2.5, 0, 1) * Math.sign(sideN) : 0;
+    p.moveF = size > 1.13 ? clamp((size - 1.08) * 6, 0, 1) : size < 0.88 ? -clamp((0.93 - size) * 6, 0, 1) : 0;
+    if (Math.abs(sideN) < 0.15) p.hbase = lerp(p.hbase, hipX, 0.01);
+    if (size > 0.96 && size < 1.04) p.swBase = lerp(p.swBase, sw, 0.01);
+  } else {
+    // ohne Hüfte im Bild (z. B. sitzend): Ausweichen gegenüber der ruhigen Mitte, kein Laufen
+    if (p.base == null) p.base = mid.x;
+    p.leanN = (mid.x - p.base) / sw;
+    if (Math.abs(p.leanN) < 0.25) p.base = lerp(p.base, mid.x, 0.03);
+    p.moveS = 0; p.moveF = 0;
+  }
   p.dodge = Math.abs(p.leanN) > 0.5 ? Math.sign(p.leanN) : 0;
   const f = fighters.find((x) => x.player === p);
   if (!f || state !== 'fight') { p.prevW = { l: null, r: null }; p.prevA = { l: null, r: null }; return; }
-  f.guard = p.guard; f.dodge = p.dodge;
+  f.guard = p.guard; f.dodge = p.dodge; f.move = { f: p.moveF || 0, s: p.moveS || 0 };
   // Schläge: Faust schnell zur Kamera (Tiefe) oder schnelle Bewegung im Bild
   for (const s of ['l', 'r']) {
     const W = P[s + 'Wr'];
@@ -536,7 +572,9 @@ function resolve(f, a) {
   if (state !== 'fight' || o.down > 0) return;
   const head = o.av.head.getWorldPosition(new THREE.Vector3());
   const hitPos = a.target === 'body' || a.target === 'kick' ? head.clone().add(new THREE.Vector3(0, -1.0, 0)) : head;
-  hitPos.x += (o.i === 0 ? 0.3 : -0.3);
+  { const fw = facing(o); hitPos.x += fw.x * 0.3; hitPos.z += fw.y * 0.3; }
+  // Reichweite: zu weit weg = daneben (zurückgehen ist auch Verteidigung)
+  if (fDist(f) > (a.kind === 'kick' ? REACH.kick : REACH.punch)) { pop(f, 'Zu weit!', 'miss'); f.combo = 0; return; }
   if (o.dodge && a.target === 'head') { pop(o, 'Ausgewichen!', 'miss'); audio.skid(0.6); f.combo = 0; return; }
   let dmg = DMG[a.target];
   if (a.tired) dmg = Math.round(dmg * 0.6);
@@ -572,10 +610,15 @@ function resolve(f, a) {
 /* ---------- KI-Gegner ---------- */
 function makeAI(f, level = 1) {
   return {
-    t: rand(1, 2), guardT: 0,
+    t: rand(1, 2), guardT: 0, moveT: 0, back: 0, circle: 0,
     tick(dt) {
-      if (state !== 'fight' || f.down > 0) { f.guard = false; f.dodge = 0; return; }
-      this.t -= dt; this.guardT -= dt;
+      if (state !== 'fight' || f.down > 0) { f.guard = false; f.dodge = 0; f.move = { f: 0, s: 0 }; return; }
+      this.t -= dt; this.guardT -= dt; this.moveT -= dt; this.back -= dt;
+      // Laufen: ran an den Gegner, nach Schlägen manchmal zurück, ab und zu um ihn herum
+      if (this.moveT <= 0) { this.circle = Math.random() < 0.45 ? (Math.random() < 0.5 ? -1 : 1) * rand(0.5, 1) : 0; this.moveT = rand(0.8, 2); }
+      const d = fDist(f);
+      f.move = { f: this.back > 0 ? -1 : d > 2.55 ? 1 : d < 1.9 ? -0.6 : 0, s: this.circle };
+      if (d > REACH.punch + 0.1) { if (this.t < 0.2) this.t = 0.2; }
       if (this.guardT <= 0) f.guard = false;
       if (f.dodgeT > 0) { f.dodgeT -= dt; if (f.dodgeT <= 0) f.dodge = 0; }
       if (this.t <= 0) {
@@ -586,6 +629,7 @@ function makeAI(f, level = 1) {
         else attack(f, hand, Math.random() < 0.65 ? 'head' : 'body');
         if (Math.random() < 0.35) setTimeout(() => attack(f, hand === 'l' ? 'r' : 'l', 'head'), 260);
         this.t = rand(0.7, 1.5) / level;
+        if (Math.random() < 0.3) this.back = rand(0.4, 0.8);
       }
     },
     react() {
@@ -625,6 +669,7 @@ function resetFighters(full) {
     f.anim = { l: 0, r: 0, kick: 0 }; f.cool = { l: 0, r: 0, kick: 0 };
     if (full) { f.wins = 0; f.stats = { thrown: 0, landed: 0, blocked: 0, dmg: 0 }; }
     clearWounds(f);
+    f.pos.set(f.i === 0 ? -SIDE_X : SIDE_X, 0); f.move = { f: 0, s: 0 }; f.walk = 0;
     f.av.root.rotation.z = 0; f.av.root.position.y = 0;
   }
 }
@@ -644,6 +689,7 @@ function setState(s) {
   }
   if (s === 'intro') {
     roundNo++; roundT = ROUND_TIME; resetFighters(false); assignFighters();
+    for (const p of locals) { p.hbase = null; p.swBase = null; } // Grundstellung neu messen (da wo du gerade stehst)
     banner(roundNo === 1 ? 'Runde 1' : `Runde ${roundNo}`);
     audio.tick();
   }
@@ -749,7 +795,7 @@ const ICON = {
   keys: '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M7 14h10"/></svg>',
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="#e2847b" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
 };
-const KEYTXT = ['Q/E schlagen · W Deckung · A/D ausweichen · S Tritt', 'U/O schlagen · I Deckung · J/L ausweichen · K Tritt'];
+const KEYTXT = ['Q/E schlagen · W Deckung · A/D ausweichen · S Tritt · Pfeile laufen', 'U/O schlagen · I Deckung · J/L ausweichen · K Tritt · 8/4/5/6 laufen'];
 function renderSlots() {
   const html = [0, 1].map((i) => {
     const p = locals.find((x) => x.slot === i);
@@ -783,8 +829,8 @@ setMode(mode);
    Tastatur (zum Testen ohne Kamera)
    ================================================================ */
 const KEYMAP = [
-  { l: 'q', r: 'e', guard: 'w', left: 'a', right: 'd', kick: 's' },
-  { l: 'u', r: 'o', guard: 'i', left: 'j', right: 'l', kick: 'k' },
+  { l: 'q', r: 'e', guard: 'w', left: 'a', right: 'd', kick: 's', fw: 'arrowup', bk: 'arrowdown', sl: 'arrowleft', sr: 'arrowright' },
+  { l: 'u', r: 'o', guard: 'i', left: 'j', right: 'l', kick: 'k', fw: '8', bk: '5', sl: '4', sr: '6' },
 ];
 const held = new Set();
 addEventListener('keydown', (e) => {
@@ -819,6 +865,7 @@ function keysInput() {
     if (!f) continue;
     f.guard = held.has(m.guard);
     f.dodge = held.has(m.left) ? -1 : held.has(m.right) ? 1 : 0;
+    f.move = { f: (held.has(m.fw) ? 1 : 0) - (held.has(m.bk) ? 1 : 0), s: (held.has(m.sr) ? 1 : 0) - (held.has(m.sl) ? 1 : 0) };
   }
 }
 function addKeysPlayer() {
@@ -1133,18 +1180,31 @@ function tick() {
     for (let i = f.queue.length - 1; i >= 0; i--) if (now >= f.queue[i].at) { const a = f.queue.splice(i, 1)[0]; resolve(f, a); }
     if (f.player && f.player.source !== 'keys' && state !== 'fight') { f.guard = f.player.guard; f.dodge = f.player.dodge; }
     const human = f.player && f.player.source !== 'keys' && f.down <= 0 && f.cheer <= 0;
+    moveFighter(f, dt);
     const pose = human ? fromPose(f, dt) : synth(f, dt);
+    if (f.walk > 0.05 && !(f.anim.kick > 0) && !(mode === 'kick' && human)) { // Schritte
+      for (const side of ['l', 'r']) {
+        const lift = Math.max(0, Math.sin(f.walkPh + (side === 'l' ? 0 : Math.PI))) * f.walk;
+        const L = pose.legs[side];
+        pose.legs[side] = { ...L, t: { x: L.t.x, y: L.t.y + lift * 0.35 }, zk: (L.zk || 0) + lift * 0.22, za: (L.za || 0) + lift * 0.12 };
+      }
+      pose.bounce = (pose.bounce || 0) + Math.abs(Math.sin(f.walkPh)) * 0.04 * f.walk;
+    }
     compose(f.av, views.some((v) => v.f === f) ? mirrorS(pose) : pose);
-    // Seitlich: leicht zur Kamera gedreht · Spieler-Ansichten: direkt zueinander
-    const yaw = views[0].f ? Math.PI / 2 : YAW;
-    f.av.root.rotation.y = lerp(f.av.root.rotation.y, f.i === 0 ? yaw : -yaw, damp(8, dt));
+    // Immer zum Gegner gedreht · seitlich zusätzlich etwas zur Kamera (damit man Gesichter sieht)
+    const fw = facing(f);
+    let yaw = Math.atan2(fw.x, fw.y);
+    if (!views[0].f) yaw -= Math.sign(yaw) * (Math.PI / 2 - YAW) * Math.abs(Math.sin(yaw));
+    let dy = yaw - f.av.root.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+    f.av.root.rotation.y += dy * damp(8, dt);
     // Rückstoss nach Treffer, K.O.-Sturz
     f.knock = Math.max(0, f.knock - dt * 1.6);
     const dirX = f.i === 0 ? -1 : 1;
     // Beim Schlagen/Treten einen Schritt nach vorne (damit die Handschuhe den Gegner erreichen)
     const J = f.av.J, reach = Math.max(J.lHa.tgt.z, J.rHa.tgt.z, J.lAn.tgt.z * 0.9, J.rAn.tgt.z * 0.9);
     f.lunge = lerp(f.lunge || 0, clamp((reach - 0.45) / 0.37, 0, 1) * 0.5, damp(14, dt));
-    f.av.root.position.x = (f.i === 0 ? -SIDE_X : SIDE_X) + dirX * Math.sin(Math.min(1, f.knock) * Math.PI) * 0.3 - dirX * f.lunge;
+    const off = f.lunge - Math.sin(Math.min(1, f.knock) * Math.PI) * 0.3;
+    f.av.root.position.x = f.pos.x + fw.x * off; f.av.root.position.z = f.pos.y + fw.y * off;
     if (f.down > 0) { f.av.root.rotation.z = lerp(f.av.root.rotation.z, -dirX * 1.35, damp(3, dt)); }
     else f.av.root.rotation.z = lerp(f.av.root.rotation.z, 0, damp(6, dt));
     f.cheer = state === 'roundEnd' || state === 'results' ? f.cheer : 0;
