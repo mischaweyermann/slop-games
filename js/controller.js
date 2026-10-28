@@ -463,7 +463,7 @@ function renderPlayers(list) {
       box.appendChild(el);
       c = { el, cfg: sanitize(q.cfg), name: q.name };
       const name = el.querySelector('.pc-name');
-      const push = () => { send({ t: 'setp', id: q.id, name: c.name, cfg: c.cfg }); if (!multi) { savedName = c.name; charCfg = c.cfg; try { localStorage.setItem('slop.name', c.name); } catch { /* */ } saveConfig(CHAR_KEY, c.cfg); } drawAvatar(c); buzz(12); };
+      const push = () => { send({ t: 'setp', id: q.id, name: c.name, cfg: c.cfg }); if (!multi) { savedName = c.name; charCfg = c.cfg; try { localStorage.setItem('slop.name', c.name); } catch { /* */ } saveConfig(CHAR_KEY, c.cfg); syncProfile(c.name, c.cfg); } drawAvatar(c); buzz(12); };
       let nameT = 0;
       name.addEventListener('input', () => { c.name = name.value.trim(); clearTimeout(nameT); if (c.name) nameT = setTimeout(push, 400); });
       el.querySelectorAll('.pc-pre').forEach((b) => b.addEventListener('click', () => { c.cfg = sanitize(PRESETS[+b.dataset.i].cfg); if (c.editor) c.editor.set(c.cfg); push(); }));
@@ -544,15 +544,24 @@ async function renderAcct() {
   const back = location.pathname.split('/').pop() + location.search;
   if (!acctUser) {
     $('acctTitle').textContent = 'Runden speichern?';
-    $('acctSub').textContent = 'Melde dich an, dann landen deine Minuten und Plätze in «Mein Bereich».';
+    $('acctSub').textContent = 'Melde dich an, dann landen deine Minuten und Plätze in deinem Konto – und deine Figur ist überall dabei.';
     btn.textContent = 'Anmelden'; btn.href = 'login.html?next=' + encodeURIComponent(back); btn.hidden = false;
     return;
   }
   let nick = '';
-  try { const p = await acct.getProfile(); nick = (p && p.nickname) || ''; } catch { /* */ }
+  try {
+    const p = await acct.getProfile();
+    nick = (p && p.nickname) || '';
+    // Name und Figur aus dem Profil übernehmen (gelten für alle Spiele)
+    if (p && (p.nickname || p.character)) {
+      if (p.nickname) savedName = p.nickname.slice(0, 14);
+      if (p.character) charCfg = sanitize(p.character);
+      if (!multi && conn && conn.open && savedName) send({ t: 'setp', id: null, name: savedName, cfg: charCfg });
+    }
+  } catch { /* */ }
   $('acctTitle').textContent = 'Angemeldet' + (nick ? ' als ' + nick : '');
   $('acctSub').textContent = multi ? 'Deine Runden werden gespeichert, wenn du allein vor der Kamera spielst.' : 'Deine Runden werden gespeichert.';
-  btn.textContent = 'Mein Bereich'; btn.href = 'konto.html'; btn.hidden = false;
+  btn.textContent = 'Mein Profil'; btn.href = './#profil'; btn.hidden = false;
 }
 function queueSave(msg) {
   if (!msg || !msg.game) return;
@@ -576,3 +585,11 @@ import('./account.js').then(async (m) => {
   renderAcct();
   m.onAuth((u) => { acctUser = u; renderAcct(); });
 }).catch(() => renderAcct());
+
+// Änderungen am Handy auch im Profil speichern (nur «Nur ich», angemeldet)
+let profileT = 0;
+function syncProfile(name, cfg) {
+  if (!acct || !acctUser) return;
+  clearTimeout(profileT);
+  profileT = setTimeout(() => { acct.saveProfile({ nickname: name || undefined, character: cfg }).catch(() => {}); }, 1200);
+}

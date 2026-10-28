@@ -46,21 +46,36 @@ export async function updatePassword(password) {
 }
 export async function signOut() { await sb.auth.signOut(); }
 
+// Profil (Name + Figur). Wird zusätzlich lokal abgelegt, damit alle Spiele die Figur kennen.
+const CHAR_KEY = 'ballonplatzer.character';
+const NAME_KEY = 'slop.name';
+function cacheLocal(p) {
+  try {
+    if (p && p.nickname) localStorage.setItem(NAME_KEY, p.nickname);
+    if (p && p.character) localStorage.setItem(CHAR_KEY, JSON.stringify(p.character));
+  } catch { /* privat */ }
+}
 export async function getProfile() {
   const user = await currentUser();
   if (!user) return null;
-  const { data, error } = await sb.from('profiles').select('nickname, created_at').eq('id', user.id).maybeSingle();
+  const { data, error } = await sb.from('profiles').select('nickname, character, created_at').eq('id', user.id).maybeSingle();
   if (error) throw error;
-  return data || { nickname: null };
+  const p = data || { nickname: null, character: null };
+  cacheLocal(p);
+  return p;
 }
-export async function setNickname(nickname) {
+export async function saveProfile({ nickname, character }) {
   const user = await currentUser();
   if (!user) throw new Error('Nicht angemeldet');
-  const clean = String(nickname || '').trim().slice(0, 24) || null;
-  const { error } = await sb.from('profiles').upsert({ id: user.id, nickname: clean });
+  const row = { id: user.id };
+  if (nickname !== undefined) row.nickname = String(nickname || '').trim().slice(0, 24) || null;
+  if (character !== undefined) row.character = character || null;
+  const { error } = await sb.from('profiles').upsert(row);
   if (error) throw error;
-  return clean;
+  cacheLocal(row);
+  return row;
 }
+export async function setNickname(nickname) { return (await saveProfile({ nickname })).nickname; }
 
 // Eine gespielte Runde speichern
 export async function savePlay({ game, seconds, place = null, players = null, finishTime = null, won = null }) {

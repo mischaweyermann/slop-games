@@ -12,6 +12,7 @@
   <link rel="apple-touch-icon" href="media/brand/apple-touch-icon.png">
   <meta property="og:image" content="https://slopgames.ch/media/brand/icon-512.png">
   <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/editor.css">
   <style>
     :root {
       --blush: #f6d6d3; --wine-800: #3d1418; --wine-700: #461519; --wine-600: #5a1f25; --wine-500: #7d2a2e;
@@ -60,6 +61,46 @@
     }
     @media (prefers-reduced-motion: reduce) { .brand-mark * { animation: none !important; } }
     .top-left { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+    /* Profil */
+    .rail a.nav .rail-av { width: 34px; height: 34px; border-radius: 50%; background: var(--wine-500); overflow: hidden; display: block; }
+    .rail a.nav .rail-av svg { width: 100%; height: 100%; display: block; }
+    .rail a.nav.on .rail-av { box-shadow: 0 0 0 3px var(--coral); }
+    .prof-head { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+    .prof-av { width: 88px; height: 88px; border-radius: 50%; background: var(--wine-500); overflow: hidden; flex: none; }
+    .prof-av svg { width: 100%; height: 100%; display: block; }
+    .prof-grid { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); align-items: start; }
+    .prof-grid .card { display: flex; flex-direction: column; gap: 14px; }
+    .prof-grid h3 { margin: 0; }
+    .prof-field { display: flex; flex-direction: column; gap: 6px; }
+    .prof-field span { font-size: 13px; color: var(--mute); }
+    .prof-field input { font: 500 17px 'Poppins', sans-serif; color: #fff; background: var(--wine-800); border: 2px solid transparent; border-radius: 16px; padding: 12px 16px; width: 100%; }
+    .prof-field input:focus { border-color: var(--coral); outline: none; }
+    .prof-ed { font-size: 16px; }
+    .pill { align-self: flex-start; font: 600 16px 'Poppins', sans-serif; border: 0; border-radius: 999px; padding: 12px 24px; cursor: pointer; background: #fff; color: var(--wine-600); transition: background .15s; }
+    .pill:hover { background: var(--cream); }
+    .pill.dark { background: var(--wine-800); color: #fff; }
+    .pill.dark:hover { background: var(--wine-500); }
+    .pill.danger { background: transparent; color: #ffb3ab; border: 2px solid var(--coral-dark); padding: 10px 22px; }
+    .pill.danger:hover { background: var(--coral-dark); color: #fff; }
+    .pill:disabled { opacity: .6; cursor: wait; }
+    .pill:focus-visible, .prof-field input:focus-visible { outline: 4px solid var(--cream); outline-offset: 3px; }
+    .note { margin: 0; font-size: 14px; line-height: 1.5; color: var(--soft); }
+    .note.ok { color: var(--cream); } .note.err { color: #ffb3ab; }
+    .acct-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    hr.sep { border: 0; border-top: 1px solid var(--wine-500); margin: 4px 0; width: 100%; }
+    @media (max-width: 980px) { .prof-grid { grid-template-columns: 1fr; } }
+    /* Willkommen (erster Login) */
+    .welcome { width: min(560px, 94vw); max-height: 92vh; padding: 0; border: 0; border-radius: 32px; background: var(--wine-700); color: var(--text); overflow: auto; }
+    .welcome::backdrop { background: rgba(42, 14, 17, .86); }
+    .welcome-in { padding: 28px; display: flex; flex-direction: column; gap: 16px; }
+    .welcome-in[hidden], .note[hidden] { display: none; }
+    .welcome h2 { margin: 0; font-size: 28px; font-weight: 700; color: #fff; letter-spacing: -.01em; }
+    .welcome .steps-dots { display: flex; gap: 6px; }
+    .welcome .steps-dots i { width: 28px; height: 6px; border-radius: 999px; background: var(--wine-500); }
+    .welcome .steps-dots i.on { background: var(--coral); }
+    .welcome-av { width: 120px; height: 120px; border-radius: 50%; background: var(--wine-500); overflow: hidden; align-self: center; }
+    .welcome-av svg { width: 100%; height: 100%; display: block; }
+    .welcome-actions { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; position: sticky; bottom: 0; margin: 0 -28px -28px; padding: 14px 28px 22px; background: var(--wine-700); }
     .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
     main { display: flex; flex-direction: column; gap: 22px; min-width: 0; min-height: calc(100vh - 2 * clamp(12px, 1.6vw, 22px)); }
@@ -258,7 +299,7 @@
       <a class="nav" href="#spiele" data-v="spiele" aria-label="Spiele"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="11" rx="5"/><path d="M7 11v3M5.5 12.5h3M16 12h.01M18 14h.01"/></svg></a>
       <a class="nav" href="#so" data-v="so" aria-label="So funktioniert’s"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17h.01"/></svg></a>
       <a class="nav" href="#bewegung" data-v="bewegung" aria-label="Deine Bewegung"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9v9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></svg></a>
-      <a class="nav" href="konto.html" aria-label="Mein Bereich"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></a>
+      <a class="nav" href="#profil" data-v="profil" aria-label="Profil" id="railProfil"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></a>
       <a class="tv" href="kurvenflitzer/" aria-label="Spiel auf dem TV starten"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
     </nav>
 
@@ -414,11 +455,11 @@
       <!-- ===== Deine Bewegung ===== -->
       <div class="view" data-view="bewegung">
         <h1 class="page-title">Deine Bewegung</h1>
-        <p class="page-lead">Gespeichert nur auf diesem Gerät – nichts davon verlässt deinen Browser.</p>
+        <p class="page-lead">Gespeichert in deinem Konto – so siehst du deine Minuten auf jedem Gerät.</p>
         <div class="grid4">
           <div class="kpi"><small>Bewegungszeit</small><b id="kMin">0</b><span>Minuten insgesamt</span></div>
           <div class="kpi"><small>Gespielt</small><b id="kPlays">0</b><span>Rennen und Kämpfe</span></div>
-          <div class="kpi"><small>Siege</small><b id="kWins">0</b><span>auf diesem Gerät</span></div>
+          <div class="kpi"><small>Siege</small><b id="kWins">0</b><span>insgesamt</span></div>
           <div class="kpi"><small>Lieblingsspiel</small><b id="kFav">–</b><span>meiste Minuten</span></div>
         </div>
         <section class="card">
@@ -428,9 +469,38 @@
         <section class="card">
           <h3>Zuletzt gespielt</h3>
           <p id="histEmpty">Noch nichts gespielt – starte ein Spiel, dann erscheint es hier.</p>
-          <table class="hist" id="hist" hidden><thead><tr><th>Wann</th><th>Spiel</th><th>Wer</th><th>Ergebnis</th><th>Dauer</th></tr></thead><tbody></tbody></table>
+          <table class="hist" id="hist" hidden><thead><tr><th>Wann</th><th>Spiel</th><th>Spieler</th><th>Ergebnis</th><th>Dauer</th></tr></thead><tbody></tbody></table>
         </section>
-        <div><button class="ghost-btn" id="resetStats" type="button">Statistik zurücksetzen</button></div>
+      </div>
+
+      <!-- ===== Profil ===== -->
+      <div class="view" data-view="profil">
+        <div class="prof-head">
+          <span class="prof-av" id="profAv"></span>
+          <div><h1 class="page-title" id="profTitle">Dein Profil</h1><p class="page-lead" id="profLead">Name und Figur gelten in allen Spielen.</p></div>
+        </div>
+        <div class="grid2 prof-grid">
+          <section class="card">
+            <h3>Name und Figur</h3>
+            <label class="prof-field"><span>Dein Name im Spiel</span><input id="profNick" maxlength="14" autocomplete="nickname" spellcheck="false"></label>
+            <div class="prof-ed" id="profEditor"></div>
+            <button class="pill" id="profSave" type="button">Speichern</button>
+            <p class="note" id="profMsg" role="status"></p>
+          </section>
+          <section class="card">
+            <h3>Konto</h3>
+            <p class="note" id="profMail"></p>
+            <label class="prof-field"><span>Neues Passwort (mindestens 8 Zeichen)</span><input id="profPw" type="password" autocomplete="new-password" minlength="8"></label>
+            <button class="pill dark" id="profPwBtn" type="button">Passwort ändern</button>
+            <p class="note" id="profPwMsg" role="status"></p>
+            <hr class="sep">
+            <div class="acct-actions">
+              <button class="pill dark" id="logoutBtn" type="button">Abmelden</button>
+              <button class="pill danger" id="deleteBtn" type="button">Konto löschen</button>
+            </div>
+            <p class="note">«Konto löschen» entfernt dein Konto mit allen gespeicherten Runden.</p>
+          </section>
+        </div>
       </div>
 
       <footer>
@@ -442,14 +512,34 @@
     </main>
   </div>
 
+  <dialog class="welcome" id="welcome" aria-labelledby="wTitle">
+    <div class="welcome-in" id="wStep1">
+      <div class="steps-dots" aria-hidden="true"><i class="on"></i><i></i></div>
+      <h2 id="wTitle">Willkommen bei Slop Games!</h2>
+      <p class="note">Wie sollen wir dich in den Spielen nennen?</p>
+      <label class="prof-field"><span>Dein Name</span><input id="wNick" maxlength="14" autocomplete="nickname" spellcheck="false" placeholder="z. B. Mischa"></label>
+      <p class="note err" id="wErr" hidden></p>
+      <div class="welcome-actions"><span></span><button class="pill" id="wNext" type="button">Weiter</button></div>
+    </div>
+    <div class="welcome-in" id="wStep2" hidden>
+      <div class="steps-dots" aria-hidden="true"><i class="on"></i><i class="on"></i></div>
+      <h2>Wähle deine Figur</h2>
+      <p class="note">Sie fährt, boxt und springt in allen Spielen für dich. Ändern kannst du sie jederzeit im Profil.</p>
+      <span class="welcome-av" id="wAv"></span>
+      <div class="prof-ed" id="wEditor"></div>
+      <p class="note err" id="wErr2" hidden></p>
+      <div class="welcome-actions"><button class="pill dark" id="wBack" type="button">Zurück</button><button class="pill" id="wDone" type="button">Los geht’s</button></div>
+    </div>
+  </dialog>
+
   <script>
     const $ = (id) => document.getElementById(id);
     // Begrüssung nach Tageszeit
     const h = new Date().getHours();
     $('greet').textContent = h < 11 ? 'Guten Morgen' : h < 18 ? 'Guten Tag' : 'Guten Abend';
 
-    // Seiten wechseln (#start, #spiele, #so, #bewegung)
-    const VIEWS = ['start', 'spiele', 'so', 'bewegung'];
+    // Seiten wechseln (#start, #spiele, #so, #bewegung, #profil)
+    const VIEWS = ['start', 'spiele', 'so', 'bewegung', 'profil'];
     function show() {
       const v = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'start';
       document.querySelectorAll('.view').forEach((el) => el.classList.toggle('on', el.dataset.view === v));
@@ -457,9 +547,8 @@
       // nur Videos auf der sichtbaren Seite abspielen
       document.querySelectorAll('video').forEach((vid) => { const sl = vid.closest('.slide'); if (vid.closest('.view').classList.contains('on') && !reduce && (!sl || sl.classList.contains('on'))) vid.play().catch(() => {}); else vid.pause(); });
       scrollTo(0, 0);
-      if (typeof renderStats === 'function' && statsReady) renderStats();
+      if (typeof window.renderStats === 'function') window.renderStats();
     }
-    let statsReady = false;
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduce) document.querySelectorAll('video').forEach((v) => v.removeAttribute('autoplay'));
     addEventListener('hashchange', show);
@@ -477,61 +566,12 @@
     dots.forEach((d, k) => d.addEventListener('click', (e) => { e.preventDefault(); showSlide(k); }));
     showSlide(0);
 
-    // Spielzeit (von den Spielen lokal gespeichert)
-    let stats = {};
-    try { stats = JSON.parse(localStorage.getItem('slope.stats')) || {}; } catch { stats = {}; }
-    const fmt = (t) => { const m = Math.floor(t / 60), s = Math.round(t - m * 60); return `${m}:${s < 10 ? '0' : ''}${s}`; };
-    // Alle Spiele der Plattform (neue Spiele hier eintragen)
-    const GAMES = [
-      { id: 'kurvenflitzer', name: 'Kurvenflitzer', color: '#e2574c', sec: 'kurvenflitzer', count: 'races', wins: 'wins', hist: (r) => !r.g },
-      { id: 'boxring', name: 'Boxring', color: '#5aa9c9', sec: 'boxring', count: 'fights', wins: 'boxWins', hist: (r) => r.g === 'box' },
-      { id: 'skicross', name: 'Skicross', color: '#f7e9a6', sec: 'skicross', count: 'skiRaces', wins: 'skiWins', hist: (r) => r.g === 'ski' },
-    ];
-    function renderStats() {
-      try { stats = JSON.parse(localStorage.getItem('slope.stats')) || {}; } catch { stats = {}; }
-      const per = GAMES.map((g) => ({ ...g, min: Math.round((stats[g.sec] || 0) / 60), n: stats[g.count] || 0, w: stats[g.wins] || 0 }));
-      const total = per.reduce((a, g) => a + g.min, 0), plays = per.reduce((a, g) => a + g.n, 0);
-      $('totalMin').textContent = total;
-      $('legend').innerHTML = per.map((g) => `<div><i style="background:${g.color}"></i><span>${g.name}</span><b>${g.min} Min.</b></div>`).join('');
-      const C = 2 * Math.PI * 48;
-      let off = 0;
-      $('arcs').innerHTML = per.filter((g) => g.min > 0).map((g) => {
-        const len = Math.max(4, C * Math.min(1, g.min / Math.max(60, total)) - 6);
-        const el = `<circle cx="60" cy="60" r="48" fill="none" stroke="${g.color}" stroke-width="16" stroke-linecap="round" stroke-dasharray="${len} ${C}" stroke-dashoffset="${-off}"/>`;
-        off += len + 6; return el;
-      }).join('');
-      $('statsEmpty').hidden = total > 0 || plays > 0;
-      // Seite «Deine Bewegung»
-      $('kMin').textContent = total; $('kPlays').textContent = plays;
-      $('kWins').textContent = per.reduce((a, g) => a + g.w, 0);
-      const fav = [...per].sort((a, b) => b.min - a.min)[0];
-      $('kFav').textContent = fav && fav.min > 0 ? fav.name : '–';
-      const days = stats.days || {};
-      const list = [];
-      for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); const key = d.toISOString().slice(0, 10); list.push({ key, label: i === 0 ? 'Heute' : d.toLocaleDateString('de-CH', { weekday: 'short' }), min: Math.round((days[key] || 0) / 60), today: i === 0 }); }
-      const max = Math.max(5, ...list.map((x) => x.min));
-      $('bars').innerHTML = list.map((x) => `<div class="bar ${x.today ? 'today' : ''}"><small>${x.min || ''}</small><i style="height:${(x.min / max) * 100}%"></i><em>${x.label}</em></div>`).join('');
-      const hist = (stats.history || []).slice(-10).reverse();
-      $('hist').hidden = !hist.length; $('histEmpty').hidden = !!hist.length;
-      $('hist').querySelector('tbody').innerHTML = hist.map((r) => {
-        const g = GAMES.find((x) => x.hist(r)) || GAMES[0];
-        const res = g.id === 'boxring' ? (r.place === 1 ? 'Sieg' : r.place === 2 ? 'Niederlage' : 'Unentschieden') : (r.place ? r.place + '. Platz' : '–');
-        return `<tr><td>${new Date(r.d).toLocaleString('de-CH', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}</td><td><span class="gdot" style="background:${g.color}"></span>${g.name}</td><td><b>${(r.names || []).join(', ').replace(/[<>&]/g, '') || r.n + ' Person(en)'}</b></td><td>${res}</td><td>${r.t ? fmt(r.t) : '–'}</td></tr>`;
-      }).join('');
-    }
-    statsReady = true;
-    renderStats();
-    $('resetStats').addEventListener('click', () => {
-      if (!confirm('Statistik auf diesem Gerät wirklich löschen?')) return;
-      try { localStorage.removeItem('slope.stats'); } catch { /* */ }
-      stats = {}; renderStats();
-    });
-
     // Vollbild (z. B. am Fernseher)
     const fsBtn = $('fsBtn');
     if (!document.documentElement.requestFullscreen) fsBtn.hidden = true;
     fsBtn.addEventListener('click', () => { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {}); });
   </script>
+  <script type="module" src="js/home.js"></script>
   <script>
     // Logo: hüpft beim Laden zweimal und beim Darüberfahren; ein angefangener Sprung landet immer sauber
     (function () {
