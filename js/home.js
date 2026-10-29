@@ -140,10 +140,13 @@ function renderStats() {
 window.renderStats = renderStats;
 
 /* ---------------- Start ---------------- */
+// Startseite erst einblenden, wenn Spiele und Pass-Banner feststehen (sonst springt der Inhalt nachträglich)
+const startReady = () => { if (typeof window.sgReady === 'function') window.sgReady(); };
 async function init() {
   applyGames(false).catch(() => document.documentElement.classList.remove('g-wait'));
   user = await A.currentUser().catch(() => null);
-  if (!user) return; // gate.js leitet zur Anmeldung weiter
+  if (!user) return startReady(); // gate.js leitet zur Anmeldung weiter
+  const shopData = loadShop(); // parallel zu Profil und Admin-Prüfung laden
   try { profile = (await A.getProfile()) || profile; } catch { /* trotzdem weiter */ }
   showProfile();
   setupNameField();
@@ -160,7 +163,7 @@ async function init() {
     const noAdmin = () => { if (location.hash === '#admin') location.hash = '#start'; };
     noAdmin(); addEventListener('hashchange', noAdmin);
   }
-  applyShop(admin).catch(() => {});
+  applyShop(admin, shopData).catch(() => {}).finally(startReady);
   initWardrobe().catch(() => {});
   try { await A.importLocalStats(); } catch { /* */ }
   try { plays = await A.loadPlays(); } catch { plays = []; }
@@ -289,10 +292,13 @@ async function initWardrobe() {
 }
 
 /* ---------------- Preise, Käufe, Münzen und Juwelen ---------------- */
-async function applyShop(admin) {
-  const [on, products, owned, w] = await Promise.all([
+function loadShop() {
+  return Promise.all([
     A.paymentsEnabled().catch(() => false), A.loadProducts().catch(() => []), A.loadOwned().catch(() => new Set()), A.loadWallet().catch(() => ({ coins: 0, gems: 0 })),
   ]);
+}
+async function applyShop(admin, data = loadShop()) {
+  const [on, products, owned, w] = await data;
   wallet = w; shopOn = on || admin;
   renderWallet();
   const names = [...owned].map((i) => (i === 'pass' ? 'Early-Supporter-Pass' : (A.GAMES[i] || {}).name)).filter(Boolean);
@@ -302,7 +308,7 @@ async function applyShop(admin) {
   const hasPass = owned.has('pass');
   // Pass-Banner auf der Startseite, solange man den Pass noch nicht hat
   const pass = products.find((p) => p.kind === 'pass');
-  if (pass && !hasPass) { $('passPrice').textContent = `CHF ${A.chf(pass.price_rappen)}`; $('passPromo').hidden = false; }
+  if (pass && !hasPass) { $('passPrice').textContent = `CHF ${A.chf(pass.price_rappen)}`; window.showPromo ? window.showPromo() : ($('passPromo').hidden = false); }
   for (const p of products.filter((x) => x.kind === 'game')) {
     if (hasPass || owned.has(p.game_id)) continue;
     const price = `CHF ${A.chf(p.price_rappen)}`;
