@@ -19,6 +19,7 @@
   <meta property="og:image" content="https://slopgames.ch/media/brand/icon-512.png">
   <link rel="stylesheet" href="css/fonts.css">
   <link rel="stylesheet" href="css/editor.css">
+  <link rel="stylesheet" href="css/motion.css">
   <style>
     :root {
       --blush: #f6d6d3; --wine-800: #3d1418; --wine-700: #461519; --wine-600: #5a1f25; --wine-500: #7d2a2e;
@@ -392,6 +393,26 @@
       .grid4.items { grid-template-columns: 1fr; }
     }
     @media (min-width: 721px) and (max-width: 1100px) { .grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid3 { grid-template-columns: 1fr; } }
+    /* Animationen: Leiste und Kopf beim Laden, Inhalte bei jedem Seitenwechsel (Kinder bekommen .sg-rise + --i per Skript) */
+    .rail-ind { position: absolute; left: 0; top: 0; width: 48px; height: 48px; border-radius: 16px; background: var(--wine-800); pointer-events: none; opacity: 0; transition: transform .5s cubic-bezier(.34, 1.35, .5, 1), opacity .2s; }
+    .rail.has-ind a.nav { position: relative; }
+    .rail.has-ind a.nav.on { background: transparent; }
+    .rail.has-ind a.nav.on:hover { background: transparent; }
+    @media (max-width: 720px) { .rail { position: relative; } }
+    @media (prefers-reduced-motion: no-preference) {
+      .rail { animation: sg-rail .6s cubic-bezier(.2, .8, .2, 1) backwards; }
+      .rail a.nav { animation: sg-pop .45s cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc(var(--n, 0) * 55ms + 180ms); }
+      .rail a.nav:nth-of-type(3) { --n: 1; } .rail a.nav:nth-of-type(4) { --n: 2; } .rail a.nav:nth-of-type(5) { --n: 3; } .rail a.nav:nth-of-type(6) { --n: 4; }
+      .rail .rail-bottom a.nav { --n: 5; }
+      .top { animation: sg-fade .6s ease-out .1s backwards; }
+      .view.on .sg-rise { animation-delay: calc(var(--i, 0) * 55ms); }
+      .bar i { transform-origin: bottom; animation: sg-grow .7s cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc(var(--b, 0) * 45ms + 150ms); }
+      .bar:nth-child(2) i { --b: 1; } .bar:nth-child(3) i { --b: 2; } .bar:nth-child(4) i { --b: 3; } .bar:nth-child(5) i { --b: 4; } .bar:nth-child(6) i { --b: 5; } .bar:nth-child(7) i { --b: 6; }
+      .rail-ind.go { animation: sg-squish .5s ease-out; }
+    }
+    @keyframes sg-rail { from { opacity: 0; transform: translateX(-28px); } }
+    @media (max-width: 720px) { @keyframes sg-rail { from { opacity: 0; transform: translateY(-20px); } } }
+    @keyframes sg-squish { 0% { scale: 1; } 30% { scale: .82 1.12; } 60% { scale: 1.06 .94; } 100% { scale: 1; } }
   </style>
 </head>
 <body>
@@ -736,10 +757,33 @@
 
     // Seiten wechseln (#start, #spiele, #so, #bewegung, #profil)
     const VIEWS = ['start', 'spiele', 'so', 'bewegung', 'garderobe', 'profil', 'admin'];
+    // Inhalte jeder Seite steigen gestaffelt auf (die Animation startet bei jedem Einblenden neu)
+    const GROUPS = '.row, .tiles, .howto, .grid2, .grid3, .grid4, .wd-grid, .prof-grid';
+    document.querySelectorAll('.view').forEach((view) => {
+      const els = [...view.children].flatMap((el) => el.matches(GROUPS) ? [...el.children] : [el]);
+      els.forEach((el, i) => { el.classList.add('sg-rise'); el.style.setProperty('--i', Math.min(i, 8)); });
+    });
+    // Markierung in der Leiste gleitet zum aktiven Punkt
+    const rail = document.querySelector('.rail'), ind = document.createElement('span');
+    ind.className = 'rail-ind'; ind.setAttribute('aria-hidden', 'true'); rail.prepend(ind); rail.classList.add('has-ind');
+    let indShown = false;
+    function moveInd(animate) {
+      const a = rail.querySelector('a.nav.on');
+      if (!a || a.hidden || !a.offsetParent) { ind.style.opacity = 0; indShown = false; return; }
+      const t = `translate(${a.offsetLeft}px, ${a.offsetTop}px)`; // offset* ignoriert laufende Animationen
+      if (ind.style.transform === t && indShown) return;
+      if (!animate || !indShown) { ind.style.transition = 'none'; ind.style.transform = t; void ind.offsetWidth; ind.style.transition = ''; }
+      else { ind.style.transform = t; ind.classList.remove('go'); void ind.offsetWidth; ind.classList.add('go'); }
+      ind.style.opacity = 1; indShown = true;
+    }
+    new ResizeObserver(() => moveInd(false)).observe(rail);
+    new MutationObserver(() => moveInd(false)).observe(rail, { subtree: true, attributes: true, attributeFilter: ['hidden'] });
+    addEventListener('resize', () => moveInd(false));
     function show() {
       const v = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'start';
       document.querySelectorAll('.view').forEach((el) => el.classList.toggle('on', el.dataset.view === v));
       document.querySelectorAll('.rail a.nav').forEach((a) => a.classList.toggle('on', a.dataset.v === v));
+      moveInd(true);
       // nur Videos auf der sichtbaren Seite abspielen
       document.querySelectorAll('video').forEach((vid) => { const sl = vid.closest('.slide'); if (vid.closest('.view').classList.contains('on') && !reduce && (!sl || sl.classList.contains('on'))) vid.play().catch(() => {}); else vid.pause(); });
       scrollTo(0, 0);

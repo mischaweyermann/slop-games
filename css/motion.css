@@ -1,0 +1,24 @@
+/* Animationen für Seitenwechsel und Laden – gemeinsam für alle Seiten.
+   Wer «Bewegung reduzieren» eingestellt hat, sieht keine davon. */
+
+/* Wechsel zwischen Seiten (Chrome, Edge, Safari 18.2+; andere Browser wechseln einfach ohne) */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+}
+::view-transition-old(root) { animation: sg-vt-out .2s ease-in both; }
+::view-transition-new(root) { animation: sg-vt-in .32s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes sg-vt-out { to { opacity: 0; transform: scale(.985); } }
+@keyframes sg-vt-in { from { opacity: 0; } }
+
+/* Inhalte steigen beim Laden nacheinander auf: Klasse .sg-in an den Container,
+   seine direkten Kinder erscheinen gestaffelt (oder --i selbst setzen) */
+@keyframes sg-rise { from { opacity: 0; transform: translateY(16px); } }
+@keyframes sg-fade { from { opacity: 0; } }
+@keyframes sg-pop { 0% { opacity: 0; transform: scale(.6); } 70% { transform: scale(1.06); } 100% { transform: none; } }
+@keyframes sg-grow { from { transform: scaleY(0); } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .sg-in > *, .sg-rise { animation: sg-rise .55s cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc(var(--i, 0) * 60ms + 40ms); }
+  .sg-in > :nth-child(2) { --i: 1; } .sg-in > :nth-child(3) { --i: 2; } .sg-in > :nth-child(4) { --i: 3; }
+  .sg-in > :nth-child(5) { --i: 4; } .sg-in > :nth-child(6) { --i: 5; } .sg-in > :nth-child(n+7) { --i: 6; }
+}

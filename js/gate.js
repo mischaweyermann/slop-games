@@ -7,7 +7,13 @@ function toLogin() {
   location.replace(new URL('login.html?next=' + encodeURIComponent(here), root).href);
 }
 // Spielseiten sind unsichtbar (<style id="gate-hold">), bis feststeht, dass man hier spielen darf
-const reveal = () => document.getElementById('gate-hold')?.remove();
+const reveal = () => {
+  const hold = document.getElementById('gate-hold');
+  if (!hold) return;
+  hold.remove();
+  // sanft einblenden statt aufblitzen
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 450, easing: 'ease-out' });
+};
 setTimeout(reveal, 6000); // falls die Datenbank nicht antwortet, trotzdem anzeigen
 async function checkGame() {
   const m = location.href.slice(root.href.length).match(/^([a-z0-9-]+)\//);
