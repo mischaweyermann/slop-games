@@ -924,6 +924,8 @@ addEventListener('keydown', (e) => {
   if (k === 't' && !e.repeat) addKeysPlayer();
   if (k === 'v' && !e.repeat) { setView(VIEWS[(VIEWS.indexOf(view) + 1) % VIEWS.length]); toast('Ansicht: ' + VIEW_NAMES[view]); }
   held.add(k);
+  // Leertaste/Enter heisst «bereit» – nicht den zuletzt geklickten Button (z. B. «Tastatur») nochmals auslösen
+  if ((k === ' ' || k === 'enter') && locals.some((p) => p.source === 'keys') && e.target && e.target.closest && e.target.closest('button, a')) { e.preventDefault(); e.target.blur(); }
   if (k === ' ' || k === 'enter') {
     if (state === 'ready') for (const p of locals) if (p.source === 'keys') { if (p.ready) p.startNow = true; p.ready = true; }
     if (state === 'results' && stateT > 2) requestRestart();
@@ -956,7 +958,7 @@ function addKeysPlayer() {
   const p = joinLocal('keys');
   if (p) toast(`${pName(p)}: ${KEYTXT[p.keyMap]} · Leertaste = bereit`, 6000);
 }
-$('keysBtn').addEventListener('click', (e) => { e.stopPropagation(); addKeysPlayer(); });
+$('keysBtn').addEventListener('click', (e) => { e.stopPropagation(); e.currentTarget.blur(); addKeysPlayer(); });
 
 /* ================================================================
    Kamera dieses Geräts (Laptop) – bis zu 2 Personen
