@@ -113,14 +113,35 @@ $('aTable').addEventListener('click', async (e) => {
 });
 $('aSearch').addEventListener('input', renderUsers);
 
+// Alles neu aus der Datenbank laden. Läuft schon ein Laden, wird kein zweites gestartet;
+// hängt die Datenbank, gibt es nach 15 s eine Meldung statt endlosem Warten.
+let lastGames = [], loading = null;
+function withTimeout(p, ms = 15000) {
+  return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('Zeitüberschreitung – die Datenbank antwortet nicht')), ms))]);
+}
+async function loadAll(games = lastGames, fresh = false) {
+  if (loading) return loading;
+  const btn = $('aReload');
+  btn.disabled = true; btn.classList.add('busy');
+  loading = (async () => {
+    try {
+      if (fresh) { const g = await A.loadGames().catch(() => null); if (g) games = g; }
+      lastGames = games;
+      const st = await withTimeout(loadStats());
+      renderGames(games, st.per_game);
+      await withTimeout(Promise.all([loadUsers(), loadSales()]));
+      $('aStamp').textContent = 'Stand ' + new Date().toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      if ($('aMsg').classList.contains('err')) msg('');
+    } catch (e) {
+      msg('Admin-Daten konnten nicht geladen werden: ' + (A.niceError(e) || e.message), 'err');
+    } finally { btn.disabled = false; btn.classList.remove('busy'); loading = null; }
+  })();
+  return loading;
+}
+$('aReload').addEventListener('click', () => loadAll(lastGames, true));
+
 export async function initAdmin({ user, games, onGames }) {
   me = user; onGamesChanged = onGames || onGamesChanged;
-  try {
-    const st = await loadStats();
-    renderGames(games, st.per_game);
-    await Promise.all([loadUsers(), loadSales()]);
-  } catch (e) { msg('Admin-Daten konnten nicht geladen werden: ' + A.niceError(e), 'err'); }
+  await loadAll(games);
 }
-export async function refreshAdmin(games) {
-  try { const st = await loadStats(); renderGames(games, st.per_game); await Promise.all([loadUsers(), loadSales()]); } catch { /* */ }
-}
+export async function refreshAdmin(games) { await loadAll(games); }
