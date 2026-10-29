@@ -363,3 +363,12 @@ button.ghost.small { margin: 0; font-size: calc(1.4 * var(--u)); padding: calc(.
 .ctrl-list li.keys { grid-column: 1 / -1; background: transparent; border: 2px dashed var(--wine-500); }
 .ctrl-list kbd { display: inline-block; min-width: 1.6em; text-align: center; font: 600 .9em 'Poppins', sans-serif; color: #fff; background: var(--wine-600); border-radius: .4em; padding: .05em .45em; margin: 0 .05em; }
 @media (max-width: 720px) { .ctrl-list { grid-template-columns: 1fr; } }
+.ctrl-foot { display: flex; align-items: center; justify-content: space-between; gap: calc(2 * var(--u)); flex-wrap: wrap; padding: 0 calc(3.6 * var(--u)) calc(3.2 * var(--u)); margin-top: calc(-1.4 * var(--u)); }
+.ctrl-skip { display: inline-flex; align-items: center; gap: calc(1 * var(--u)); font-size: calc(1.6 * var(--u)); color: var(--text-soft); cursor: pointer; user-select: none; }
+.ctrl-skip input { width: calc(2.4 * var(--u)); height: calc(2.4 * var(--u)); margin: 0; accent-color: var(--coral, #e2574c); cursor: pointer; }
+.ctrl-go {
+  font: 600 calc(1.8 * var(--u)) 'Poppins', sans-serif; color: var(--wine-600); background: #fff; border: 0; border-radius: 999px;
+  padding: calc(1.1 * var(--u)) calc(3 * var(--u)); cursor: pointer; transition: background .15s;
+}
+.ctrl-go:hover { background: var(--cream); }
+.ctrl-go:focus-visible, .ctrl-skip input:focus-visible { outline: 4px solid var(--cream); outline-offset: 3px; }
