@@ -927,7 +927,35 @@ function updateLocal(p, dt, driving) {
     if ((b.pos.x - r.pos.x) ** 2 + (b.pos.z - r.pos.z) ** 2 < 2.3 * 2.3) { b.until = now + 4; r.itemLap = r.lap; giveItem(p); }
   }
   if (p.offroad && r.v > 8 && Math.random() < dt * 6) audio.skid(0.4);
+  checkStuck(p, dt, driving && fx !== 'stop' && fx !== 'engine');
   r.prog = (r.lap - 1) * TRACK_LEN + r.idx * SEG;
+}
+// Feststecken: kommt ein Kart ein paar Sekunden kaum vorwärts (in der Wand, quer, verkehrt herum,
+// oder es hat die Strecke verloren), wird es zurück auf die Strecke gesetzt.
+const STUCK_SPEED = 3, STUCK_TIME = 3;
+function checkStuck(p, dt, active) {
+  const r = p.racer, i = r.idx;
+  let di = i - (p.stuckIdx ?? i); if (di > N / 2) di -= N; else if (di < -N / 2) di += N;
+  p.stuckIdx = i;
+  if (!active || dt <= 0) { p.stuckT = 0; p.alongV = V_MAX; return; }
+  p.alongV = lerp(p.alongV ?? V_MAX, (di * SEG) / dt, damp(1.5, dt)); // Tempo entlang der Strecke
+  const lost = Math.hypot(r.pos.x - T[i].p.x, r.pos.z - T[i].p.z) > WALL + 3; // weit weg von der Strecke
+  p.stuckT = p.alongV < STUCK_SPEED ? (p.stuckT || 0) + dt : Math.max(0, (p.stuckT || 0) - dt * 2);
+  if (p.stuckT > STUCK_TIME || lost) rescue(p, lost);
+}
+function rescue(p, lost) {
+  const r = p.racer;
+  const j = lost ? nearestGlobal(r.pos) : r.idx;
+  // auf die Mittellinie, in Fahrtrichtung, mit etwas Anlauf
+  let off = 0;
+  for (const o of racers.values()) if (o !== r && !o.gone && (o.pos.x - T[j].p.x) ** 2 + (o.pos.z - T[j].p.z) ** 2 < 9) off = 3.2;
+  r.pos.copy(T[j].p).addScaledVector(T[j].r, off); r.pos.y = 0;
+  r.heading = Math.atan2(T[j].t.x, T[j].t.z);
+  r.v = 10; r.idx = j;
+  p.knock.set(0, 0, 0); p.spin = 0; p.steer = 0; p.offroad = false;
+  if (!lost || Math.abs(j - p.prevIdx) < N / 2) p.prevIdx = j; // Rundenzählung nicht verfälschen
+  p.stuckT = 0; p.alongV = V_MAX; p.stuckIdx = j;
+  pBanner(p, 'Zurück auf die Strecke'); audio.combo(1);
 }
 // Lenkeinschlag, um der Strecke zu folgen (Autopilot während des Item-Menüs, KI unter Spiegel-Lenkung)
 function autoSteer(r, look = 1) {
