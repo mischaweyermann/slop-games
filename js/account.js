@@ -223,6 +223,7 @@ async function rpc(name, args) {
 }
 export const adminUsers = () => rpc('admin_users');
 export const adminStats = (days = 30) => rpc('admin_stats', { days });
+export const adminSetFullAccess = (target, grant) => rpc('admin_set_full_access', { target, grant_access: grant });
 export const adminSetBanned = (target, ban) => rpc('admin_set_banned', { target, ban });
 export const adminDeleteUser = (target) => rpc('admin_delete_user', { target });
 export const adminSetGameVisible = (game, show) => rpc('admin_set_game_visible', { game, show });

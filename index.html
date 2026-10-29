@@ -190,6 +190,9 @@
     .mini { font: 600 12.5px 'Poppins', sans-serif; border: 0; border-radius: 999px; padding: 7px 12px; cursor: pointer; background: var(--wine-800); color: #fff; }
     .mini:hover { background: var(--wine-500); }
     .mini.danger { color: #ffb3ab; }
+    .mini.gift { background: var(--cream); color: var(--wine-700); }
+    .mini.gift:hover { background: #ffe58a; }
+    .badge-s.gift { background: #f7e9a6; color: #5a1f25; }
     .mini:focus-visible { outline: 3px solid var(--cream); outline-offset: 2px; }
     /* Willkommen (erster Login) */
     .welcome { width: min(560px, 94vw); max-height: 92vh; padding: 0; border: 0; border-radius: 32px; background: var(--wine-700); color: var(--text); overflow: auto; }
@@ -715,7 +718,7 @@
         <section class="card">
           <div class="adm-tools"><h3 style="margin: 0">Nutzer</h3><input id="aSearch" type="search" placeholder="Name oder E-Mail suchen" aria-label="Nutzer suchen"></div>
           <div class="adm-scroll">
-            <table class="hist adm-users" id="aTable"><thead><tr><th>Name</th><th>E-Mail</th><th>Seit</th><th>Zuletzt gespielt</th><th>Runden</th><th>Minuten</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
+            <table class="hist adm-users" id="aTable"><thead><tr><th>Name</th><th>E-Mail</th><th>Seit</th><th>Zuletzt gespielt</th><th>Runden</th><th>Minuten</th><th>Status</th><th>Zugriff</th><th></th></tr></thead><tbody></tbody></table>
           </div>
           <p class="note" id="aMsg" role="status"></p>
         </section>

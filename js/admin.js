@@ -55,13 +55,18 @@ function renderUsers() {
   $('aTable').querySelector('tbody').innerHTML = list.map((u) => {
     const self = me && u.id === me.id;
     const status = u.banned ? '<span class="badge-s bad">Gesperrt</span>' : !u.confirmed ? '<span class="badge-s">Unbestätigt</span>' : '<span class="badge-s ok">Aktiv</span>';
+    const access = u.pass_source === 'admin' ? '<span class="badge-s gift">Alle Spiele · geschenkt</span>'
+      : u.pass_source ? '<span class="badge-s ok">Pass gekauft</span>' : '<span class="badge-s">Standard</span>';
+    const gift = u.pass_source && u.pass_source !== 'admin' ? ''
+      : `<button type="button" class="mini ${u.pass_source ? '' : 'gift'}" data-act="gift" data-id="${u.id}">${u.pass_source ? 'Zugriff entziehen' : 'Alle Spiele freischalten'}</button>`;
     const actions = self ? '<span class="badge-s">Du</span>' : `<span class="row-actions">
+        ${gift}
         <button type="button" class="mini" data-act="ban" data-id="${u.id}">${u.banned ? 'Entsperren' : 'Sperren'}</button>
         <button type="button" class="mini danger" data-act="del" data-id="${u.id}">Löschen</button></span>`;
     return `<tr><td><span class="who"><span class="av">${avatarSvg(sanitize(u.character || {}), { body: false })}</span><b>${esc(u.nickname || '–')}</b></span></td>
       <td>${esc(u.email)}</td><td>${date(u.created_at)}</td><td>${date(u.last_played)}</td>
-      <td>${u.plays}</td><td>${mins(u.seconds)}</td><td>${status}</td><td>${actions}</td></tr>`;
-  }).join('') || '<tr><td colspan="8">Keine Nutzer gefunden.</td></tr>';
+      <td>${u.plays}</td><td>${mins(u.seconds)}</td><td>${status}</td><td>${access}</td><td>${actions}</td></tr>`;
+  }).join('') || '<tr><td colspan="9">Keine Nutzer gefunden.</td></tr>';
 }
 
 async function loadUsers() { users = await A.adminUsers(); renderUsers(); }
@@ -92,6 +97,12 @@ $('aTable').addEventListener('click', async (e) => {
     if (!u.banned && !confirm(`${who} sperren? Die Person kann sich danach nicht mehr anmelden.`)) return;
     b.disabled = true;
     try { await A.adminSetBanned(u.id, !u.banned); msg(u.banned ? `${who} ist wieder freigeschaltet.` : `${who} ist gesperrt.`, 'ok'); await loadUsers(); }
+    catch (err) { msg(A.niceError(err), 'err'); b.disabled = false; }
+  } else if (b.dataset.act === 'gift') {
+    const grant = !u.pass_source;
+    if (!grant && !confirm(`${who} den geschenkten Zugriff auf alle Spiele wieder entziehen?`)) return;
+    b.disabled = true;
+    try { await A.adminSetFullAccess(u.id, grant); msg(grant ? `${who} hat jetzt Zugriff auf alle Spiele.` : `${who} hat keinen geschenkten Zugriff mehr.`, 'ok'); await loadUsers(); }
     catch (err) { msg(A.niceError(err), 'err'); b.disabled = false; }
   } else if (b.dataset.act === 'del') {
     if (!confirm(`Konto von ${who} endgültig löschen? Alle Runden gehen verloren.`)) return;
