@@ -10,6 +10,8 @@ import { MultiTracker } from '../js/tracker.js';
 import { avatarSvg } from '../js/avatar2d.js';
 import { Avatar, D } from '../js/avatar3d.js';
 import { peerOptions as netOptions } from '../js/net.js';
+import { endMenu } from '../js/endmenu.js';
+import { reward, tvUid } from '../js/reward.js';
 
 /* ================================================================
    Grundlagen
@@ -774,7 +776,7 @@ function setState(s) {
     audio.tick();
   }
   if (s === 'fight') { banner('BOX!', true); audio.go(); }
-  if (s === 'results') showResults();
+  if (s === 'results') showResults(); else END.hide();
   if (s === 'lobby') { resetFighters(true); assignFighters(); }
   phonesState();
   renderPanels(true);
@@ -796,8 +798,11 @@ function showResults() {
     return `<div class="${f.player ? 'me' : ''}" style="--c:${P_COLORS[f.i]}"><span class="place">${i + 1}.</span><span class="dot" style="--c:${P_COLORS[f.i]}"></span>${esc(f.name)}<span class="who">${f.wins} Runde${f.wins === 1 ? '' : 'n'} · ${f.stats.landed} Treffer · ${acc}%</span><span class="t">${f.player ? '' : 'KI'}</span></div>`;
   }).join('');
   const nHum = fighters.filter((f) => f.player).length;
-  for (const f of fighters) if (f.player) sendPhone(f.player.conn, { t: 'result', score: f === w ? 1 : 2, game: 'boxring', id: f.player.conn && f.player.conn.__multi ? f.player.trackId : null, sec: Math.round(matchT), n: nHum, win: f === w });
+  for (const f of fighters) if (f.player) sendPhone(f.player.conn, { t: 'result', score: f === w ? 1 : 2, game: 'boxring', id: f.player.conn && f.player.conn.__multi ? f.player.trackId : null, sec: Math.round(matchT), n: nHum, win: f === w, tvacc: tvUid });
   saveStats(w);
+  END.show({ againLabel: 'Neuer Kampf', againHint: 'Beide Fäuste hoch' });
+  // Münzen fürs Konto am TV
+  if (nHum) reward(END.coins, { game: 'boxring', seconds: matchT, place: w && w.player ? 1 : 2, players: nHum, won: !!(w && w.player) });
 }
 function saveStats(w) {
   try {
@@ -814,6 +819,13 @@ function saveStats(w) {
   } catch { /* privat */ }
 }
 function requestRestart() { setState('ready'); }
+// Zur Übersicht: Lobby mit QR-Code; Handy-Spieler drücken dort wieder «Bereit», neue Leute können dazukommen
+function toMenu() {
+  for (const p of locals) { if (p.source === 'phone') p.confirmed = false; p.ready = false; p.readyT = 0; }
+  setState('ready');
+  for (const c of new Set(locals.map((p) => p.conn).filter(Boolean))) syncPhone(c);
+}
+const END = endMenu({ again: () => requestRestart(), menu: () => toMenu() });
 
 /* ================================================================
    Anzeige
@@ -980,7 +992,7 @@ async function useLocalCamera() {
     btn.textContent = '⏳ KI wird geladen …';
     const { FilesetResolver, PoseLandmarker } = await import(VISION);
     const vision = await FilesetResolver.forVisionTasks(WASM);
-    const opts = (delegate) => ({ baseOptions: { modelAssetPath: MODEL, delegate }, runningMode: 'VIDEO', numPoses: 2, minPoseDetectionConfidence: 0.5, minPosePresenceConfidence: 0.5, minTrackingConfidence: 0.5 });
+    const opts = (delegate) => ({ baseOptions: { modelAssetPath: MODEL, delegate }, runningMode: 'VIDEO', numPoses: 2, minPoseDetectionConfidence: 0.45, minPosePresenceConfidence: 0.35, minTrackingConfidence: 0.35 });
     let lm; try { lm = await PoseLandmarker.createFromOptions(vision, opts('GPU')); } catch { lm = await PoseLandmarker.createFromOptions(vision, opts('CPU')); }
     camOn = true; btn.textContent = '✅ Kamera aktiv';
     const tracker = new MultiTracker(2);
@@ -1054,6 +1066,7 @@ function acceptPhone(c) {
     else if (msg.t === 'setp') { const p = c.__ps.get(msg.id == null ? 0 : msg.id); if (p) applyChar(p, { cfg: msg.cfg, name: msg.name }); }
     else if (msg.t === 'ok') { const p = c.__ps.get(msg.id == null ? 0 : msg.id); if (p) { p.confirmed = !!msg.v; if (!p.confirmed) { p.ready = false; p.readyT = 0; } syncPhone(c); } }
     else if (msg.t === 'hello') sendPhone(c, { t: 'state', s: phoneState(), g: 'box' });
+    else if (msg.t === 'end' && state === 'results' && stateT > 1) END.phone(msg.a);
   });
   c.on('close', () => {
     for (const p of [...c.__ps.values()]) {
@@ -1253,6 +1266,7 @@ function tick() {
       p.upT = p.handsUp && hasControl(p) ? (p.upT || 0) + realDt : 0;
       if (p.upT > 0.9) { p.upT = 0; requestRestart(); break; }
     }
+    END.update(stateT, Math.max(0, ...locals.map((p) => (p.upT || 0) / 0.9)));
   }
 
   // Kämpfer bewegen

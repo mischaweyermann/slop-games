@@ -77,22 +77,22 @@ export async function saveProfile({ nickname, character }) {
 }
 export async function setNickname(nickname) { return (await saveProfile({ nickname })).nickname; }
 
-// Eine gespielte Runde speichern
-export async function savePlay({ game, seconds, place = null, players = null, finishTime = null, won = null }) {
-  if (!GAMES[game]) return false;
+// Eine gespielte Runde speichern. Gibt { earned, coins, today, limit } zurück (Münzen fürs Spielen) oder null.
+export async function savePlay({ game, seconds, place = null, players = null, finishTime = null, won = null, bonus = 0 }) {
+  if (!GAMES[game]) return null;
   const user = await currentUser();
-  if (!user) return false;
-  const row = {
-    user_id: user.id, game,
-    seconds: Math.max(0, Math.min(7200, Math.round(seconds || 0))),
-    place: place >= 1 && place <= 8 ? place : null,
-    players: players >= 1 && players <= 8 ? players : null,
-    finish_time: finishTime > 0 && finishTime < 3600 ? +(+finishTime).toFixed(1) : null,
-    won: won == null ? null : !!won,
-  };
-  const { error } = await sb.from('plays').insert(row);
+  if (!user) return null;
+  const { data, error } = await sb.rpc('record_play', {
+    p_game: game,
+    p_seconds: Math.max(0, Math.min(7200, Math.round(seconds || 0))),
+    p_place: place >= 1 && place <= 8 ? place : null,
+    p_players: players >= 1 && players <= 8 ? players : null,
+    p_finish_time: finishTime > 0 && finishTime < 3600 ? +(+finishTime).toFixed(1) : null,
+    p_won: won == null ? null : !!won,
+    p_bonus: Math.max(0, Math.min(50, Math.round(bonus || 0))),
+  });
   if (error) throw error;
-  return true;
+  return data || { earned: 0 };
 }
 
 export async function loadPlays(limit = 500) {

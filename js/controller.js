@@ -30,8 +30,8 @@ const GAMES = {
     pose: 'Hände vor die Brust wie an ein Lenkrad und still halten',
     play: ['Rennen läuft! 🏎️', 'Dreh das unsichtbare Lenkrad. Beide Arme runter = Item werfen.'],
     queued: 'Das aktuelle Rennen läuft noch – du fährst beim nächsten mit.',
-    results: ['Im Ziel!', 'Beide Hände über den Kopf für ein neues Rennen.'],
-    result: (m) => [m.score === 1 ? '🏆 Sieg!' : `Platz ${m.score}!`, 'Beide Hände über den Kopf für ein neues Rennen.'],
+    results: ['Im Ziel!', 'Beide Hände über den Kopf = weiter · beide Arme runter = zur Übersicht.'],
+    result: (m) => [m.gpEnd ? (m.score === 1 ? '🏆 Grand-Prix-Sieg!' : `Grand Prix: Platz ${m.score}!`) : m.score === 1 ? '🏆 Sieg!' : `Platz ${m.score}!`, 'Beide Hände über den Kopf = weiter · beide Arme runter = zur Übersicht.'],
   },
   box: {
     title: 'Boxring', intro: 'Das Handy wird zur Kamera. Stell es 2–3 m vor dich (zu zweit: nebeneinander), sodass es euch ganz sieht.',
@@ -39,8 +39,8 @@ const GAMES = {
     pose: 'Fäuste vors Gesicht halten (Deckung)',
     play: ['Kampf läuft! 🥊', 'Gerade, Haken oder Uppercut schlagen · Fäuste vors Gesicht = Deckung, Oberkörper lehnen = ausweichen. Schritt vor/zurück/zur Seite = laufen, zurück in die Mitte = stehen.'],
     queued: 'Der Kampf läuft noch – du bist beim nächsten dabei.',
-    results: ['Kampf vorbei!', 'Beide Fäuste hoch über den Kopf für einen neuen Kampf.'],
-    result: (m) => [m.score === 1 ? '🏆 Gewonnen!' : 'Knapp verloren!', 'Beide Fäuste hoch über den Kopf für einen neuen Kampf.'],
+    results: ['Kampf vorbei!', 'Beide Fäuste hoch über den Kopf für einen neuen Kampf – oder unten «Zur Übersicht».'],
+    result: (m) => [m.score === 1 ? '🏆 Gewonnen!' : 'Knapp verloren!', 'Beide Fäuste hoch über den Kopf für einen neuen Kampf – oder unten «Zur Übersicht».'],
   },
   ski: {
     title: 'Skicross', intro: 'Das Handy wird zur Kamera. Stell es 2–3 m vor dich (zu mehreren: nebeneinander), sodass es dich vom Kopf bis zu den Knien sieht.',
@@ -48,8 +48,8 @@ const GAMES = {
     pose: 'In die Hocke gehen (Abfahrtshocke) und kurz halten',
     play: ['Rennen läuft! ⛷️', 'Zur Seite lehnen = lenken · Hocke = schneller · schnell hochkommen = springen · am Start Arme runter schwingen = anschieben.'],
     queued: 'Das Rennen läuft noch – du fährst beim nächsten mit.',
-    results: ['Im Ziel!', 'Beide Hände über den Kopf für ein neues Rennen.'],
-    result: (m) => [m.score === 1 ? '🏆 Sieg!' : `Platz ${m.score}!`, 'Beide Hände über den Kopf für ein neues Rennen.'],
+    results: ['Im Ziel!', 'Beide Hände über den Kopf für ein neues Rennen – oder unten «Zur Übersicht».'],
+    result: (m) => [m.score === 1 ? '🏆 Sieg!' : `Platz ${m.score}!`, 'Beide Hände über den Kopf für ein neues Rennen – oder unten «Zur Übersicht».'],
   },
 };
 const GAME_ID = GAMES[params.get('g')] ? params.get('g') : 'rennen';
@@ -155,7 +155,7 @@ async function loadModel() {
   const opts = (delegate, model) => ({
     baseOptions: { modelAssetPath: model, delegate },
     runningMode: 'VIDEO', numPoses: multi ? 4 : 1,
-    minPoseDetectionConfidence: 0.5, minPosePresenceConfidence: 0.5, minTrackingConfidence: 0.5,
+    minPoseDetectionConfidence: 0.45, minPosePresenceConfidence: 0.35, minTrackingConfidence: 0.35,
   });
   try { landmarker = await PoseLandmarker.createFromOptions(vision, opts('GPU', MODEL_FULL)); }
   catch { landmarker = await PoseLandmarker.createFromOptions(vision, opts('CPU', MODEL_LITE)); }
@@ -380,7 +380,7 @@ function onTv(msg) {
   if (!msg || typeof msg !== 'object') return;
   if (msg.t === 'hit') buzz(msg.gold ? [25, 30, 25] : 22);
   else if (msg.t === 'bad') buzz([90, 50, 90]);
-  else if (msg.t === 'state') { tvState = msg.s; updateMessage(); renderPlayers(players); }
+  else if (msg.t === 'state') { tvState = msg.s; updateMessage(); renderPlayers(players); $('endActions').hidden = tvState !== 'results'; }
   else if (msg.t === 'fx') { buzz(msg.bad ? [120, 60, 120] : [30, 40, 30]); if (msg.title) { message(msg.title, msg.sub || ''); clearTimeout(fxTimer); fxTimer = setTimeout(updateMessage, (msg.ms || 3000)); } }
   else if (msg.t === 'ps') renderPlayers(msg.l || []);
   else if (msg.t === 'result') {
@@ -408,6 +408,8 @@ async function keepAwake() {
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && running) keepAwake(); });
 
 /* ---------- Buttons ---------- */
+$('againBtn').addEventListener('click', () => { send({ t: 'end', a: 'again' }); buzz(20); });
+$('menuBtn').addEventListener('click', () => { send({ t: 'end', a: 'menu' }); buzz(20); });
 $('previewBtn').addEventListener('click', (e) => {
   previewOn = !previewOn;
   ui.previewCard.classList.toggle('off', !previewOn);
@@ -515,7 +517,7 @@ async function switchToLite() {
     const vision = await FilesetResolver.forVisionTasks(WASM);
     const lite = await PoseLandmarker.createFromOptions(vision, {
       baseOptions: { modelAssetPath: MODEL_LITE, delegate: 'GPU' }, runningMode: 'VIDEO', numPoses: multi ? 4 : 1,
-      minPoseDetectionConfidence: 0.5, minPosePresenceConfidence: 0.5, minTrackingConfidence: 0.5,
+      minPoseDetectionConfidence: 0.45, minPosePresenceConfidence: 0.35, minTrackingConfidence: 0.35,
     });
     const old = landmarker; landmarker = lite; lastTs = -1; old.close?.();
   } catch (e) { console.warn('Lite-Modell nicht verfügbar', e); }
@@ -577,9 +579,11 @@ async function flushSave() {
   // Bei mehreren Personen vor einer Kamera ist nicht klar, wer das Konto hat
   if (list.length > 1) { acctNote('Mehrere Personen an diesem Handy – diese Runde wird nicht ins Konto gespeichert.'); return; }
   const m = list[0];
+  // Gleiches Konto wie am TV: dort ist die Runde schon gespeichert
+  if (m.tvacc && m.tvacc === acctUser.id) { acctNote('✓ Runde im Konto am TV gespeichert'); return; }
   try {
-    await acct.savePlay({ game: m.game, seconds: m.sec, place: m.score, players: m.n, finishTime: m.time, won: m.win });
-    acctNote('✓ Runde in deinem Konto gespeichert');
+    const r = await acct.savePlay({ game: m.game, seconds: m.sec, place: m.score, players: m.n, finishTime: m.time, won: m.win });
+    acctNote(r && r.earned > 0 ? `✓ Runde gespeichert · +${r.earned} Münzen` : '✓ Runde in deinem Konto gespeichert');
   } catch { acctNote('Die Runde konnte nicht gespeichert werden.'); }
 }
 import('./account.js').then(async (m) => {

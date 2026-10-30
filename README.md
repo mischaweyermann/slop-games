@@ -35,11 +35,21 @@ Repo → **Settings → Pages → Deploy from a branch → `main` / `(root)`**. 
 
 Go-Kart-Rennen in der Ich-Perspektive. Du hältst ein **unsichtbares Lenkrad** vor der Brust und drehst es: Der Winkel zwischen deinen Händen ist der Lenkeinschlag. Gas gibt das Kart von selbst.
 
-- 3 Runden auf einem 1,1 km Rundkurs, mindestens 4 Karts (fehlende Plätze fahren KI-Gegner)
+### Grand Prix: 3 Cups × 4 Strecken
+| Cup | Strecken | Fallen |
+|---|---|---|
+| 🌅 Abendrot-Cup | Erdbeerring, Kuhweide, Seeufer-Sprung, Pilzpass | Turbo-Pads, Kühe auf der Strasse, Ölflecken, erste Schanze, eine Kuhglocke |
+| ❄️ Gletscher-Cup | Pistenring, Murmeli-Pass, Schanzentisch, Glockenturm | Glatteis (rutschen!), Murmeli, Schanzen, schwingende Riesen-Kuhglocken |
+| 🍫 Schoggi-Cup | Praliné-Park, Karamell-Kreuz, Gummibärli-Gasse, Grosses Finale | klebrige Schoggi-Pfützen, Karamell (schleudern), Gummibärli, alles zusammen im Finale |
+
+- Strecken, Landschaft und Fallen stehen in `kurvenflitzer/world.js` (`TRACKS`, `CUPS`, `THEMES`). Die Fallen werden pro Strecke mit festem Zufall platziert (immer am gleichen Ort).
+- Punkte pro Rennen: 10 · 8 · 6 · 5 · 4 · 3 · 2 · 1. Nach 4 Rennen gewinnt, wer am meisten Punkte hat.
+- Cup wählen: in der Lobby antippen, Tasten `1`–`3` oder ← → auf der Fernbedienung.
+- **Im Ziel:** beide Hände hoch = nächstes Rennen (nach dem 4. Rennen: nächster Cup) · beide Arme runter = zur Übersicht (Lobby mit QR-Code) · auch per Klick, `Esc` oder am Handy. Nach 45 s geht es von selbst zur Übersicht.
+- Sieht die Kamera eine Person kurz nicht, fährt ein **Autopilot** weiter, bis die Hände wieder am Lenkrad sind.
+- 3 Runden pro Strecke, mindestens 4 Karts (fehlende Plätze fahren KI-Gegner)
 - Münzen sammeln: 5 Münzen = 3 Sekunden **Turbo**
-- Wiese bremst, Reifenstapel schubsen zurück, Zusammenstösse kosten Tempo
-- **Start:** Jede Person stellt auf dem Handy Name und Fahrer ein und drückt **✓ Bereit**. Erst dann wird am TV ausgerichtet: Hände ruhig vor der Brust halten, bis der Balken voll ist. Danach läuft «Start in …» (allein 8 s, zu mehreren 3 s), damit weitere Personen noch scannen können – jede neue Person verlängert die Wartezeit.
-- **Neues Rennen:** im Ziel beide Hände über den Kopf
+- **Start:** Jede Person stellt auf dem Handy Name und Fahrer ein und drückt **✓ Bereit**. Erst dann wird am TV ausgerichtet: Hände ruhig vor der Brust halten, bis der Balken voll ist.
 
 ### Items
 Auf der Strecke stehen vier Reihen **?-Boxen**. Wer durchfährt, bekommt ein Item – aber **nur 1 Item pro Runde**; ab der Ziellinie gibt es wieder eins (höchstens 2 auf Vorrat, links oben angezeigt).
@@ -53,6 +63,7 @@ Auf der Strecke stehen vier Reihen **?-Boxen**. Wer durchfährt, bekommt ein Ite
 | 🔀 Spiegel-Lenkung | links und rechts vertauscht (7 s) |
 | ↩️ Rückwärtsgang | Kart dreht sich um, fährt rückwärts in Fahrtrichtung, Blick nach hinten, oben ein Rückspiegel zeigt die Strecke vor dir (6 s) |
 | ⛔ Vollbremse | sofortiger Stillstand (ca. 2,5 s) |
+| 🧀 Käse-Klatsch | Käse-Kleckse über dem ganzen Bild (5,5 s) |
 | 🔧 Motorausfall | Motor aus, bis die getroffene Person **3× beide Arme über den Kopf** hebt (Tastatur: ← → abwechselnd) |
 
 Wer getroffen wurde, ist **20 Sekunden geschützt** (im Menü ausgegraut; ein Wurf in dieser Zeit prallt ab und das Item kommt zurück). Über getroffenen Karts schwebt das Symbol, damit alle sehen, wen es erwischt hat. KI-Gegner sammeln und werfen auch.
@@ -147,3 +158,8 @@ Am Laptop `http://localhost:8080` öffnen und ein Spiel wählen. Ohne Handy: im 
 
 - Eigene 3D-Modelle aus Blender (als `.glb` laden)
 - Eigener PeerJS-Server, falls der Gratis-Server einmal überlastet ist (`?peer=host:port`)
+
+
+## Münzen fürs Konto
+Jede gespielte Runde wird vom TV (immer angemeldet) gespeichert: `record_play` in Supabase schreibt die Runde und vergibt Münzen (1 pro 30 s, max. 20 · +10 Sieg / +5 Podest · Bonus aus dem Spiel, z. B. eingesammelte Münzen im Kurvenflitzer oder der Grand-Prix-Pokal; höchstens 200 pro Tag). Die Resultat-Karte zeigt «+X Münzen». Ein Handy mit einem **anderen** Konto speichert dieselbe Runde zusätzlich für sich.
+Gemeinsamer Code: `js/reward.js` (Münzen), `js/endmenu.js` (Spielende: Nochmal / Zur Übersicht).

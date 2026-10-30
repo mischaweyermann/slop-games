@@ -7,7 +7,7 @@
   <style id="gate-hold">html { visibility: hidden; }</style>
   <script type="module" src="../js/gate.js"></script>
   <title>Kurvenflitzer</title>
-  <meta name="description" content="Gratis Rennspiel: Du lenkst mit den Händen ein unsichtbares Lenkrad. Allein oder bis zu viert am gleichen TV – jede Person mit ihrem eigenen Handy.">
+  <meta name="description" content="Gratis Rennspiel: Du lenkst mit den Händen ein unsichtbares Lenkrad. 3 Grand Prix mit 12 Strecken, allein oder bis zu viert am gleichen TV – jede Person mit ihrem eigenen Handy.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='24' fill='none' stroke='%23e8574f' stroke-width='8'/%3E%3Cpath d='M10 36h44M32 36v20' stroke='%23e8574f' stroke-width='7'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="../css/fonts.css">
   <link rel="stylesheet" href="../css/motion.css">
@@ -31,9 +31,10 @@
     <section class="lobby kf" id="lobby">
       <div class="kf-main">
         <a class="back-link" href="../"><span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></span><svg class="back-mark" width="24" height="24" viewBox="0 0 120 120" aria-hidden="true"><g class="jump"><g transform="rotate(-10 60 58)"><path fill-rule="evenodd" fill="#f7e9a6" d="M34 30 H86 C96 30 102 38 103 48 L106 70 C108 84 96 92 86 84 L76 76 H44 L34 84 C24 92 12 84 14 70 L17 48 C18 38 24 30 34 30 Z M84.2 46 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 Z M91.7 54 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 Z M49.2 48 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 Z M63.2 48 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 Z M27.7 45 H32.3 V49.7 H37 V54.3 H32.3 V59 H27.7 V54.3 H23 V49.7 H27.7 Z M50.3 56.4 Q60 68.2 69.7 56.4 Q68.6 54.4 67.2 55.4 Q60 63 52.8 55.4 Q51.4 54.4 50.3 56.4 Z"/></g></g><path class="lines" d="M42 98 V106 M60 101 V111 M78 96 V104" fill="none" stroke="#f7e9a6" stroke-width="3.5" stroke-linecap="round" opacity=".55"/><ellipse class="shadow" cx="60" cy="116" rx="24" ry="3" fill="#f7e9a6" opacity=".25"/></svg>Slop Games</a>
-        <span class="chip">3 Runden · 1,1 km · Rammen erlaubt</span>
+        <span class="chip" id="cupChip">Grand Prix · 3 Cups · 12 Strecken</span>
         <h1 class="logo" aria-label="Kurvenflitzer"><span class="word" data-word="Kurven"></span><span class="word" data-word="flitzer"></span></h1>
         <p class="tagline">Halte die Hände vor die Brust wie an einem Lenkrad und dreh es. Gas gibt das Kart von selbst.</p>
+        <div class="cups" id="cups" aria-label="Grand Prix wählen"></div>
         <div class="slots" id="slots" aria-label="Spielerplätze"></div>
         <div class="kf-actions">
           <button class="ghost" id="camBtn" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="13" rx="2"/><path d="M8 22h8M12 18v4"/></svg>Kamera dieses Geräts</button>
@@ -87,6 +88,7 @@
     <div class="banner" id="banner"></div>
 
     <section class="results card" id="results">
+      <div class="results-sub" id="resultsSub"></div>
       <div class="results-title" id="resultsTitle">Ziel!</div>
       <div class="podium" id="podium"></div>
       <div class="results-hint" id="resultsHint">Beide Hände hoch über den Kopf für ein neues Rennen</div>
@@ -114,8 +116,10 @@
         <li><b>Lenken</b>Unsichtbares Lenkrad drehen – rechte Hand tiefer = rechts.</li>
         <li><b>Items</b>Beide Arme nach unten → Menü, Item mit der Hand auf eine Person ziehen.</li>
         <li><b>Motorausfall</b>3× beide Arme über den Kopf.</li>
-        <li><b>Neues Rennen</b>Im Ziel beide Hände hoch.</li>
-        <li class="keys"><b>Tastatur</b><kbd>←</kbd> <kbd>→</kbd> lenken (2. Spieler <kbd>A</kbd> <kbd>D</kbd>), <kbd>↑</kbd> Item, <kbd>Leertaste</kbd> bereit.</li>
+        <li><b>Grand Prix</b>3 Cups mit je 4 Rennen – Punkte sammeln. Cup wählen: antippen oder Taste <kbd>1</kbd>–<kbd>3</kbd>.</li>
+        <li><b>Im Ziel</b>Beide Hände hoch = nächstes Rennen · beide Arme runter = zur Übersicht.</li>
+        <li><b>Fallen</b>Turbo-Pads, Öl, Glatteis, Schanzen, Tiere auf der Strasse und schwingende Kuhglocken.</li>
+        <li class="keys"><b>Tastatur</b><kbd>←</kbd> <kbd>→</kbd> lenken (2. Spieler <kbd>A</kbd> <kbd>D</kbd>), <kbd>↑</kbd> Item, <kbd>Leertaste</kbd> bereit, <kbd>Esc</kbd> zur Übersicht.</li>
     </ul>
   </dialog>
   <script src="../js/controls.js" defer></script>

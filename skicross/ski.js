@@ -8,6 +8,8 @@ import { MultiTracker } from '../js/tracker.js';
 import { avatarSvg } from '../js/avatar2d.js';
 import { Avatar, D } from '../js/avatar3d.js';
 import { peerOptions as netOptions } from '../js/net.js';
+import { endMenu } from '../js/endmenu.js';
+import { reward, tvUid } from '../js/reward.js';
 
 /* ================================================================
    Grundlagen
@@ -649,7 +651,7 @@ function setState(s) {
   if (s === 'lobby') { assignRacers(); resetRacers(); }
   if (s === 'countdown') { assignRacers(); resetRacers(); raceT = 0; finishAt = null; for (const p of locals) p.camFresh = true; }
   if (s === 'race') { START.open = 0.001; audio.go(); banner('LOS!', true); audio.wind?.(true); }
-  if (s === 'results') { showResults(); audio.wind?.(false); }
+  if (s === 'results') { showResults(); audio.wind?.(false); } else END.hide();
   phonesState();
   updateLayout();
 }
@@ -674,9 +676,24 @@ function showResults() {
   $('resultsTitle').textContent = list[0].player ? `🏆 ${list[0].name} gewinnt!` : best ? `${best.name}: Platz ${list.indexOf(best) + 1}` : 'Ziel!';
   $('podium').innerHTML = list.map((r, i) => `<div class="${r.player ? 'me' : ''}"><span class="place">${i + 1}.</span><span class="dot" style="--c:${P_COLORS[r.i]}"></span>${esc(r.name)}<span class="who">${r.player ? '' : 'KI'}</span><span class="t">${r.finished != null ? fmt(r.finished) : 'nicht im Ziel'}</span></div>`).join('');
   const nHum = racers.filter((r) => r.player).length;
-  for (const r of racers) if (r.player) sendPhone(r.player.conn, { t: 'result', score: list.indexOf(r) + 1, game: 'skicross', id: r.player.conn && r.player.conn.__multi ? r.player.trackId : null, sec: Math.round(raceT), n: nHum, time: r.finished != null ? +r.finished.toFixed(1) : null, win: list.indexOf(r) === 0 });
+  for (const r of racers) if (r.player) sendPhone(r.player.conn, { t: 'result', score: list.indexOf(r) + 1, game: 'skicross', id: r.player.conn && r.player.conn.__multi ? r.player.trackId : null, sec: Math.round(raceT), n: nHum, time: r.finished != null ? +r.finished.toFixed(1) : null, win: list.indexOf(r) === 0, tvacc: tvUid });
   saveStats(list);
+  END.show({ againLabel: 'Neues Rennen', againHint: 'Beide Hände hoch' });
+  // Münzen fürs Konto am TV (beste Person am TV zählt)
+  const hum = racers.filter((r) => r.player);
+  if (hum.length && !CAPTURE) {
+    const place = Math.min(...hum.map((r) => list.indexOf(r) + 1));
+    const t = Math.min(...hum.map((r) => r.finished ?? Infinity));
+    reward(END.coins, { game: 'skicross', seconds: raceT, place, players: hum.length, finishTime: isFinite(t) ? t : null, won: place === 1 });
+  }
 }
+// Zur Übersicht: Lobby mit QR-Code; Handy-Spieler drücken dort wieder «Bereit», neue Leute können dazukommen
+function toMenu() {
+  for (const p of locals) { if (p.source === 'phone') p.confirmed = false; p.ready = false; p.readyT = 0; }
+  setState('ready');
+  for (const c of new Set(locals.map((p) => p.conn).filter(Boolean))) syncPhone(c);
+}
+const END = endMenu({ again: () => setState('ready'), menu: () => toMenu() });
 function saveStats(list) {
   try {
     const st = JSON.parse(localStorage.getItem('slope.stats')) || {};
@@ -860,7 +877,7 @@ async function useLocalCamera() {
     btn.textContent = '⏳ KI wird geladen …';
     const { FilesetResolver, PoseLandmarker } = await import(VISION);
     const vision = await FilesetResolver.forVisionTasks(WASM);
-    const opts = (delegate) => ({ baseOptions: { modelAssetPath: MODEL, delegate }, runningMode: 'VIDEO', numPoses: MAX, minPoseDetectionConfidence: 0.5, minPosePresenceConfidence: 0.5, minTrackingConfidence: 0.5 });
+    const opts = (delegate) => ({ baseOptions: { modelAssetPath: MODEL, delegate }, runningMode: 'VIDEO', numPoses: MAX, minPoseDetectionConfidence: 0.45, minPosePresenceConfidence: 0.35, minTrackingConfidence: 0.35 });
     let lm; try { lm = await PoseLandmarker.createFromOptions(vision, opts('GPU')); } catch { lm = await PoseLandmarker.createFromOptions(vision, opts('CPU')); }
     camOn = true; btn.textContent = '✅ Kamera aktiv';
     const tracker = new MultiTracker(MAX);
@@ -934,6 +951,7 @@ function acceptPhone(c) {
     else if (msg.t === 'setp') { const p = c.__ps.get(msg.id == null ? 0 : msg.id); if (p) applyChar(p, { cfg: msg.cfg, name: msg.name }); }
     else if (msg.t === 'ok') { const p = c.__ps.get(msg.id == null ? 0 : msg.id); if (p) { p.confirmed = !!msg.v; if (!p.confirmed) { p.ready = false; p.readyT = 0; } syncPhone(c); } }
     else if (msg.t === 'hello') sendPhone(c, { t: 'state', s: phoneState(), g: GAME });
+    else if (msg.t === 'end' && state === 'results' && stateT > 1) END.phone(msg.a);
   });
   c.on('close', () => {
     for (const p of [...c.__ps.values()]) {
@@ -1109,6 +1127,7 @@ function update(realDt) {
       p.upT = p.handsUp && hasControl(p) ? (p.upT || 0) + realDt : 0;
       if (p.upT > 0.9) { p.upT = 0; setState('ready'); break; }
     }
+    END.update(stateT, Math.max(0, ...locals.map((p) => (p.upT || 0) / 0.9)));
   }
   // Startgatter öffnen
   START.gates.forEach((g) => { g.rotation.x = lerp(g.rotation.x, state === 'race' ? -Math.PI / 2 : 0, damp(10, realDt)); });

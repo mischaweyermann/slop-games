@@ -20,14 +20,15 @@ export class OneEuro {
 export const IDX = [0, 11, 12, 13, 14, 15, 16, 19, 20, 23, 24, 25, 26, 27, 28];
 
 export class MultiTracker {
-  constructor(max = 4, { stableMs = 900, lostMs = 1500 } = {}) {
-    Object.assign(this, { max, stableMs, lostMs, tracks: [], nextId: 1 });
+  constructor(max = 4, { stableMs = 900, lostMs = 1500, reviveMs = 12000 } = {}) {
+    Object.assign(this, { max, stableMs, lostMs, reviveMs, tracks: [], lost: [], nextId: 1 });
   }
   // lms: Liste von Landmark-Arrays (33 Punkte, 0..1). Gibt die Personen zurück, die gerade im Bild und schon stabil erkannt sind.
   update(lms, t) {
     const dets = (lms || []).map((lm) => {
       const a = lm[11], b = lm[12];
-      return { lm, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, sw: Math.hypot(a.x - b.x, a.y - b.y), ok: (a.visibility ?? 1) > 0.5 && (b.visibility ?? 1) > 0.5 };
+      // Schultern etwas grosszügiger annehmen: bei schlechtem Licht oder verdeckten Armen sinkt die Sichtbarkeit schnell
+      return { lm, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, sw: Math.hypot(a.x - b.x, a.y - b.y), ok: (a.visibility ?? 1) > 0.3 && (b.visibility ?? 1) > 0.3 };
     }).filter((d) => d.ok && d.sw > 0.035); // zu kleine (weit hinten stehende) Personen ignorieren
     // nächstgelegene Paare zuerst zuordnen
     const pairs = [];
@@ -41,11 +42,27 @@ export class MultiTracker {
       usedT.add(ti); usedD.add(di);
       Object.assign(tr, { cx: dets[di].cx, cy: dets[di].cy, sw: dets[di].sw, seen: t, lm: dets[di].lm });
     }
+    // Kurz verlorene Personen: kommt jemand an fast derselben Stelle wieder ins Bild, bekommt er seine alte ID zurück.
+    // So verliert niemand mitten im Spiel die Steuerung, nur weil die Kamera ihn einen Moment nicht gesehen hat.
+    this.lost = this.lost.filter((tr) => t - tr.seen < this.reviveMs);
     dets.forEach((d, di) => {
       if (usedD.has(di) || this.tracks.length >= this.max) return;
+      let best = -1, bd = Infinity;
+      this.lost.forEach((tr, li) => {
+        const dist = Math.hypot(tr.cx - d.cx, (tr.cy - d.cy) * 0.6);
+        if (dist < Math.max(0.3, tr.sw * 3) && dist < bd) { bd = dist; best = li; }
+      });
+      if (best >= 0) {
+        const tr = this.lost.splice(best, 1)[0];
+        tr.filters.forEach((f) => f.forEach((x) => x.reset()));
+        Object.assign(tr, { cx: d.cx, cy: d.cy, sw: d.sw, seen: t, lm: d.lm, first: Math.min(tr.first, t - this.stableMs) });
+        this.tracks.push(tr);
+        return;
+      }
       this.tracks.push({ id: this.nextId++, cx: d.cx, cy: d.cy, sw: d.sw, first: t, seen: t, lm: d.lm, filters: IDX.map(() => [new OneEuro(), new OneEuro(), new OneEuro(1, 4)]) });
     });
-    // wer zu lange fehlt, wird vergessen (kommt die Person zurück, bekommt sie eine neue ID)
+    // wer zu lange fehlt, kommt auf die Warteliste (siehe oben) und nach reviveMs ganz weg
+    for (const tr of this.tracks) if (t - tr.seen >= this.lostMs) this.lost.push(tr);
     this.tracks = this.tracks.filter((tr) => t - tr.seen < this.lostMs);
     return this.tracks.filter((tr) => tr.seen === t && t - tr.first >= this.stableMs);
   }

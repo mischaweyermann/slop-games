@@ -194,3 +194,42 @@ body.split .pfx { top: calc(17 * var(--u)); }
 
 
 body.capture #ui { display: none !important; }
+
+/* ---------- Grand Prix: Cup-Wahl in der Lobby ---------- */
+.cups { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: calc(1.2 * var(--u)); margin: calc(-1.2 * var(--u)) 0 calc(2 * var(--u)); }
+.cup { all: unset; box-sizing: border-box; cursor: pointer; position: relative; display: flex; flex-direction: column; gap: calc(.4 * var(--u)); padding: calc(1.3 * var(--u)) calc(1.5 * var(--u)); border-radius: calc(2.2 * var(--u)); background: var(--wine-600); border: 2px solid transparent; transition: transform .2s, border-color .2s, background .2s; min-width: 0; }
+.cup::before { content: ''; position: absolute; inset: 0; border-radius: inherit; opacity: .22; pointer-events: none; }
+.cup.abendrot::before { background: linear-gradient(135deg, #e88a78, #8e3a45); }
+.cup.gletscher::before { background: linear-gradient(135deg, #eaf2fb, #4f6fa3); }
+.cup.schoggi::before { background: linear-gradient(135deg, #f39ab8, #5a3524); }
+.cup:hover, .cup:focus-visible { transform: translateY(-2px); }
+.cup.on { border-color: var(--cream); background: var(--wine-500); }
+.cup.on::before { opacity: .45; }
+.cup b { font-size: calc(2 * var(--u)); color: #fff; position: relative; }
+.cup-key { position: absolute; right: calc(1 * var(--u)); top: calc(1 * var(--u)); width: calc(2.4 * var(--u)); height: calc(2.4 * var(--u)); border-radius: 50%; background: var(--wine-800); color: var(--text-soft); font-size: calc(1.3 * var(--u)); font-weight: 700; display: grid; place-items: center; }
+.cup.on .cup-key { background: var(--cream); color: var(--wine-600); }
+.cup-blurb { font-size: calc(1.3 * var(--u)); color: var(--text-soft); position: relative; line-height: 1.3; }
+.cup-tracks { display: flex; flex-wrap: wrap; gap: calc(.4 * var(--u)); margin-top: calc(.4 * var(--u)); position: relative; }
+.cup-tracks i { font-style: normal; font-size: calc(1.15 * var(--u)); padding: calc(.2 * var(--u)) calc(.8 * var(--u)); border-radius: 999px; background: rgba(42, 14, 17, .45); color: var(--text-soft); white-space: nowrap; }
+.cup-tracks i.done { background: var(--green); color: var(--wine-800); }
+.cup-tracks i.now { background: var(--cream); color: var(--wine-600); font-weight: 700; }
+
+/* Resultate: Grand-Prix-Wertung */
+.results-sub { font-size: calc(1.5 * var(--u)); color: var(--text-mute); font-weight: 600; letter-spacing: .02em; margin-bottom: calc(.4 * var(--u)); }
+.results-sub:empty { display: none; }
+.podium .pts { margin-left: auto; color: var(--cream); font-weight: 700; font-size: .9em; font-variant-numeric: tabular-nums; }
+.podium .pts + .t { margin-left: calc(1.4 * var(--u)); min-width: 3.4em; text-align: right; color: #fff; font-weight: 700; }
+
+/* Autopilot-Hinweis am Lenkrad-Symbol */
+.pwheel em { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: calc(1 * var(--u)); font-style: normal; white-space: nowrap; font-size: calc(1.8 * var(--u)); font-weight: 700; color: #fff; background: var(--glass); border-radius: 999px; padding: calc(.5 * var(--u)) calc(1.6 * var(--u)); }
+
+/* Käse-Klatsch: Kleckse über dem Bild */
+.psplat { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.psplat i { position: absolute; width: calc(var(--r) * .68%); aspect-ratio: 1; transform: translate(-50%, -50%) scale(0); border-radius: 46% 54% 52% 48% / 55% 45% 55% 45%;
+  background: radial-gradient(circle at 30% 35%, rgba(255, 255, 255, .55) 0 6%, transparent 7%), radial-gradient(circle at 62% 60%, #e8b93a 0 9%, transparent 10%), radial-gradient(circle at 40% 70%, #e8b93a 0 6%, transparent 7%), radial-gradient(circle, #f7d564 0 62%, #f2c94c 63% 70%, transparent 71%);
+  filter: drop-shadow(0 6px 10px rgba(42, 14, 17, .35)); transition: transform .25s cubic-bezier(.3, 1.6, .5, 1); }
+.psplat.show i { transform: translate(-50%, -50%) scale(1); transition-delay: var(--d); }
+
+.results { width: calc(72 * var(--u)); }
+.podium .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.podium .who { white-space: nowrap; }

@@ -99,3 +99,24 @@
 
 
 .corner, .status { transition: opacity .4s; }
+
+/* Münzen fürs Konto (unter der Rangliste) */
+.results-coins { display: inline-flex; align-items: center; gap: calc(1 * var(--u)); margin: 0 auto calc(1.2 * var(--u)); padding: calc(.7 * var(--u)) calc(2 * var(--u)) calc(.7 * var(--u)) calc(.8 * var(--u)); border-radius: 999px; background: var(--wine-800); color: var(--text-soft); font-size: calc(1.7 * var(--u)); font-weight: 600; }
+.results-coins[hidden] { display: none; }
+.results-coins svg { width: calc(3.2 * var(--u)); height: calc(3.2 * var(--u)); flex: none; }
+.results-coins b { color: var(--cream); font-size: 1.5em; font-weight: 800; font-variant-numeric: tabular-nums; }
+.results-coins.wait svg { animation: coinspin 1s linear infinite; }
+.results-coins.off { opacity: .8; }
+.results-coins:not(.wait):not(.off) { animation: coinpop .6s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes coinspin { to { transform: rotateY(360deg); } }
+@keyframes coinpop { 0% { transform: scale(.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+/* Spielende: weiter oder zurück zur Übersicht (mit QR-Code) */
+.results-actions { display: grid; grid-template-columns: 1fr 1fr; gap: calc(1.2 * var(--u)); margin-top: calc(.6 * var(--u)); }
+.r-btn { all: unset; box-sizing: border-box; cursor: pointer; position: relative; overflow: hidden; display: grid; gap: calc(.3 * var(--u)); text-align: center; padding: calc(1.2 * var(--u)) calc(1.6 * var(--u)); border-radius: calc(2 * var(--u)); background: var(--cream); color: var(--wine-600); box-shadow: 0 calc(.6 * var(--u)) 0 var(--cream-dark); transition: transform .15s; }
+.r-btn b { font-size: calc(2.2 * var(--u)); font-weight: 800; }
+.r-btn span { font-size: calc(1.4 * var(--u)); font-weight: 500; opacity: .8; }
+.r-btn.alt { background: var(--wine-600); color: #fff; box-shadow: 0 calc(.6 * var(--u)) 0 var(--wine-900); }
+.r-btn:hover, .r-btn:focus-visible { transform: translateY(-2px); outline: 3px solid var(--cream); outline-offset: 3px; }
+.r-btn i { position: absolute; left: 0; bottom: 0; height: calc(.6 * var(--u)); width: calc(var(--f, 0) * 100%); background: currentColor; opacity: .55; }
+.results-auto { margin-top: calc(1 * var(--u)); font-size: calc(1.4 * var(--u)); color: var(--text-mute); min-height: 1.2em; }

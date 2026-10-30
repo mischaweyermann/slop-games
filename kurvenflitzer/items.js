@@ -18,6 +18,11 @@ export const ITEMS = {
     hit: 'Vollbremsung!', fx: 'Gebremst',
     path: '<path d="M8.3 3h7.4L21 8.3v7.4L15.7 21H8.3L3 15.7V8.3z" fill="#fff"/><rect x="6.5" y="10.4" width="11" height="3.2" rx="1.2" fill="#e2574c"/>',
   },
+  cheese: {
+    name: 'Käse-Klatsch', color: '#f2c94c', dur: 5.5,
+    hit: 'Käse im Gesicht!', fx: 'Sicht verkäst',
+    path: '<path d="M3 17.5 13.5 5l7.5 6.5v6z" fill="#fff"/><circle cx="9.5" cy="15" r="1.6" fill="#f2c94c"/><circle cx="15" cy="14" r="1.2" fill="#f2c94c"/><circle cx="17.5" cy="11.5" r=".9" fill="#f2c94c"/>',
+  },
   engine: {
     name: 'Motorausfall', color: '#f39a4c', dur: 15,
     hit: 'Motor aus!', fx: 'Motor aus – 3× Arme hoch!',

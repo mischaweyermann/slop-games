@@ -168,3 +168,8 @@ button.secondary { font: 500 14px 'Poppins', sans-serif; color: #fff; background
 .acct-btn { flex: none; font: 600 14px 'Poppins', sans-serif; color: var(--panel-2); background: #fff; border-radius: 999px; padding: 10px 16px; text-decoration: none; }
 .acct-btn:focus-visible { outline: 3px solid var(--cream); outline-offset: 2px; }
 .acct-note { margin: 10px 0 0; font-size: 13px; color: var(--cream); }
+
+/* Spielende: Nochmal oder zurück zur Übersicht (mit QR-Code am TV) */
+.msg-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.msg-actions[hidden] { display: none; }
+.msg-actions button { min-height: 48px; }

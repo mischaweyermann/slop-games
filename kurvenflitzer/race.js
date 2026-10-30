@@ -8,7 +8,9 @@ import { createAudio } from '../js/audio.js';
 import { loadConfig, sanitize, PRESETS } from '../js/character.js';
 import { avatarSvg } from '../js/avatar2d.js';
 import { MultiTracker } from '../js/tracker.js';
-import { GRASS, WALL, T, N, SEG, TRACK_LEN, sample, nearest, nearestGlobal, lateral, buildWorld, makeKart } from './world.js';
+import { GRASS, WALL, HALF_W, T, N, SEG, TRACK_LEN, TRACK, TRACKS, CUPS, sample, nearest, nearestGlobal, lateral, along, bounds, setTrack, buildWorld, disposeWorld, animateFeatures, makeKart } from './world.js';
+import { endMenu } from '../js/endmenu.js';
+import { reward, tvUid } from '../js/reward.js';
 import { Cockpit } from './cockpit.js';
 import { peerOptions as netOptions } from '../js/net.js';
 import { ITEMS, ITEM_KEYS, CRANKS, itemSvg, buildItemBoxes, animateBoxes, makeFxSprite, makeProjectile, itemTexture } from './items.js';
@@ -20,7 +22,7 @@ const $ = (id) => document.getElementById(id);
 const PEER_PREFIX = 'ballonplatzer-v1-';
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const CHAR_KEY = 'ballonplatzer.character';
-const LAPS = 3;
+let LAPS = 3;
 const V_MAX = 34, V_BOOST = 45, V_GRASS = 15;
 const MAX_LOCAL = 4;     // Spieler pro TV
 const MIN_FIELD = 4;     // so viele Karts mindestens (Rest = KI)
@@ -66,7 +68,8 @@ scene.fog = new THREE.Fog('#e7a593', 120, 440);
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 scene.environmentIntensity = 0.5;
-scene.add(new THREE.HemisphereLight('#ffd9c2', '#7d3a40', 1.2));
+const hemi = new THREE.HemisphereLight('#ffd9c2', '#7d3a40', 1.2);
+scene.add(hemi);
 const sun = new THREE.DirectionalLight('#ffc9a0', 2.7);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
@@ -81,7 +84,6 @@ function setShadowArea(mode) {
   Object.assign(sun.shadow.camera, { left: -r, right: r, top: r, bottom: -r, near: 1, far: mode === 'near' ? 160 : 420 });
   sun.shadow.camera.updateProjectionMatrix();
 }
-buildWorld(scene);
 
 const demoCam = new THREE.PerspectiveCamera(55, 16 / 9, 0.1, 900); scene.add(demoCam);
 const topCam = new THREE.PerspectiveCamera(45, 16 / 9, 1, 1200); scene.add(topCam);
@@ -91,14 +93,54 @@ for (let i = 0; i < MAX_LOCAL; i++) { demoCam.layers.disable(5 + i); topCam.laye
 
 /* ---------- Münzen (pro Spieler eigene, damit jede/r alle einsammeln kann) ---------- */
 const COINS = [];
-for (let s = 70; s < TRACK_LEN - 30; s += 42) {
-  const off = Math.sin(s * 0.013) * 4.2;
-  for (let k = 0; k < 3; k++) { const sp = sample(s + k * 4.5); COINS.push(sp.p.clone().addScaledVector(sp.r, off).setY(1.1)); }
-}
+const COIN_CAP = 220; // so viele Münzen passen in die Instanzen (längste Strecke braucht ~110)
 const coinGeo = new THREE.CylinderGeometry(0.75, 0.75, 0.16, 28); coinGeo.rotateX(Math.PI / 2);
 const coinMat = new THREE.MeshPhysicalMaterial({ color: '#f2c94c', metalness: 0.85, roughness: 0.25, clearcoat: 1, emissive: '#8a5a00', emissiveIntensity: 0.25 });
-const BOXES = buildItemBoxes(scene, sample, TRACK_LEN);
+let BOXES = [];
+let FEAT = [], worldObj = null, trackIdx = -1;
 const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _s1 = new THREE.Vector3(1, 1, 1), _s0 = new THREE.Vector3(0, 0, 0);
+
+/* ================================================================
+   Grand Prix: 3 Cups mit je 4 Strecken, Punkte über alle 4 Rennen
+   ================================================================ */
+const POINTS = [10, 8, 6, 5, 4, 3, 2, 1];
+const GP_BONUS = [25, 15, 8];           // Münzen-Bonus für den Pokal (1./2./3. Platz im Cup)
+const gp = { cup: 0, race: 0, pts: new Map(), names: new Map(), colors: new Map(), lastPts: new Map(), lastPlace: new Map(), done: false };
+const cupOf = () => CUPS[gp.cup];
+const ANIMAL_WORD = { cow: 'MUH!', marmot: 'PFIIIFF!', gummy: 'BOING!' };
+
+// Strecke laden: Welt neu bauen, Münzen, Item-Boxen, Minikarte, Licht
+function loadTrack(ti) {
+  const def = TRACKS[ti];
+  const cup = CUPS.find((c) => c.tracks.includes(ti)) || CUPS[0];
+  if (worldObj) disposeWorld(worldObj.group);
+  setTrack(def);
+  worldObj = buildWorld(scene, def, cup.theme);
+  FEAT = worldObj.features;
+  const th = worldObj.theme;
+  scene.fog.color.set(th.fog);
+  hemi.color.set(th.hemi[0]); hemi.groundColor.set(th.hemi[1]); hemi.intensity = th.hemi[2];
+  sun.color.set(th.sun[0]); sun.intensity = th.sun[1];
+  LAPS = def.laps || 3;
+  trackIdx = ti;
+  // Münzen: Dreiergruppen, nicht auf Fallen
+  COINS.length = 0;
+  for (let s = 70; s < TRACK_LEN - 30 && COINS.length < COIN_CAP - 3; s += 42) {
+    if (FEAT.some((f) => Math.abs(f.s - s) < (f.len || 4) / 2 + 8 && f.type !== 'boost')) continue;
+    const off = Math.sin(s * 0.013) * 4.2;
+    for (let k = 0; k < 3; k++) { const sp = sample(s + k * 4.5); COINS.push(sp.p.clone().addScaledVector(sp.r, off).setY(1.1)); }
+  }
+  for (const p of locals) { p.taken = new Uint8Array(COINS.length); p.coins.count = COINS.length; }
+  BOXES = buildItemBoxes(worldObj.group, sample, TRACK_LEN);
+  buildMinimap();
+  const b = bounds();
+  topCam.position.set(b.cx, b.size * 0.95 + 40, b.cz + b.size * 0.75); topCam.lookAt(b.cx, 0, b.cz);
+  shots.length = 0;
+  camSnap = true;
+  for (const r of racers.values()) { r.idx = 0; r.y = 0; r.vy = 0; }
+  placeGrid();
+  renderCups();
+}
 
 /* ================================================================
    Rennfahrer (KI, lokale Spieler, Online-Gäste) + lokale Spieler
@@ -118,7 +160,7 @@ function createRacer(def) {
     id: def.id, def, name: def.name, color: def.color, helmet: def.helmet,
     kind: def.kind === 'ai' ? 'ai' : 'local',
     kart: makeKart(scene, def.color, def.helmet, def.skin),
-    pos: new THREE.Vector3(), heading: 0, v: 0, idx: 0, lap: 0, prog: -10, finished: null,
+    pos: new THREE.Vector3(), heading: 0, mh: 0, v: 0, y: 0, vy: 0, idx: 0, lap: 0, prog: -10, finished: null,
     s: 0, off: 0, offT: 0, laneT: 0, vmax: def.vmax || 32,
     tgt: { x: 0, z: 0, h: 0, v: 0 }, gotAt: -1e9,
     fx: null, items: [], itemAt: 0, fxSprite: makeFxSprite(),
@@ -134,7 +176,8 @@ function createLocal(source, conn = null) {
   if (slot >= MAX_LOCAL) return null;
   const camera = new THREE.PerspectiveCamera(66, 16 / 9, 0.05, 900);
   scene.add(camera);
-  const coins = new THREE.InstancedMesh(coinGeo, coinMat, COINS.length);
+  const coins = new THREE.InstancedMesh(coinGeo, coinMat, COIN_CAP);
+  coins.count = COINS.length; coins.frustumCulled = false;
   coins.instanceMatrix.setUsage(THREE.DynamicDrawUsage); coins.layers.set(5 + slot);
   scene.add(coins);
   const p = {
@@ -230,6 +273,7 @@ function placeGrid() {
     r.idx = nearestGlobal(r.pos); r.prog = r.idx * SEG - TRACK_LEN;
     r.tgt = { x: r.pos.x, z: r.pos.z, h: r.heading, v: 0 };
     r.fx = null; r.items = []; r.itemAt = 0; r.safeUntil = 0; r.itemLap = -99;
+    r.y = 0; r.vy = 0; r.mh = r.heading; r.aiBoostT = 0; r.wobble = 0;
     placeKart(r, 0);
   }
   for (const p of locals) if (p.racer) p.prevIdx = p.racer.idx;
@@ -247,13 +291,19 @@ function onPose(p, k, w = 640, h = 480) {
   NAMES.forEach((n, i) => (P[n] = { x: k[i * 3] * w, y: k[i * 3 + 1] * h, v: k[i * 3 + 2] }));
   const ok = (q, th = 0.3) => q.v >= th;
   const inp = p.input;
-  if (!ok(P.lSh, 0.4) || !ok(P.rSh, 0.4)) return;
+  // Schultern grosszügig: bei Gegenlicht oder verdeckten Armen sinkt die Sichtbarkeit schnell
+  if (!ok(P.lSh, 0.25) || !ok(P.rSh, 0.25)) return;
   inp.lastAt = now;
   const sw = Math.hypot(P.rSh.x - P.lSh.x, P.rSh.y - P.lSh.y);
+  // Hand kurz nicht erkannt (verdeckt, unscharf)? Dann die letzte Position noch einen Moment weiterverwenden,
+  // damit das Lenkrad nicht sofort «losgelassen» wird.
+  const mem = p.handMem || (p.handMem = {});
   const hand = (s) => {
     const W = P[s + 'Wr'], I = P[s + 'Ix'];
-    if (!ok(W)) return null;
-    return ok(I) ? { x: W.x + (I.x - W.x) * 0.5, y: W.y + (I.y - W.y) * 0.5 } : { x: W.x, y: W.y };
+    if (!ok(W, 0.2)) { const m = mem[s]; return m && now - m.t < 0.7 ? m : null; }
+    const h = ok(I, 0.2) ? { x: W.x + (I.x - W.x) * 0.5, y: W.y + (I.y - W.y) * 0.5 } : { x: W.x, y: W.y };
+    mem[s] = { ...h, t: now };
+    return h;
   };
   const L = hand('l'), R = hand('r');
   const headY = ok(P.nose, 0.4) ? P.nose.y : (P.lSh.y + P.rSh.y) / 2 - sw * 0.6;
@@ -302,11 +352,14 @@ addEventListener('keydown', (e) => {
   if (k === 'f') toggleFullscreen();
   if (k === 'm') { audio.setMuted(!audio.muted); updateSoundBtn(); }
   if (k === 'k' && !e.repeat) addKeysPlayer();
+  if (['1', '2', '3'].includes(k) && !e.repeat) chooseCup(+k - 1);
+  // Fernbedienung: ← → wechselt den Cup, solange niemand mit der Tastatur fährt
+  if ((k === 'arrowleft' || k === 'arrowright') && !e.repeat && !locals.some((p) => p.source === 'keys')) chooseCup(gp.cup + (k === 'arrowright' ? 1 : -1));
   // Leertaste/Enter heisst «bereit» – nicht den zuletzt geklickten Button (z. B. «Tastatur») nochmals auslösen
   if ((k === ' ' || k === 'enter') && locals.some((p) => p.source === 'keys') && e.target && e.target.closest && e.target.closest('button, a')) { e.preventDefault(); e.target.blur(); }
   if (k === ' ' || k === 'enter') {
     if (state === 'ready') for (const p of locals) if (p.source === 'keys') { if (p.ready) p.startNow = true; p.ready = true; }
-    if (state === 'results' && stateT > 2 && locals.some((p) => p.source === 'keys')) requestRestart();
+    if (state === 'results' && stateT > 2) END.phone('again');
   }
 });
 addEventListener('keyup', (e) => {
@@ -374,7 +427,7 @@ async function useLocalCamera() {
     btn.textContent = '⏳ KI wird geladen …';
     const { FilesetResolver, PoseLandmarker } = await import(VISION);
     const vision = await FilesetResolver.forVisionTasks(WASM);
-    const opts = (delegate) => ({ baseOptions: { modelAssetPath: MODEL, delegate }, runningMode: 'VIDEO', numPoses: 4, minPoseDetectionConfidence: 0.5, minPosePresenceConfidence: 0.5, minTrackingConfidence: 0.5 });
+    const opts = (delegate) => ({ baseOptions: { modelAssetPath: MODEL, delegate }, runningMode: 'VIDEO', numPoses: 4, minPoseDetectionConfidence: 0.45, minPosePresenceConfidence: 0.35, minTrackingConfidence: 0.35 });
     let lm; try { lm = await PoseLandmarker.createFromOptions(vision, opts('GPU')); } catch { lm = await PoseLandmarker.createFromOptions(vision, opts('CPU')); }
     camOn = true;
     btn.textContent = '✅ Kamera aktiv · bis 4 Personen';
@@ -477,6 +530,7 @@ function acceptPhone(c) {
     else if (msg.t === 'setp') { const p = c.__ps.get(msg.id == null ? 0 : msg.id); if (p) applyChar(p, { cfg: msg.cfg, name: msg.name, done: true }); }
     else if (msg.t === 'ok') { const p = c.__ps.get(msg.id == null ? 0 : msg.id); if (p) { p.confirmed = !!msg.v; if (!p.confirmed) { p.ready = false; p.readyT = 0; } else audio.tick(); syncPhone(c); } }
     else if (msg.t === 'hello') sendPhone(c, { t: 'state', s: phoneState(), g: 'rennen' });
+    else if (msg.t === 'end' && state === 'results' && stateT > 1) END.phone(msg.a);
   });
   c.on('close', () => {
     const i = pendingPhones.indexOf(c); if (i >= 0) pendingPhones.splice(i, 1);
@@ -590,6 +644,9 @@ const ICON = {
 };
 const SHIELD = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4 5.5v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10v-6z" fill="#fff"/><path d="m8.5 12 2.4 2.4 4.6-4.8" fill="none" stroke="#3d1418" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const face = (cfg) => avatarSvg(sanitize(cfg), { body: false });
+// Käse-Klatsch: Kleckse über dem Bild
+const SPLATS = [[18, 30, 26], [62, 22, 30], [40, 58, 34], [78, 60, 24], [12, 70, 20], [55, 82, 22], [30, 12, 16]]
+  .map(([x, y, r], i) => `<i style="left:${x}%;top:${y}%;--r:${r};--d:${i * 70}ms"></i>`).join('');
 const TICKS = [0, 1, 2, 3, 4, 5, 6].map((k) => { const a = (k / 6) * 270 * Math.PI / 180; const r1 = 41, r2 = 36; return `<path d="M${60 + Math.cos(a) * r1} ${60 + Math.sin(a) * r1} L${60 + Math.cos(a) * r2} ${60 + Math.sin(a) * r2}"/>`; }).join('');
 
 function createHud(p) {
@@ -614,7 +671,8 @@ function createHud(p) {
     </div>
     <div class="speedo"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="track" cx="60" cy="60" r="50"/><circle class="bar" cx="60" cy="60" r="50"/><g class="ticks">${TICKS}</g></svg>
       <div class="speed-num"><b>0</b><small>km/h</small></div></div>
-    <div class="pwheel"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" stroke-width="9"/><path d="M14 54h72M50 54v34" stroke="currentColor" stroke-width="8" stroke-linecap="round"/></svg></div>
+    <div class="psplat" aria-hidden="true">${SPLATS}</div>
+    <div class="pwheel"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" stroke-width="9"/><path d="M14 54h72M50 54v34" stroke="currentColor" stroke-width="8" stroke-linecap="round"/></svg><em></em></div>
     <div class="pbanner"></div>
     <div class="phand"><b></b><span>Autopilot · Hände zurück ans Lenkrad!</span></div>
     <div class="paim">
@@ -626,7 +684,7 @@ function createHud(p) {
   $('phuds').appendChild(el);
   const q = (sel) => el.querySelector(sel);
   return {
-    root: el, pos: q('.ppos b'), posOf: q('.ppos small'), lap: q('.plap b'), speed: q('.speed-num b'), speedo: q('.speedo'),
+    root: el, pos: q('.ppos b'), posOf: q('.ppos small'), lap: q('.plap b'), lapOf: q('.plap small'), splat: q('.psplat'), wheelTx: q('.pwheel em'), speed: q('.speed-num b'), speedo: q('.speedo'),
     bar: q('.speedo .bar'), coins: q('.pcoins b'), coinsBox: q('.pcoins'), turbo: q('.pturbo'), segs: [...el.querySelectorAll('.pturbo .seg i')],
     change: q('.pchange'), wheel: q('.pwheel'), banner: q('.pbanner'), name: q('.pname'),
     items: q('.pitems'), itemHint: q('.pitems .hint'), itemSlots: [...el.querySelectorAll('.pitems .islot')], fx: q('.pfx'), fxIc: q('.pfx .ic'), fxTx: q('.pfx .tx'), fxCr: q('.pfx .cr'),
@@ -721,18 +779,20 @@ addEventListener('resize', updateLayout);
 // Minimap
 const mm = $('minimap'), mmCtx = mm.getContext('2d');
 const mmBase = document.createElement('canvas'); mmBase.width = mm.width; mmBase.height = mm.height;
-let mmTf;
-{
-  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
-  for (const s of T) { x0 = Math.min(x0, s.p.x); x1 = Math.max(x1, s.p.x); z0 = Math.min(z0, s.p.z); z1 = Math.max(z1, s.p.z); }
+let mmTf = () => [0, 0];
+const MM_DOT = { boost: '#f2c94c', oil: '#3d1418', choc: '#4a2416', ice: '#9fd8ff', ramp: '#f39a4c', cows: '#7fb069', hammer: '#e2574c' };
+function buildMinimap() {
+  const { x0, x1, z0, z1 } = bounds();
   const pad = 36, sc = Math.min((mm.width - pad * 2) / (x1 - x0), (mm.height - pad * 2) / (z1 - z0));
   mmTf = (x, z) => [pad + (x - x0) * sc + ((mm.width - pad * 2) - (x1 - x0) * sc) / 2, pad + (z - z0) * sc + ((mm.height - pad * 2) - (z1 - z0) * sc) / 2];
-  const g = mmBase.getContext('2d'); g.lineJoin = g.lineCap = 'round';
+  const g = mmBase.getContext('2d'); g.clearRect(0, 0, mmBase.width, mmBase.height); g.lineJoin = g.lineCap = 'round';
   for (const [w, c] of [[26, '#ffffff'], [16, '#a49cb0']]) {
     g.strokeStyle = c; g.lineWidth = w; g.beginPath();
     T.forEach((s, i) => { const [x, y] = mmTf(s.p.x, s.p.z); i ? g.lineTo(x, y) : g.moveTo(x, y); });
     g.closePath(); g.stroke();
   }
+  // Fallen als kleine Punkte
+  for (const f of FEAT) { const sp = T[f.i]; const [x, y] = mmTf(sp.p.x, sp.p.z); g.fillStyle = MM_DOT[f.type] || '#fff'; g.beginPath(); g.arc(x, y, 6, 0, 7); g.fill(); }
   const [sx, sy] = mmTf(T[0].p.x, T[0].p.z); g.fillStyle = '#3f325e'; g.fillRect(sx - 12, sy - 3, 24, 6);
 }
 function drawMinimap() {
@@ -782,9 +842,9 @@ function setState(s) {
   }
   if (s === 'countdown') { $('lights').classList.add('show'); audio.engine(true); firstFinishAt = null; }
   if (s === 'race') { $('lights').classList.add('show', 'go'); audio.go(); banner('LOS!'); setTimeout(() => $('lights').classList.remove('show'), 1200); }
-  if (s === 'results') showResults();
+  if (s === 'results') showResults(); else END.hide();
   if (s === 'lobby') { audio.engine(false); refreshRoster(); resetRace(); camSnap = true; }
-  if (s === 'ready') { camSnap = true; startAt = null; }
+  if (s === 'ready') { camSnap = true; startAt = null; renderCups(); }
   if (s === 'results') saveStats();
   updateLayout();
   phonesState();
@@ -792,27 +852,64 @@ function setState(s) {
 
 function showResults() {
   audio.end();
+  awardPoints();
   renderResults();
+  const gpEnd = gp.race >= 3;
+  const order = gpOrder();
   locals.forEach((p) => {
-    const place = standings().indexOf(p.racer) + 1;
+    const place = (gp.lastPlace.get(p.id) || standings().indexOf(p.racer) + 1);
     const mine = p.racer && p.racer.finished != null ? +p.racer.finished.toFixed(1) : null;
-    sendPhone(p.conn, { t: 'result', score: place, record: place === 1, g: 'rennen', game: 'kurvenflitzer', id: p.conn && p.conn.__multi ? p.trackId : null, sec: Math.round(raceT), n: locals.length, time: mine, win: place === 1 });
+    const score = gpEnd ? order.indexOf(p.id) + 1 : place;
+    sendPhone(p.conn, { t: 'result', score, record: score === 1, g: 'rennen', game: 'kurvenflitzer', id: p.conn && p.conn.__multi ? p.trackId : null, sec: Math.round(raceT), n: locals.length, time: mine, win: score === 1, gpEnd, tvacc: tvUid });
+  });
+  END.show({
+    againLabel: gpEnd ? 'Nächster Cup' : 'Nächstes Rennen',
+    againHint: `Beide Hände hoch · ${gpEnd ? CUPS[(gp.cup + 1) % CUPS.length].short : TRACKS[cupOf().tracks[gp.race + 1]].name}`, menuHint: 'Beide Arme runter',
+  });
+  // Münzen fürs Konto am TV: Zeit + Platz + eingesammelte Münzen (+ Pokal-Bonus am Ende des Cups)
+  if (locals.length && !CAPTURE) {
+    const best = Math.min(...locals.map((p) => gp.lastPlace.get(p.id) || 9));
+    const t = Math.min(...locals.map((p) => (p.racer && p.racer.finished != null ? p.racer.finished : Infinity)));
+    const coinBonus = Math.min(10, Math.floor(Math.max(0, ...locals.map((p) => p.coinCount)) / 5));
+    const gpRank = gpEnd ? Math.min(...locals.map((p) => order.indexOf(p.id) + 1).filter((x) => x > 0)) : 0;
+    reward(END.coins, { game: 'kurvenflitzer', seconds: raceT, place: best <= 8 ? best : null, players: locals.length, finishTime: isFinite(t) ? t : null, won: best === 1, bonus: coinBonus + (gpRank ? GP_BONUS[gpRank - 1] || 0 : 0) });
+  }
+}
+// Punkte für dieses Rennen verteilen (Reihenfolge beim Wechsel zu den Resultaten)
+function awardPoints() {
+  gp.lastPts.clear(); gp.lastPlace.clear();
+  standings().forEach((r, i) => {
+    const id = r.id, pts = POINTS[i] || 0;
+    gp.pts.set(id, (gp.pts.get(id) || 0) + pts);
+    gp.lastPts.set(id, pts); gp.lastPlace.set(id, i + 1);
+    gp.names.set(id, r.name); gp.colors.set(id, r.local ? P_COLORS[r.local.slot] : r.color);
   });
 }
+// Gesamtwertung: Punkte, bei Gleichstand zählt der Platz im letzten Rennen
+const gpOrder = () => [...gp.pts.keys()].sort((a, b) => (gp.pts.get(b) - gp.pts.get(a)) || ((gp.lastPlace.get(a) || 9) - (gp.lastPlace.get(b) || 9)));
 function renderResults() {
   const st = standings();
-  const mine = locals.map((p) => st.indexOf(p.racer) + 1).filter((x) => x > 0);
-  const best = mine.length ? Math.min(...mine) : 0;
-  $('resultsTitle').textContent = locals.length > 1
-    ? `🏁 ${pName(locals.find((p) => st.indexOf(p.racer) + 1 === best) || locals[0])} ist am schnellsten!`
+  const gpEnd = gp.race >= 3;
+  const order = gpOrder();
+  const isLocal = (id) => locals.some((p) => p.id === id);
+  const leader = order[0];
+  const raceBest = locals.map((p) => gp.lastPlace.get(p.id) || st.indexOf(p.racer) + 1).filter((x) => x > 0);
+  const best = raceBest.length ? Math.min(...raceBest) : 0;
+  const cup = cupOf();
+  if (gpEnd) $('resultsTitle').textContent = isLocal(leader) ? `🏆 ${gp.names.get(leader)} gewinnt den ${cup.name}!` : `${gp.names.get(leader)} gewinnt den ${cup.name}`;
+  else $('resultsTitle').textContent = locals.length > 1
+    ? `🏁 ${pName(locals.find((p) => (gp.lastPlace.get(p.id) || 0) === best) || locals[0])} ist am schnellsten!`
     : best === 1 ? '🏆 Sieg!' : best === 2 ? '🥈 Zweiter Platz!' : best === 3 ? '🥉 Dritter Platz!' : 'Ziel erreicht!';
-  $('podium').innerHTML = st.map((r, i) => {
-    const me = !!r.local;
-    const c = me ? P_COLORS[r.local.slot] : r.color;
-    const who = r.kind === 'ai' || r.def.kind === 'ai' ? 'KI' : me ? (r.local.coinCount + ' 🪙') : 'online';
-    return `<div class="${me ? 'me' : ''}" style="--c:${c}"><span class="place">${i + 1}.</span><span class="dot" style="--c:${r.color}"></span>${r.name}<span class="who">${who}</span><span class="t">${r.finished != null ? fmt(r.finished) : 'fährt noch …'}</span></div>`;
+  $('resultsSub').textContent = gpEnd ? `${cup.name} · Endstand nach 4 Rennen` : `${cup.name} · Rennen ${gp.race + 1}/4 · ${TRACK.name}`;
+  $('podium').innerHTML = order.map((id, i) => {
+    const r = racers.get(id);
+    const me = isLocal(id);
+    const pl = gp.lastPlace.get(id);
+    const tm = r && r.finished != null ? fmt(r.finished) : '';
+    const medal = gpEnd && i < 3 ? ['🥇', '🥈', '🥉'][i] + ' ' : '';
+    const who = [pl ? `${pl}. im Rennen` : '', tm, r && r.kind === 'ai' ? 'KI' : ''].filter(Boolean).join(' · ');
+    return `<div class="${me ? 'me' : ''}" style="--c:${gp.colors.get(id)}"><span class="place">${i + 1}.</span><span class="dot" style="--c:${gp.colors.get(id)}"></span><span class="nm">${medal}${esc(gp.names.get(id) || '')}</span><span class="who">${who}</span><span class="pts">+${gp.lastPts.get(id) || 0}</span><span class="t">${gp.pts.get(id) || 0} P</span></div>`;
   }).join('');
-  $('resultsHint').textContent = 'Beide Hände hoch über den Kopf für ein neues Rennen';
 }
 // Spielzeit lokal speichern (die Startseite zeigt sie unter «Deine Bewegung»)
 function saveStats() {
@@ -836,10 +933,45 @@ function saveStats() {
     localStorage.setItem('slope.stats', JSON.stringify(st));
   } catch { /* privat */ }
 }
-function requestRestart() { doRestart(); }
-function doRestart() {
+// «Weiter»: nächstes Rennen im Cup – oder nach dem 4. Rennen der nächste Cup
+function requestRestart() {
+  if (gp.race >= 3) { gp.cup = (gp.cup + 1) % CUPS.length; resetGp(); }
+  else gp.race++;
+  loadTrack(cupOf().tracks[gp.race]);
+  gp.quick = true; // die Leute sind schon da: kurzer Start
   setState('ready');
 }
+function resetGp() { gp.race = 0; gp.pts.clear(); gp.lastPts.clear(); gp.lastPlace.clear(); gp.names.clear(); gp.colors.clear(); }
+// «Zur Übersicht»: Lobby mit QR-Code, Cup-Wahl; Handy-Spieler drücken wieder «Bereit», neue Leute können dazukommen
+function toMenu() {
+  resetGp(); gp.quick = false;
+  if (trackIdx !== cupOf().tracks[0]) loadTrack(cupOf().tracks[0]);
+  for (const p of locals) { if (p.source === 'phone') p.confirmed = false; p.ready = false; p.readyT = 0; p.upT = 0; p.menuT = 0; }
+  setState('ready');
+  for (const c of new Set(locals.map((p) => p.conn).filter(Boolean))) syncPhone(c);
+  renderCups();
+}
+const END = endMenu({ again: () => requestRestart(), menu: () => toMenu(), autoSec: 45 });
+// Cup in der Lobby wählen (Klick, Tasten 1–3, Fernbedienung ← →)
+function chooseCup(i) {
+  if (state !== 'lobby' && state !== 'ready') return;
+  i = (i + CUPS.length) % CUPS.length;
+  if (i === gp.cup && gp.race === 0) return;
+  gp.cup = i; resetGp(); gp.quick = false;
+  loadTrack(cupOf().tracks[0]);
+  if (state === 'ready') { resetRace(); startAt = null; }
+  audio.whoosh();
+  toast(`${cupOf().name}: ${cupOf().tracks.map((t) => TRACKS[t].name).join(' · ')}`);
+}
+function renderCups() {
+  const el = $('cups'); if (!el) return;
+  el.innerHTML = CUPS.map((c, i) => `<button type="button" class="cup ${c.id} ${i === gp.cup ? 'on' : ''}" data-i="${i}">
+      <span class="cup-key">${i + 1}</span><b>${c.name}</b><span class="cup-blurb">${c.blurb}</span>
+      <span class="cup-tracks">${c.tracks.map((t, k) => `<i class="${i === gp.cup && k < gp.race ? 'done' : i === gp.cup && k === gp.race ? 'now' : ''}">${TRACKS[t].name}</i>`).join('')}</span></button>`).join('');
+  const chip = $('cupChip');
+  if (chip) chip.textContent = `${cupOf().name} · Rennen ${gp.race + 1}/4 · ${TRACK.name} · ${LAPS} Runden · ${(TRACK_LEN / 1000).toFixed(1).replace('.', ',')} km`;
+}
+$('cups')?.addEventListener('click', (e) => { const b = e.target.closest('.cup'); if (b) { e.stopPropagation(); b.blur(); chooseCup(+b.dataset.i); } });
 
 /* ---------- Fahrphysik (lokale Spieler) ---------- */
 const fwd = new THREE.Vector3(), _v = new THREE.Vector3();
@@ -848,15 +980,21 @@ function updateLocal(p, dt, driving) {
   const fx = r.fx ? r.fx.kind : '';
   const auto = !!p.aim || now < (p.handback || 0);    // Autopilot: Menü offen oder 3-2-1 danach
   let target = 0;
+  const seen = hasControl(p);
   if (auto) target = autoSteer(r, 1);                  // fährt selbst weiter
   else if (p.source === 'keys') target = (p.input.r ? 1 : 0) - (p.input.l ? 1 : 0);
   else if (gripping(p)) target = p.input.steer;
+  // Kamera sieht die Person nicht (oder Hände weg): Autopilot hält das Kart auf der Strecke,
+  // statt geradeaus in die Reifen zu fahren. Sobald die Hände wieder am Lenkrad sind, lenkt die Person.
+  else if (driving) target = autoSteer(r, 0.9);
   if (fx === 'swap' && !auto) target = -target;         // Spiegel-Lenkung
-  p.steer += (target - p.steer) * damp(p.source === 'keys' ? 6 : 14, dt);
+  const ice = !!r.onIce;
+  p.steer += (target - p.steer) * damp(p.source === 'keys' ? 6 : ice ? 4 : 14, dt);
   r.steer = p.steer;
 
   const i = r.idx = nearest(r.pos, r.idx);
-  p.offroad = Math.abs(lateral(r.pos, i)) > GRASS;
+  const air = r.y > 0.25;
+  p.offroad = !air && Math.abs(lateral(r.pos, i)) > GRASS;
   let vT = 0;
   if (driving) {
     p.boostT = Math.max(0, p.boostT - dt);
@@ -864,20 +1002,25 @@ function updateLocal(p, dt, driving) {
     vT *= 1 - 0.22 * Math.abs(p.steer) ** 1.5;
     if (p.offroad) vT = Math.min(vT, V_GRASS);
     if (auto) vT *= 0.85;
-    else if (!gripping(p)) vT *= 0.45; // Hände weg vom Lenkrad = Gas weg
+    else if (!gripping(p)) vT *= seen ? 0.45 : 0.6; // Hände weg = Gas weg; nicht im Bild = Autopilot mit halbem Tempo
     if (fx === 'reverse') vT *= 0.75;
+    if (fx === 'cheese') vT *= 0.92;
+    if (r.sticky) vT *= 0.42;                          // Schoggi klebt
     if (fx === 'stop' || fx === 'engine') vT = 0;
   }
-  r.v += (vT - r.v) * (r.v < vT ? 0.5 : fx === 'stop' ? 6 : 1.4) * dt;
+  r.v += (vT - r.v) * (r.v < vT ? 0.5 : fx === 'stop' ? 6 : r.sticky ? 3 : 1.4) * dt;
   r.v = Math.max(0, r.v);
-  r.heading -= p.steer * 1.5 * Math.min(1, r.v / 9) * dt;
+  if (!air) r.heading -= p.steer * (ice ? 1.05 : 1.5) * Math.min(1, r.v / 9) * dt; // in der Luft lenkt nichts
   // Nach einem Rempler: seitlich wegrutschen und kurz schleudern
   r.pos.addScaledVector(p.knock, dt);
   p.knock.multiplyScalar(Math.exp(-3.2 * dt));
   r.heading += p.spin * dt;
-  p.spin *= Math.exp(-4 * dt);
-  fwd.set(Math.sin(r.heading), 0, Math.cos(r.heading));
+  p.spin *= Math.exp(-(ice ? 1.6 : 4) * dt);
+  // Glatteis: das Kart rutscht in die alte Richtung weiter (Fahrtrichtung folgt der Nase nur langsam)
+  r.mh = ice || air ? r.mh + angDiff(r.mh, r.heading) * damp(ice ? 2.2 : 0.6, dt) : r.heading;
+  fwd.set(Math.sin(r.mh), 0, Math.cos(r.mh));
   r.pos.addScaledVector(fwd, r.v * dt);
+  hazards(r, p, dt);
 
   // Reifenstapel
   p.wallCd -= dt;
@@ -953,7 +1096,7 @@ function rescue(p, lost) {
   for (const o of racers.values()) if (o !== r && !o.gone && (o.pos.x - T[j].p.x) ** 2 + (o.pos.z - T[j].p.z) ** 2 < 9) off = 3.2;
   r.pos.copy(T[j].p).addScaledVector(T[j].r, off); r.pos.y = 0;
   r.heading = Math.atan2(T[j].t.x, T[j].t.z);
-  r.v = 10; r.idx = j;
+  r.v = 10; r.idx = j; r.y = 0; r.vy = 0; r.mh = r.heading;
   p.knock.set(0, 0, 0); p.spin = 0; p.steer = 0; p.offroad = false;
   if (!lost || Math.abs(j - p.prevIdx) < N / 2) p.prevIdx = j; // Rundenzählung nicht verfälschen
   p.stuckT = 0; p.alongV = V_MAX; p.stuckIdx = j;
@@ -1198,6 +1341,78 @@ function updateItems(p, dt) {
   } else p.downT = 0;
 }
 
+/* ---------- Strecken-Fallen: Turbo-Pads, Öl, Schoggi, Glatteis, Schanzen, Tiere, Kuhglocken ---------- */
+const _v2 = new THREE.Vector3();
+function hazards(r, p, dt) {
+  let onRamp = false;
+  r.onIce = false; r.sticky = false;
+  const i = r.idx;
+  if (FEAT.length && !r.gone) {
+    const a = along(r.pos, i), lat = lateral(r.pos, i);
+    const ground = r.y < 0.4;
+    for (const f of FEAT) {
+      let ds = a - f.s;
+      if (ds > TRACK_LEN / 2) ds -= TRACK_LEN; else if (ds < -TRACK_LEN / 2) ds += TRACK_LEN;
+      if (Math.abs(ds) > 30) continue;
+      const inZone = Math.abs(ds) < f.len / 2 && Math.abs(lat - (f.off || 0)) < f.w / 2;
+      if (f.type === 'boost') {
+        if (inZone && ground && now > (r.padCd || 0)) {
+          r.padCd = now + 0.8;
+          if (p) { p.boostT = Math.max(p.boostT, 1.8); pBanner(p, 'TURBO!'); audio.gold(); sendPhone(p.conn, { t: 'hit', gold: true }); }
+          else r.aiBoostT = 1.8;
+        }
+      } else if (f.type === 'oil') {
+        if (inZone && ground && now > (r.oilCd || 0)) {
+          r.oilCd = now + 1.8;
+          const sg = Math.random() < 0.5 ? -1 : 1;
+          if (p) {
+            p.spin += sg * 5.5; p.knock.addScaledVector(T[i].r, sg * 4); r.v *= 0.85; p.shake = Math.max(p.shake, 0.4);
+            pBanner(p, worldObj.theme.deco === 'candy' ? 'KARAMELL!' : 'RUTSCH!', true); audio.skid(1); sendPhone(p.conn, { t: 'bad' });
+          } else { r.v *= 0.7; r.offT = clamp(r.off + sg * 4, -5, 5); r.wobble = 1; }
+        }
+      } else if (f.type === 'choc') {
+        if (inZone && ground) { r.sticky = true; if (p && now > (r.chocCd || 0)) { r.chocCd = now + 3; pBanner(p, 'KLEBRIG!', true); audio.skid(0.6); } }
+      } else if (f.type === 'ice') {
+        if (Math.abs(ds) < f.len / 2 && ground) { r.onIce = true; if (p && now > (r.iceCd || 0)) { r.iceCd = now + 5; pBanner(p, 'GLATTEIS!'); audio.skid(0.8); } }
+      } else if (f.type === 'ramp') {
+        if (Math.abs(lat) < f.w / 2 + 0.5 && ds > -f.len / 2 && ds < f.len / 2 && r.v > 3) {
+          const u = (ds + f.len / 2) / f.len;
+          if (f.h * u >= r.y - 0.3) { onRamp = true; r.y = f.h * u; r.vy = r.v * (f.h / f.len) * 1.7 + 1.5; }
+        }
+      } else if (f.type === 'cows') {
+        if (r.y < 1.6 && now > (r.cowCd || 0)) {
+          const dx = r.pos.x - f.pos.x, dz = r.pos.z - f.pos.z, d = Math.hypot(dx, dz);
+          if (d < 2.6) {
+            r.cowCd = now + 1.5;
+            const nx = dx / (d || 1), nz = dz / (d || 1);
+            if (p) { bumpLocal(p, nx, nz, 0.9); r.v *= 0.5; pBanner(p, ANIMAL_WORD[worldObj.theme.animal] || 'MUH!', true); }
+            else { bumpAI(r, nx, nz, 0.9); r.v *= 0.5; }
+          }
+        }
+      } else if (f.type === 'hammer') {
+        if (Math.abs(ds) < 2.4 && f.y < 2.8 && Math.abs(lat - f.lat) < 2.4 && r.y < 2 && now > (r.bellCd || 0)) {
+          r.bellCd = now + 1.4;
+          const n = _v2.copy(T[i].r).multiplyScalar(f.dir);
+          if (p) { bumpLocal(p, n.x, n.z, 1); p.knock.addScaledVector(n, 9); r.v *= 0.35; pBanner(p, 'BIMMM!', true); audio.bad(); sendPhone(p.conn, { t: 'bad' }); }
+          else { r.knockOff = (r.knockOff || 0) + f.dir * 12; r.v *= 0.4; }
+        }
+      }
+    }
+  }
+  // Sprung: nach der Schanze fliegt das Kart ein Stück
+  if (!onRamp && (r.y > 0 || r.vy > 0)) {
+    const high = r.y > 0.6;
+    r.vy -= 24 * dt; r.y += r.vy * dt;
+    if (r.y <= 0) {
+      const hard = r.vy < -6;
+      r.y = 0; r.vy = 0;
+      if (p && high) { p.shake = Math.max(p.shake, hard ? 0.6 : 0.3); audio.skid(1); sendPhone(p.conn, { t: 'hit' }); }
+    }
+  }
+  if (p && r.y > 1.4 && !r.airShown) { r.airShown = true; pBanner(p, 'SPRUNG!'); audio.whoosh(); }
+  if (r.y <= 0.05) r.airShown = false;
+}
+
 /* ---------- Rempler ---------- */
 const KART_R = 1.45; // halbe Kart-Breite für Zusammenstösse
 function bumpLocal(p, nx, nz, k) {
@@ -1242,8 +1457,15 @@ function updateAI(r, dt, mode) {
   if (fx === 'stop' || fx === 'engine') target = 0;
   if (fx === 'reverse') target *= 0.65;
   if (fx === 'swap') { target *= 0.8; if (Math.random() < dt * 1.5) r.offT = rand(-5, 5); }
+  if (fx === 'cheese') { target *= 0.85; if (Math.random() < dt) r.offT = rand(-5, 5); }
   if (fx === 'stop') r.v = Math.max(0, r.v - 60 * dt);
   if (fx === 'engine' && now > r.fx.t0 + 4) endFx(r, 'Motor läuft wieder');
+  if (mode === 'race' || mode === 'demo') {
+    r.aiBoostT = Math.max(0, (r.aiBoostT || 0) - dt);
+    if (r.aiBoostT > 0) target *= 1.3;
+    if (r.sticky) target *= 0.5;
+    if (r.onIce) { target *= 0.88; if (Math.random() < dt * 0.8) r.offT = clamp(r.off + rand(-3, 3), -5, 5); }
+  }
   r.v += (target - r.v) * (r.v < target ? 0.45 : 1.6) * dt;
   r.s += r.v * dt;
   r.laneT -= dt;
@@ -1256,6 +1478,9 @@ function updateAI(r, dt, mode) {
   r.pos.copy(sp.p).addScaledVector(sp.r, r.off);
   r.heading = Math.atan2(sp.t.x, sp.t.z);
   r.idx = sp.i;
+  r.mh = r.heading;
+  if (r.wobble) { r.heading += Math.sin(now * 14) * 0.35 * r.wobble; r.wobble = Math.max(0, r.wobble - dt * 1.2); }
+  if (mode !== 'idle') hazards(r, null, dt);
   r.prog = r.s - TRACK_LEN;
   r.lap = Math.floor(r.prog / TRACK_LEN) + 1;
   if (mode === 'race' && r.finished == null && r.prog >= LAPS * TRACK_LEN) r.finished = raceT;
@@ -1269,6 +1494,7 @@ function updateAI(r, dt, mode) {
 }
 function placeKart(r, dt) {
   r.kart.position.copy(r.pos);
+  r.kart.position.y = r.y || 0;
   const fx = r.fx && now < r.fx.until ? r.fx.kind : '';
   r.turn = lerp(r.turn || 0, fx === 'reverse' ? Math.PI : 0, damp(6, dt || 1));
   r.kart.rotation.y = r.heading + r.turn;
@@ -1316,9 +1542,9 @@ function updatePlayerCam(p, dt) {
   fwd.set(Math.sin(r.heading + back), 0, Math.cos(r.heading + back));
   const bump = p.offroad ? Math.sin(now * 40) * 0.025 * Math.min(1, r.v / 10) : 0;
   cam.position.copy(r.pos).addScaledVector(fwd, -0.2);
-  cam.position.y = 1.25 + bump + (Math.random() - 0.5) * p.shake * 0.3;
+  cam.position.y = 1.25 + (r.y || 0) + bump + (Math.random() - 0.5) * p.shake * 0.3;
   cam.position.x += (Math.random() - 0.5) * p.shake * 0.3;
-  p.camTarget.copy(r.pos).addScaledVector(fwd, 12); p.camTarget.y = 0.95;
+  p.camTarget.copy(r.pos).addScaledVector(fwd, 12); p.camTarget.y = 0.95 + (r.y || 0) * 0.7 - Math.max(-3, Math.min(3, r.vy || 0)) * 0.25;
   const roll = p.steer * 0.05 * Math.min(1, r.v / 20);
   cam.up.set(Math.cos(r.heading) * roll, 1, -Math.sin(r.heading) * roll).normalize();
   cam.lookAt(p.camTarget);
@@ -1364,7 +1590,7 @@ function tick() {
     const keysNow = locals.some((p) => p.source === 'keys' && p.startNow);
     let waitLeft = 0;
     if (localReady) {
-      if (startAt == null) startAt = Math.max(now + (locals.length >= 2 ? 3 : 8), lastJoinAt + 4);
+      if (startAt == null) startAt = Math.max(now + (locals.length >= 2 || gp.quick ? 3 : 8), lastJoinAt + 4);
       waitLeft = keysNow ? 0 : Math.max(0, startAt - now);
     } else startAt = null;
     if (localReady) {
@@ -1389,12 +1615,19 @@ function tick() {
       else if (firstFinishAt != null && raceT - firstFinishAt > 45) setState('results');
     } else {
       if (stateT % 0.5 < realDt) renderResults();
+      // Beide Hände hoch = weiter, beide Arme runter = zur Übersicht
+      let up = 0, down = 0;
       if (stateT > 2.5) {
         for (const p of locals) {
-          p.upT = p.input.handsUp && hasControl(p) ? p.upT + realDt : Math.max(0, p.upT - realDt * 2);
-          if (p.upT > 0.9) { p.upT = 0; requestRestart(); break; }
+          const ctl = hasControl(p) && p.source !== 'keys';
+          p.upT = ctl && p.input.handsUp ? p.upT + realDt : Math.max(0, p.upT - realDt * 2);
+          p.menuT = ctl && p.input.armsDown ? (p.menuT || 0) + realDt : Math.max(0, (p.menuT || 0) - realDt * 2);
+          up = Math.max(up, p.upT / 0.9); down = Math.max(down, p.menuT / 1.2);
         }
       }
+      END.update(stateT, up, down);
+      if (state === 'results' && up >= 1) { for (const p of locals) p.upT = 0; END.phone('again'); }
+      else if (state === 'results' && down >= 1) { for (const p of locals) p.menuT = 0; END.phone('menu'); }
     }
   }
   dropLost();
@@ -1402,6 +1635,7 @@ function tick() {
     placeKart(r, dt);
   }
   animateBoxes(BOXES, now, dt);
+  animateFeatures(FEAT, now);
 
   // Cockpits, Münzen, Kameras
   for (const p of locals) {
@@ -1477,6 +1711,7 @@ function tick() {
       p.lastPlace = state === 'race' ? place : 0;
       h.pos.textContent = place; h.posOf.textContent = '/' + st.length;
       h.lap.textContent = clamp(r.lap, 1, LAPS);
+      if (h.lapOf.textContent !== '/' + LAPS) h.lapOf.textContent = '/' + LAPS;
       h.speed.textContent = Math.round(r.v * 3.6);
       h.bar.style.strokeDasharray = `${SPEED_LEN * clamp(r.v / V_BOOST, 0, 1)} 314.2`;
       h.speedo.classList.toggle('boosting', p.boostT > 0);
@@ -1490,6 +1725,9 @@ function tick() {
       h.hand.classList.toggle('show', hb > 0);
       if (hb > 0 && h.handNum.textContent !== String(hb)) { h.handNum.textContent = hb; h.hand.classList.remove('tick'); void h.hand.offsetWidth; h.hand.classList.add('tick'); audio.tick(); }
       h.wheel.classList.toggle('show', state === 'race' && r.finished == null && !gripping(p) && !p.aim && !hb && fxk !== 'engine');
+      const wtx = !hasControl(p) ? 'Ich sehe dich nicht – Autopilot' : 'Hände ans Lenkrad';
+      if (h.wheelTx.textContent !== wtx) h.wheelTx.textContent = wtx;
+      h.splat.classList.toggle('show', fxk === 'cheese' && state === 'race');
       // Items (mit kurzer Würfel-Animation nach dem Einsammeln)
       const shown = p.items.map((k, n) => (p.rollT > 0 && n === p.items.length - 1 ? ITEM_KEYS[Math.floor(now * 12) % ITEM_KEYS.length] : k));
       const ikey = shown.join() + (p.rollT > 0);
@@ -1558,6 +1796,7 @@ document.querySelectorAll('.logo .word').forEach((w, wi) => {
   });
 });
 
+loadTrack(cupOf().tracks[0]);
 updateLayout();
 setState('lobby');
 if (!CAPTURE) startPeer();
@@ -1570,6 +1809,7 @@ window.__race = {
   BOXES, give: (i, k) => { const p = locals[i]; if (p) p.items.push(k); }, hit: (i, k) => locals[i] && applyItem(locals[i].racer, k, 'Test'),
   aim: (i) => locals[i] && locals[i].aim, get now() { return now; },
   frame: () => tick(),
-  setState, onPose: (i, k, w, h) => locals[i] && onPose(locals[i], k, w, h), addKeysPlayer, T, N, TRACK_LEN,
+  setState, onPose: (i, k, w, h) => locals[i] && onPose(locals[i], k, w, h), addKeysPlayer, T, N, get TRACK_LEN() { return TRACK_LEN; },
+  loadTrack, gp, chooseCup, requestRestart, toMenu, get FEAT() { return FEAT; }, hazards,
   finishLocal: (i) => { const p = locals[i]; if (p && p.racer) { p.racer.lap = LAPS; const s = T[N - 20]; p.racer.pos.set(s.p.x, 0, s.p.z); p.racer.idx = N - 20; p.prevIdx = N - 20; p.racer.heading = Math.atan2(s.t.x, s.t.z); p.racer.v = 30; } },
 };
